@@ -101,12 +101,7 @@ int main(void) {
     
     HalGdmaMemCpyDeInit(&(gdma.gdma_obj));
 
-	while(1){
-		asm volatile ("nop\n\t");//If run in non-os environment,it needs to add nop operation
-		asm volatile ("nop\n\t");
-		asm volatile ("nop\n\t");
-		asm volatile ("nop\n\t");
-	}
+    while(1);
     return 0;
 }
 #else
@@ -157,12 +152,7 @@ int main(void) {
     }
     HalGdmaMemCpyDeInit(&(gdma.gdma_obj));
    
-	while(1){
-		asm volatile ("nop\n\t");//If run in non-os environment,it needs to add nop operation
-		asm volatile ("nop\n\t");
-		asm volatile ("nop\n\t");
-		asm volatile ("nop\n\t");
-	}
+    while(1);
     return 0;
 }
 #endif

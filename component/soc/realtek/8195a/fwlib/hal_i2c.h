@@ -71,7 +71,6 @@ typedef enum _I2C_DBG_LVL_ {
     #define DBG_8195A_I2C_LVL(...)
 #endif
 
-#define I2C_MTR_RTY_CNT     1024
 //======================================================
 // I2C HAL related enumeration
 // I2C Module Selection 
@@ -106,8 +105,7 @@ typedef struct _HAL_I2C_INIT_DAT_ {
 
     u8                  I2CSlvAckGC;    //I2C slave acks to General Call
     u8                  I2CStop;        //I2C issues STOP bit or not
-    u16                 RSVD0;          //Bit0: used to control HalI2CMassSendRtl8195a_Patch sending 
-                                        //      RESTART or not by upper layer SW.
+    u16                 RSVD0;
     
     u8                  *I2CRWData;     //I2C Read/Write data pointer
 
@@ -272,8 +270,6 @@ typedef enum _I2C_ERR_TYPE_ {
     I2C_ERR_TX_ABRT     =   0x08,           //I2C TX terminated
     I2C_ERR_SLV_TX_NACK =   0x10,           //I2C slave transmission terminated by master NACK, 
                                             //but there are data in slave TX FIFO
-    I2C_ERR_MST_A_NACK  =   0x12,
-    I2C_ERR_MST_D_NACK  =   0x13,
     I2C_ERR_USER_REG_TO =   0x20,
 
     I2C_ERR_RX_CMD_TO   =   0x21,
@@ -570,11 +566,6 @@ _LONG_CALL_ HAL_Status RtkI2CSendV02(IN  VOID *Data);
 _LONG_CALL_ HAL_Status RtkI2CReceiveV02(IN  VOID *Data);
 _LONG_CALL_ VOID RtkSalI2COpInitV02(IN  VOID *Data);
 //================= Rtl8195a I2C V02 function prototype  END==========
-
-//================= Rtl8195a I2C V04 function prototype  ============
-_LONG_CALL_ VOID HalI2COpInit_V04(IN  VOID *Data);
-_LONG_CALL_ VOID I2CISRHandle_V04(IN  VOID *Data);
-//================= Rtl8195a I2C V04 function prototype  END==========
 
 //======================================================
 //SAL I2C patch function prototype

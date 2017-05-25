@@ -43,7 +43,6 @@
 
 #include "diag.h"
 #include "dwc_otg_dbg.h"
-#include "freertos_service.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -73,7 +72,7 @@ DiagPrintf(
 #define DWC_OS_PORTING   1
 #endif
 
-#include "usb_errno.h"
+#include "errno.h"
 
 /** @name Primitive Types and Values */
 
@@ -89,7 +88,7 @@ typedef uint8_t dwc_bool_t;
 #undef  DWC_DEBUG_MEMORY
 #undef  DWC_UTFLIB
 #undef  CONFIG_DEBUG_MUTEXES
-#define DWC_WITH_WLAN_OSDEP 1
+
 
 
 #ifdef DWC_OS_PORTING
@@ -184,11 +183,7 @@ extern _LONG_CALL_ int DWC_VSNPRINTF(char *str, int size, char *format, va_list 
 /**
  * printf() clone.  Just call printf if you've go it.
  */
-#ifdef OTGDEBUG
 #define DWC_PRINTF(format...) do{ DBG_8195A_OTG(format); }while(0)
-#else
-#define DWC_PRINTF(format...)
-#endif
 
 //extern void DWC_PRINTF(char *format, ...)
 /* This provides compiler level static checking of the parameters if you're
@@ -865,8 +860,7 @@ extern _LONG_CALL_ void DWC_TIMER_CANCEL(dwc_timer_t *timer);
 struct dwc_spinlock;
 
 /** Type for a spinlock */
-//typedef struct dwc_spinlock dwc_spinlock_t;
-typedef _lock dwc_spinlock_t;
+typedef struct dwc_spinlock dwc_spinlock_t;
 
 /** Type for the 'flags' argument to spinlock funtions */
 typedef unsigned long dwc_irqflags_t;
@@ -991,7 +985,7 @@ extern _LONG_CALL_ void DWC_MSLEEP(uint32_t msecs);
 
 extern _LONG_CALL_ void DWC_ENTER_CRITICAL(VOID);
 extern _LONG_CALL_ void DWC_EXIT_CRITICAL(VOID);
-extern _LONG_CALL_ uint8_t DWC_IN_CRITICAL(VOID);
+
 /**
  * Returns number of milliseconds since boot.
  */

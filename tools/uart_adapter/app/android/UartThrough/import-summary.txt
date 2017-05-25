@@ -1,6 +1,16 @@
 ECLIPSE ANDROID PROJECT IMPORT SUMMARY
 ======================================
 
+Risky Project Location:
+-----------------------
+The tools *should* handle project locations in any directory. However,
+due to bugs, placing projects in directories containing spaces in the
+path, or characters like ", ' and &, have had issues. We're working to
+eliminate these bugs, but to save yourself headaches you may want to
+move your project to a location where this is not a problem.
+D:\sean.chang\Documents\Android Studio\Android Studio\UartThrough_jmdns
+                               -              -                        
+
 Ignored Files:
 --------------
 The following files were *not* copied into the new Gradle project; you
@@ -20,7 +30,7 @@ the .jar file in your project was of an older version than the
 dependency we picked, which could render the project not compileable.
 You can disable the jar replacement in the import wizard and try again:
 
-android-support-v4.jar => com.android.support:support-v4:19.1.0
+android-support-v4.jar => com.android.support:support-v4:20.0.0
 
 Moved Files:
 ------------
@@ -28,7 +38,8 @@ Android Gradle projects use a different directory structure than ADT
 Eclipse projects. Here's how the projects were restructured:
 
 * AndroidManifest.xml => app\src\main\AndroidManifest.xml
-* assets\ => app\src\main\assets\
+* assets\ => app\src\main\assets
+* lint.xml => app\lint.xml
 * res\ => app\src\main\res\
 * src\ => app\src\main\java\
 

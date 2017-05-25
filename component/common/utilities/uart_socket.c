@@ -2,7 +2,7 @@
 #include "PinNames.h"
 #include "sockets.h"
 #include "uart_socket.h"
-#include "autoconf.h"
+
 #define UART_SOCKET_USE_DMA_TX 1
 /***********************************************************************
  *                                Macros                               *
@@ -17,13 +17,6 @@ do{\
 	uart_printf("\n");\
 }while(0);
 
-#if defined(CONFIG_PLATFORM_8195A)
-#define UART_TX  PA_7	//PA_4
-#define UART_RX  PA_6	//PA_0
-#elif defined(CONFIG_PLATFORM_8711B)
-#define UART_TX  PA_23
-#define UART_RX  PA_18
-#endif
 /************************************************************************
  *                        extern funtions                               *
  ************************************************************************/
@@ -40,7 +33,7 @@ static void uart_irq(uint32_t id, SerialIrq event)
 
 	if(event == RxIrq) {
 		if( u->rx_start == 0 ){
-			rtw_up_sema_from_isr(&u->action_sema);	//up action semaphore 
+			RtlUpSemaFromISR(&u->action_sema);	//up action semaphore 
 			u->rx_start = 1; // set this flag in uart_irq to indicate data recved
 		}
 		u->recv_buf[u->prxwrite++] = serial_getc(&u->sobj);
@@ -62,10 +55,10 @@ static void uart_send_stream_done(uint32_t id)
 {
 	uart_socket_t *u = (uart_socket_t *)id;
 	
-	//u->tx_start = 0;
+	u->tx_start = 0;
 	memset(u->send_buf,0, UART_SEND_BUFFER_LEN);	//zero set uart_send_buf
-	rtw_up_sema_from_isr(&u->tx_sema);
-	rtw_up_sema_from_isr(&u->dma_tx_sema);
+	RtlUpSemaFromISR(&u->tx_sema);
+	RtlUpSemaFromISR(&u->dma_tx_sema);
 }
 
 static int uart_send_stream(uart_socket_t *u, char* pbuf, int len)
@@ -78,14 +71,14 @@ static int uart_send_stream(uart_socket_t *u, char* pbuf, int len)
 	}
 
 #if UART_SOCKET_USE_DMA_TX
-	while(rtw_down_sema(&u->dma_tx_sema) == pdTRUE){			
-    	ret = serial_send_stream_dma(&u->sobj, pbuf, len);
-    	if(ret != HAL_OK){
-			rtw_up_sema(&u->dma_tx_sema);
+	while(RtlDownSema(&u->dma_tx_sema) == pdTRUE){			
+	    	ret = serial_send_stream_dma(&u->sobj, pbuf, len);
+	    	if(ret != HAL_OK){
+			RtlUpSema(&u->dma_tx_sema);
 			return -1;
 		}else{
 			return 0;
-    	}
+	    	}
 	}
 #else
 	while (len){
@@ -115,7 +108,7 @@ static void uart_action_handler(void* param)
 	if(!u)
 		goto Exit;
 	
-	while(rtw_down_sema(&u->action_sema) == pdTRUE) {
+	while(RtlDownSema(&u->action_sema) == pdTRUE) {
 		if(u->fd == -1)
 			goto Exit;
 		if(u->rx_start){
@@ -128,20 +121,15 @@ static void uart_action_handler(void* param)
 			u->rx_start = 0;
 		}
 		if(u->tx_start){
-#if 1			
-			if (u->tx_bytes < 128) {
-				uart_print_data("TX:", u->send_buf, u->tx_bytes);
-			} else {
-				uart_printf("\nTX:: Len=%d\n", u->tx_bytes);
-			}
-#endif
-			u->tx_start = 0;
+			uart_print_data("TX:", u->send_buf, u->tx_bytes);
+			//if(serial_send_stream_dma(&u->sobj, (char*)u->send_buf, u->tx_bytes) == -1){
 			if(uart_send_stream(u, (char*)u->send_buf, u->tx_bytes) == -1){
 				uart_printf("uart send data error!");
 			} else {
 #if (UART_SOCKET_USE_DMA_TX == 0)
+				u->tx_start = 0;
 				memset(u->send_buf,0, UART_SEND_BUFFER_LEN);	//zero set uart_send_buf
-				rtw_up_sema(&u->tx_sema);
+				RtlUpSema(&u->tx_sema);
 #endif				
 			}
 		}
@@ -153,11 +141,11 @@ Exit:
 
 uart_socket_t* uart_open(uart_set_str *puartpara)
 {
-	PinName uart_tx = UART_TX;
-	PinName uart_rx = UART_RX;
+	PinName uart_tx = PA_7;//PA_4; //PA_7
+	PinName uart_rx = PA_6;//PA_0; //PA_6
 	uart_socket_t *u;
 
-	u = (uart_socket_t *)rtw_zmalloc(sizeof(uart_socket_t));
+	u = (uart_socket_t *)RtlZmalloc(sizeof(uart_socket_t));
 	if(!u){
 		uart_printf("%s(): Alloc memory for uart_socket failed!\n", __func__);
 		return NULL;
@@ -184,13 +172,13 @@ uart_socket_t* uart_open(uart_set_str *puartpara)
 		goto Exit2;
 	}
 	/*init uart related semaphore*/
-	rtw_init_sema(&u->action_sema, 0);
-	rtw_init_sema(&u->tx_sema, 1);
-	rtw_init_sema(&u->dma_tx_sema, 1);
+	RtlInitSema(&u->action_sema, 0);
+	RtlInitSema(&u->tx_sema, 1);
+	RtlInitSema(&u->dma_tx_sema, 1);
 	
 	/*create uart_thread to handle send&recv data*/
 	{
-#define	UART_ACTION_STACKSIZE 256 //USE_MIN_STACK_SIZE modify from 512 to 256
+#define	UART_ACTION_STACKSIZE 512
 #define	UART_ACTION_PRIORITY	1
 		if(xTaskCreate(uart_action_handler, ((const char*)"uart_action"), UART_ACTION_STACKSIZE, u, UART_ACTION_PRIORITY, NULL) != pdPASS){
 			uart_printf("%s xTaskCreate(uart_action) failed", __FUNCTION__);
@@ -200,11 +188,11 @@ uart_socket_t* uart_open(uart_set_str *puartpara)
 	return u;
 Exit1:
 	/* Free uart related semaphore */
-	rtw_free_sema(&u->action_sema);
-	rtw_free_sema(&u->tx_sema);	
-	rtw_free_sema(&u->dma_tx_sema);
+	RtlFreeSema(&u->action_sema);
+	RtlFreeSema(&u->tx_sema);	
+	RtlFreeSema(&u->dma_tx_sema);		
 Exit2:
-	rtw_mfree((u8*)u, sizeof(uart_socket_t));
+	RtlMfree((u8*)u, sizeof(uart_socket_t));
 	return NULL;
 }
 
@@ -220,18 +208,18 @@ int uart_close(uart_socket_t *u)
 	}
 	/* Delete uart_action task */
 	u->fd = -1;
-	rtw_up_sema(&u->action_sema);
-	rtw_msleep_os(20);
+	RtlUpSema(&u->action_sema);
+	RtlMsleepOS(20);
 
 	/* Free uart related semaphore */
-	rtw_free_sema(&u->action_sema);
-	rtw_free_sema(&u->tx_sema);
-	rtw_free_sema(&u->dma_tx_sema);
+	RtlFreeSema(&u->action_sema);
+	RtlFreeSema(&u->tx_sema);
+	RtlFreeSema(&u->dma_tx_sema);
 	
 	/* Free serial */
 	serial_free(&u->sobj);
 	
-	rtw_mfree((u8 *)u, sizeof(uart_socket_t));
+	RtlMfree((u8 *)u, sizeof(uart_socket_t));
 
 	return 0;
 }
@@ -290,12 +278,12 @@ int uart_write(uart_socket_t *u, void *pbuf, size_t size)
 		uart_printf("input error,please check!");
 		return -1;
 	}
-	if(rtw_down_sema(&u->tx_sema)){
+	if(RtlDownSema(&u->tx_sema)){
 		//uart_printf("[%d]:uart_write %d!\n", xTaskGetTickCount(), size);
 		memcpy(u->send_buf, pbuf, size);
 		u->tx_bytes = size;
 		u->tx_start = 1;	//set uart tx start 
-		rtw_up_sema(&u->action_sema);	// let uart_handle_run through
+		RtlUpSema(&u->action_sema);	// let uart_handle_run through
 	} else {
 		uart_printf("uart write buf error!");
 		return -1;

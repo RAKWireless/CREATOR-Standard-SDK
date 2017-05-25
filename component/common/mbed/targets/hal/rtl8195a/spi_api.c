@@ -11,7 +11,6 @@ extern VOID HAL_GPIO_PullCtrl(u32 pin, u32 mode);
 
 void spi_tx_done_callback(VOID *obj);
 void spi_rx_done_callback(VOID *obj);
-void spi_bus_tx_done_callback(VOID *obj);
 
 #ifdef CONFIG_GDMA_EN
 HAL_GDMA_OP SpiGdmaOp;
@@ -56,7 +55,6 @@ void spi_init (spi_t *obj, PinName mosi, PinName miso, PinName sclk, PinName sse
     PHAL_SSI_ADAPTOR pHalSsiAdaptor;
     PHAL_SSI_OP pHalSsiOp;
 
-    _memset((void*)obj, 0, sizeof(spi_t));
     obj->state = 0;
     uint32_t SystemClock = SystemGetCpuClk();
     uint32_t MaxSsiFreq  = (SystemClock >> 2) >> 1;
@@ -121,17 +119,12 @@ void spi_init (spi_t *obj, PinName mosi, PinName miso, PinName sclk, PinName sse
     pHalSsiAdaptor->DefaultRxThresholdLevel = SpiDefaultSetting.RxThresholdLevel;
 
     //pHalSsiOp->HalSsiInit(pHalSsiAdaptor);
-    if(HalSsiInit(pHalSsiAdaptor) != HAL_OK){
-        DBG_SSI_ERR(ANSI_COLOR_RED"spi_init(): SPI %x init fails.\n"ANSI_COLOR_RESET,pHalSsiAdaptor->Index);
-        return;        
-    }
+    HalSsiInit(pHalSsiAdaptor);
     
     pHalSsiAdaptor->TxCompCallback = spi_tx_done_callback;
     pHalSsiAdaptor->TxCompCbPara = (void*)obj;
     pHalSsiAdaptor->RxCompCallback = spi_rx_done_callback;
     pHalSsiAdaptor->RxCompCbPara = (void*)obj;
-    pHalSsiAdaptor->TxIdleCallback = spi_bus_tx_done_callback;
-    pHalSsiAdaptor->TxIdleCbPara = (void*)obj;
 
 #ifdef CONFIG_GDMA_EN    
     HalGdmaOpInit((VOID*)&SpiGdmaOp);
@@ -139,8 +132,6 @@ void spi_init (spi_t *obj, PinName mosi, PinName miso, PinName sclk, PinName sse
     pHalSsiAdaptor->DmaConfig.pRxHalGdmaAdapter = &obj->spi_gdma_adp_rx;
     pHalSsiAdaptor->DmaConfig.pTxHalGdmaAdapter = &obj->spi_gdma_adp_tx;
     obj->dma_en = 0;
-    pHalSsiAdaptor->HaveTxChannel = 0;
-    pHalSsiAdaptor->HaveRxChannel = 0;
 #endif
 }
 
@@ -247,7 +238,7 @@ void spi_format (spi_t *obj, int bits, int mode, int slave)
         }
     }
 #endif
-    HalSsiSetFormat(pHalSsiAdaptor);
+    pHalSsiOp->HalSsiInit(pHalSsiAdaptor);
 }
 
 void spi_frequency (spi_t *obj, int hz)
@@ -278,96 +269,6 @@ void spi_slave_select(spi_t *obj, ChipSelect slaveindex)
         DBG_SSI_ERR("Only SPI 0  master mode supports slave selection.\n");
     }
 }
-
-
-void spi_slave_select_bypin(spi_t *obj, PinName pinname)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdaptor;
-    PHAL_SSI_OP pHalSsiOp;
-    u8 Index;
-    u8 slaveindex = 8;
-    u8 pinmux;
-
-    pHalSsiAdaptor = &obj->spi_adp;
-    pHalSsiOp = &obj->spi_op;
-    Index = pHalSsiAdaptor->Index;
-    pinmux = pHalSsiAdaptor->PinmuxSelect;
-    
-    if((pHalSsiAdaptor->Role == SSI_MASTER) && (Index == 0)){
-        if(pinmux == S0){
-            switch (pinname){
-                case PE_0:
-                    slaveindex = CS_0;
-                    break;
-                case PE_4:
-                    slaveindex = CS_1;
-                    break;
-                case PE_5:
-                    slaveindex = CS_2;
-                    break;
-                case PE_6:
-                    slaveindex = CS_3;
-                    break;
-                case PE_7:
-                    slaveindex = CS_4;
-                    break;
-                case PE_8:
-                    slaveindex = CS_5;
-                    break;
-                case PE_9:
-                    slaveindex = CS_6;
-                    break;
-                case PE_A:
-                    slaveindex = CS_7;
-                    break;
-                default:
-                    slaveindex = 8;
-            }
-        }
-        
-        if(pinmux == S1){
-            switch (pinname){
-                case PC_0:
-                    slaveindex = CS_0;
-                    break;
-                case PC_4:
-                    slaveindex = CS_1;
-                    break;
-                case PC_5:
-                    slaveindex = CS_2;
-                    break;
-                case PC_6:
-                    slaveindex = CS_3;
-                    break;
-                case PC_7:
-                    slaveindex = CS_4;
-                    break;
-                case PC_8:
-                    slaveindex = CS_5;
-                    break;
-                case PC_9:
-                    slaveindex = CS_6;
-                    break;
-                default:
-                    slaveindex = 8;
-            }
-        }
-
-        if(slaveindex != 8){
-            pHalSsiOp->HalSsiSetSlaveEnableRegister((VOID*)pHalSsiAdaptor,slaveindex);
-            if(slaveindex != CS_0){
-                SPI0_MULTI_CS_CTRL(ON);
-            }
-        }
-        else
-            DBG_SSI_ERR("Wrong Chip Seleect Pin.\n");
-        
-    }
-    else{
-        DBG_SSI_ERR("Only SPI 0  master mode supports slave selection.\n");
-    }
-}
-
 
 static inline void ssi_write (spi_t *obj, int value)
 {
@@ -435,7 +336,6 @@ int spi_busy (spi_t *obj)
     return (int)pHalSsiOp->HalSsiBusy(pHalSsiAdaptor);
 }
 
-//Discard data in the rx fifo, SPI bus can observe these data
 void spi_flush_rx_fifo (spi_t *obj)
 {
     PHAL_SSI_ADAPTOR pHalSsiAdaptor;
@@ -452,23 +352,6 @@ void spi_flush_rx_fifo (spi_t *obj)
             pHalSsiOp->HalSsiRead(pHalSsiAdaptor);
         }
     }
-}
-
-//This function is only for the slave device to flush tx fifo
-//It will discard all data in both tx fifo and rx fifo, then reset the state of slave tx. 
-//Data in the tx & rx fifo will be dropped without being able to be observed from SPI bus
-void spi_slave_flush_fifo(spi_t *obj)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdaptor;
-    u8 index;
-
-    pHalSsiAdaptor = &obj->spi_adp;
-    index = pHalSsiAdaptor->Index;
-    if(index != 0){
-        DBG_SSI_ERR("spi %x is not a slave\n", index);
-    }
-    HalSsiClearFIFO(pHalSsiAdaptor);
-    obj->state &= ~SPI_STATE_TX_BUSY;
 }
 
 // Slave mode read a sequence of data by interrupt mode
@@ -618,125 +501,6 @@ int32_t spi_master_write_read_stream(spi_t *obj, char *tx_buffer,
     return ret;
 }
 
-int32_t spi_slave_read_stream_timeout(spi_t *obj, char *rx_buffer, uint32_t length, uint32_t timeout_ms)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdaptor;
-    PHAL_SSI_OP pHalSsiOp;
-    int ret,timeout = 0;
-    uint32_t StartCount, TimeoutCount = 0;
-
-    if (obj->state & SPI_STATE_RX_BUSY) {
-        DBG_SSI_WARN("spi_slave_read_stream: state(0x%x) is not ready\r\n", 
-            obj->state);
-        return HAL_BUSY;
-    }
-    
-    pHalSsiAdaptor = &obj->spi_adp;
-    pHalSsiOp = &obj->spi_op;
-
-    obj->state |= SPI_STATE_RX_BUSY;
-    HalSsiEnterCritical(pHalSsiAdaptor);
-    if ((ret=pHalSsiOp->HalSsiReadInterrupt(pHalSsiAdaptor, rx_buffer, length)) != HAL_OK) {
-        obj->state &= ~SPI_STATE_RX_BUSY;
-    }
-    HalSsiExitCritical(pHalSsiAdaptor);
-    
-    if ((ret == HAL_OK) && (timeout_ms > 0)) {
-        TimeoutCount = (timeout_ms*1000/TIMER_TICK_US);
-        StartCount = HalTimerOp.HalTimerReadCount(1);
-        while (obj->state & SPI_STATE_RX_BUSY) {
-            if (HAL_TIMEOUT == HalSsiTimeout(StartCount, TimeoutCount)) {
-                ret = HalSsiStopRecv(pHalSsiAdaptor);
-                obj->state &= ~ SPI_STATE_RX_BUSY;
-                timeout = 1;
-                DBG_SSI_INFO("Slave is timeout\n");
-                break;
-            }
-        }
-        if ((pHalSsiAdaptor->DataFrameSize+1) > 8){
-            pHalSsiAdaptor->RxLength <<= 1;
-        }
-
-        if(timeout)
-            return (length - pHalSsiAdaptor->RxLength);
-        else
-            return length;
-    } 
-    else {
-        return (-ret);
-    }
-}
-
-int32_t spi_slave_read_stream_terminate(spi_t *obj, char *rx_buffer, uint32_t length)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdaptor;
-    PHAL_SSI_OP pHalSsiOp;
-    volatile u8 csterminate;
-    int ret;
-    volatile u32 spistate;
-
-    csterminate = 0;
-    if (obj->state & SPI_STATE_RX_BUSY) {
-        DBG_SSI_WARN("spi_slave_read_stream_dma: state(0x%x) is not ready\r\n", 
-            obj->state);
-        return HAL_BUSY;
-    }
-    
-    pHalSsiAdaptor = &obj->spi_adp;
-    pHalSsiOp = &obj->spi_op;
-    
-
-    obj->state |= SPI_STATE_RX_BUSY;
-    HalSsiEnterCritical(pHalSsiAdaptor);
-    if ((ret=pHalSsiOp->HalSsiReadInterrupt(pHalSsiAdaptor, rx_buffer, length)) != HAL_OK) {
-        obj->state &= ~SPI_STATE_RX_BUSY;
-    }
-    HalSsiExitCritical(pHalSsiAdaptor);
-
-
-    while(obj->state & SPI_STATE_RX_BUSY){
-        spistate = pHalSsiOp->HalSsiGetStatus(pHalSsiAdaptor);
-        while((spistate & 0x1) == 1){
-            if((obj->state & SPI_STATE_RX_BUSY) == 0){   
-                csterminate = 0;
-                break;
-            }   
-            spistate = pHalSsiOp->HalSsiGetStatus(pHalSsiAdaptor);
-            if((spistate & 0x1) == 0){
-                ret = HalSsiStopRecv(pHalSsiAdaptor); 
-                goto EndOfCS;
-            }
-        }
-    }
-EndOfCS:
-    if((obj->state & SPI_STATE_RX_BUSY) != 0){ 
-        csterminate = 1;
-        obj->state &= ~ SPI_STATE_RX_BUSY;
-    }
-
-    if ((pHalSsiAdaptor->DataFrameSize+1) > 8){
-        pHalSsiAdaptor->RxLength <<= 1;
-    }    
-    
-    if(csterminate == 1)
-        return (length - pHalSsiAdaptor->RxLength);
-    else
-        return length;
-
-}
-
-// Bus Idle: Real TX done, TX FIFO empty and bus shift all data out already
-void spi_bus_tx_done_callback(VOID *obj)
-{
-    spi_t *spi_obj = (spi_t *)obj;
-    spi_irq_handler handler;
-
-    if (spi_obj->bus_tx_done_handler) {
-        handler = (spi_irq_handler)spi_obj->bus_tx_done_handler;
-        handler(spi_obj->bus_tx_done_irq_id, 0);
-    }    
-}
-
 void spi_tx_done_callback(VOID *obj)
 {
     spi_t *spi_obj = (spi_t *)obj;
@@ -767,12 +531,6 @@ void spi_irq_hook(spi_t *obj, spi_irq_handler handler, uint32_t id)
 {
     obj->irq_handler = (u32)handler;
     obj->irq_id = (u32)id;
-}
-
-void spi_bus_tx_done_irq_hook(spi_t *obj, spi_irq_handler handler, uint32_t id) 
-{
-    obj->bus_tx_done_handler = (u32)handler;
-    obj->bus_tx_done_irq_id = (u32)id;
 }
 
 void spi_enable(spi_t *obj)
@@ -853,54 +611,6 @@ int32_t spi_slave_write_stream_dma(spi_t *obj, char *tx_buffer, uint32_t length)
         obj->state &= ~SPI_STATE_TX_BUSY;
     }
     return (ret);
-}
-
-int32_t spi_master_write_read_stream_dma(spi_t *obj, char *tx_buffer, 
-        char *rx_buffer, uint32_t length)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdaptor;
-    PHAL_SSI_OP pHalSsiOp;
-    int32_t ret;
-
-    if (obj->state & (SPI_STATE_RX_BUSY|SPI_STATE_TX_BUSY)) {
-        DBG_SSI_WARN("spi_master_write_and_read_stream: state(0x%x) is not ready\r\n", 
-            obj->state);
-        return HAL_BUSY;
-    }
-    
-    pHalSsiAdaptor = &obj->spi_adp;
-    pHalSsiOp = &obj->spi_op;
-    if ((obj->dma_en & SPI_DMA_TX_EN)==0) {
-        if (HAL_OK == HalSsiTxGdmaInit(pHalSsiOp, pHalSsiAdaptor)) {
-            obj->dma_en |= SPI_DMA_TX_EN;
-        }
-        else {
-            return HAL_BUSY;
-        }
-    }
-    
-    if ((obj->dma_en & SPI_DMA_RX_EN)==0) {
-        if (HAL_OK == HalSsiRxGdmaInit(pHalSsiOp, pHalSsiAdaptor)) {
-            obj->dma_en |= SPI_DMA_RX_EN;
-        }
-        else {
-            return HAL_BUSY;
-        }
-    }
-    
-    obj->state |= SPI_STATE_RX_BUSY;
-    /* as Master mode, sending data will receive data at sametime */
-    if ((ret=HalSsiDmaRecv(pHalSsiAdaptor, (u8 *) rx_buffer, length)) == HAL_OK) {
-        obj->state |= SPI_STATE_TX_BUSY;
-        if ((ret=HalSsiDmaSend(pHalSsiAdaptor, (u8 *) tx_buffer, length)) != HAL_OK) {
-            obj->state &= ~(SPI_STATE_RX_BUSY|SPI_STATE_TX_BUSY);
-        }
-    }
-    else {
-        obj->state &= ~(SPI_STATE_RX_BUSY);
-    }    
-
-    return ret;
 }
 
 int32_t spi_master_read_stream_dma(spi_t *obj, char *rx_buffer, uint32_t length)
@@ -984,122 +694,5 @@ int32_t spi_master_write_stream_dma(spi_t *obj, char *tx_buffer, uint32_t length
 
     return ret;
 }
-
-int32_t spi_slave_read_stream_dma_timeout(spi_t *obj, char *rx_buffer, uint32_t length, uint32_t timeout_ms)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdaptor;
-    PHAL_SSI_OP pHalSsiOp;
-    int ret,timeout = 0;
-    uint32_t StartCount, TimeoutCount = 0;
-
-
-    if (obj->state & SPI_STATE_RX_BUSY) {
-        DBG_SSI_WARN("spi_slave_read_stream_dma: state(0x%x) is not ready\r\n", 
-            obj->state);
-        return HAL_BUSY;
-    }
-    
-    pHalSsiAdaptor = &obj->spi_adp;
-    pHalSsiOp = &obj->spi_op;
-
-    if ((obj->dma_en & SPI_DMA_RX_EN)==0) {
-        if (HAL_OK == HalSsiRxGdmaInit(pHalSsiOp, pHalSsiAdaptor)) {
-            obj->dma_en |= SPI_DMA_RX_EN;
-        }
-        else {
-            return HAL_BUSY;
-        }
-    }
-    
-    obj->state |= SPI_STATE_RX_BUSY;
-    HalSsiEnterCritical(pHalSsiAdaptor);
-    ret = HalSsiDmaRecv(pHalSsiAdaptor, (u8 *) rx_buffer, length);    
-    HalSsiExitCritical(pHalSsiAdaptor);
-
-    if ((ret == HAL_OK) && (timeout_ms > 0)) {
-        TimeoutCount = (timeout_ms*1000/TIMER_TICK_US);
-        StartCount = HalTimerOp.HalTimerReadCount(1);
-        while (obj->state & SPI_STATE_RX_BUSY) {
-             if (HAL_TIMEOUT == HalSsiTimeout(StartCount, TimeoutCount)) {
-                ret = HalSsiStopRecv(pHalSsiAdaptor);               
-                obj->state &= ~ SPI_STATE_RX_BUSY;
-                timeout = 1;
-                DBG_SSI_INFO("Slave is timeout\n");
-                break;
-            }
-        }
-
-        if(timeout)
-            return (length - pHalSsiAdaptor->RxLength);
-        else
-            return length;
-               
-    } 
-    else {
-        obj->state &= ~ SPI_STATE_RX_BUSY;
-        return (-ret);
-    }
-}
-
-int32_t spi_slave_read_stream_dma_terminate(spi_t *obj, char *rx_buffer, uint32_t length)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdaptor;
-    PHAL_SSI_OP pHalSsiOp;
-    volatile u8 csterminate;
-    int ret;
-    volatile u32 spistate;
-
-    csterminate = 0;
-    if (obj->state & SPI_STATE_RX_BUSY) {
-        DBG_SSI_WARN("spi_slave_read_stream_dma: state(0x%x) is not ready\r\n", 
-            obj->state);
-        return HAL_BUSY;
-    }
-    
-    pHalSsiAdaptor = &obj->spi_adp;
-    pHalSsiOp = &obj->spi_op;
-    
-    if ((obj->dma_en & SPI_DMA_RX_EN)==0) {
-        if (HAL_OK == HalSsiRxGdmaInit(pHalSsiOp, pHalSsiAdaptor)) {
-            obj->dma_en |= SPI_DMA_RX_EN;
-        }
-        else {
-            return HAL_BUSY;
-        }
-    }
-
-
-    obj->state |= SPI_STATE_RX_BUSY;
-    HalSsiEnterCritical(pHalSsiAdaptor);
-    ret = HalSsiDmaRecv(pHalSsiAdaptor, (u8 *) rx_buffer, length);    
-    HalSsiExitCritical(pHalSsiAdaptor);
-
-    while(obj->state & SPI_STATE_RX_BUSY){
-        spistate = pHalSsiOp->HalSsiGetStatus(pHalSsiAdaptor);
-        while((spistate & 0x1) == 1){
-            if((obj->state & SPI_STATE_RX_BUSY) == 0){   
-                csterminate = 0;
-                break;
-            }   
-            spistate = pHalSsiOp->HalSsiGetStatus(pHalSsiAdaptor);
-            if((spistate & 0x1) == 0){
-                ret = HalSsiStopRecv(pHalSsiAdaptor); 
-                goto EndOfDMACS;
-            }
-        }
-    }
-EndOfDMACS:
-    if((obj->state & SPI_STATE_RX_BUSY) != 0){ 
-        csterminate = 1;
-        obj->state &= ~ SPI_STATE_RX_BUSY;
-    }
-    
-    if(csterminate == 1)
-        return (length - pHalSsiAdaptor->RxLength);
-    else
-        return length;
-
-}
-
 
 #endif  // end of "#ifdef CONFIG_GDMA_EN"

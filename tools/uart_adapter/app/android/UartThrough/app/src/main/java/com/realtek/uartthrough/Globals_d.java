@@ -1,9 +1,11 @@
 package com.realtek.uartthrough;
 
-import android.net.nsd.NsdServiceInfo;
+
 
 import java.net.InetAddress;
 import java.util.Vector;
+
+import javax.jmdns.ServiceInfo;
 
 public class Globals_d {
 
@@ -15,13 +17,15 @@ public class Globals_d {
 
     private static final String mServiceName = "AMEBA";
 
-    private static final String mServiceType = "_uart_data._tcp";
+    private static final String mServiceType = "_uart_data._tcp.local.";
 
+    private static boolean isResolveDone = false;
+    
     private static String successRec = "";
 
     private static String sensorReadings = "";
 
-    private static Vector<NsdServiceInfo> deviceList = new Vector<NsdServiceInfo>();
+    private static Vector<ServiceInfo> deviceList = new Vector<ServiceInfo>();
 
     private static InetAddress connIP = null;
 
@@ -33,7 +37,19 @@ public class Globals_d {
 
     private static OpStates os = OpStates.getInstance();
 
-    public Globals_d(){}
+    public Globals_d(){}    
+
+    public boolean isResolveFinish(){
+        return isResolveDone;
+    }
+    
+    public void  setResolveFinish(){
+        isResolveDone = true;
+    }
+    
+    public void  ResolveStatusReset(){
+        isResolveDone = false;
+    }
 
     public boolean isReadable(){
         return readable;
@@ -115,7 +131,7 @@ public class Globals_d {
     	deviceList.clear();
     }
     
-    public Vector<NsdServiceInfo> getDeviceList(){
+    public Vector<ServiceInfo> getDeviceList(){
         return deviceList;
     }
 

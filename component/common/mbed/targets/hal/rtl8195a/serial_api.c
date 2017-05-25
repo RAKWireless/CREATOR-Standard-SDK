@@ -108,12 +108,8 @@ void serial_init(serial_t *obj, PinName tx, PinName rx)
     pHalRuartDmaCfg->pHalGdmaOp = pHalGdmaOp;
     pHalRuartDmaCfg->pTxHalGdmaAdapter = &obj->uart_gdma_adp_tx;
     pHalRuartDmaCfg->pRxHalGdmaAdapter = &obj->uart_gdma_adp_rx;
-    pHalRuartDmaCfg->pTxDmaBlkList = &obj->gdma_multiblk_list_tx;
-    pHalRuartDmaCfg->pRxDmaBlkList = &obj->gdma_multiblk_list_rx;
     _memset((void*)(pHalRuartDmaCfg->pTxHalGdmaAdapter), 0, sizeof(HAL_GDMA_ADAPTER));
     _memset((void*)(pHalRuartDmaCfg->pRxHalGdmaAdapter), 0, sizeof(HAL_GDMA_ADAPTER));
-    _memset((void*)(pHalRuartDmaCfg->pTxDmaBlkList), 0, sizeof(UART_DMA_MULTIBLK));
-    _memset((void*)(pHalRuartDmaCfg->pRxDmaBlkList), 0, sizeof(UART_DMA_MULTIBLK));
 #endif
 
     pHalRuartOp->HalRuartAdapterLoadDef(pHalRuartAdapter, uart_idx);
@@ -128,10 +124,7 @@ void serial_init(serial_t *obj, PinName tx, PinName rx)
 //    pin_mode(tx, PullUp);
 //    pin_mode(rx, PullUp);
     
-    if (HalRuartInit(pHalRuartAdapter) != HAL_OK) {
-        DBG_UART_ERR("serial_init Err!\n");
-        return;
-    }
+    HalRuartInit(pHalRuartAdapter);
     pHalRuartOp->HalRuartRegIrq(pHalRuartAdapter);    
     pHalRuartOp->HalRuartIntEnable(pHalRuartAdapter);
 
@@ -303,7 +296,7 @@ void serial_irq_set(serial_t *obj, SerialIrq irq, uint32_t enable)
             serial_irq_en[uart_idx] &= ~SERIAL_RX_IRQ_EN;
         }
         else {
-            pHalRuartAdapter->Interrupts &= ~RUART_IER_ETBEI;
+            pHalRuartAdapter->Interrupts &= RUART_IER_ETBEI;
             serial_irq_en[uart_idx] &= ~SERIAL_TX_IRQ_EN;
         }
         HalRuartSetIMRRtl8195a (pHalRuartAdapter);
@@ -372,25 +365,14 @@ int serial_writable(serial_t *obj)
 void serial_clear(serial_t *obj) 
 {
     PHAL_RUART_ADAPTER pHalRuartAdapter;
+    PHAL_RUART_OP pHalRuartOp;
+    char temp;
 
     pHalRuartAdapter = &(obj->hal_uart_adp);
-    HalRuartResetTRxFifo((VOID *)pHalRuartAdapter);
-}
+    pHalRuartOp = &(obj->hal_uart_op);
 
-void serial_clear_tx(serial_t *obj) 
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter;
-
-    pHalRuartAdapter = &(obj->hal_uart_adp);
-    HalRuartResetTxFifo((VOID *)pHalRuartAdapter);
-}
-
-void serial_clear_rx(serial_t *obj) 
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter;
-
-    pHalRuartAdapter = &(obj->hal_uart_adp);
-    HalRuartResetRxFifo((VOID *)pHalRuartAdapter);
+    pHalRuartOp->HalRuartResetRxFifo(pHalRuartAdapter);
+    while (HAL_OK == pHalRuartOp->HalRuartGetC(pHalRuartAdapter, &temp));
 }
 
 void serial_pinout_tx(PinName tx) 
@@ -446,45 +428,22 @@ void serial_set_flow_control(serial_t *obj, FlowControl type, PinName rxflow, Pi
     // We just use the hardware auto flow control, so cannot do flow-control single direction only
     pHalRuartAdapter = &(obj->hal_uart_adp);
 
-    // RTS low active
-    // RTS_pin = autoflow_en ? (~rts | (RX_FIFO_Level_Trigger)) : ~rts
     switch(type) {
-        case FlowControlRTSCTS:
-            pHalRuartAdapter->FlowControl = AUTOFLOW_ENABLE;
-            pHalRuartAdapter->RTSCtrl = 1;
-            break;
-            
-        case FlowControlRTS:    // to indicate peer that it's ready for RX
-            // It seems cannot only enable RTS
-            pHalRuartAdapter->FlowControl = AUTOFLOW_ENABLE;
-            pHalRuartAdapter->RTSCtrl = 1;
-            break;
-        
         case FlowControlCTS:    // to check is the peer ready for RX: if can start TX ?
+        case FlowControlRTSCTS:
             // need to check CTS before TX
             pHalRuartAdapter->FlowControl = AUTOFLOW_ENABLE;
-            pHalRuartAdapter->RTSCtrl = 1;
             break;
 
         case FlowControlNone:
+        case FlowControlRTS:    // to indicate peer that it's ready for RX
         default:
             pHalRuartAdapter->FlowControl = AUTOFLOW_DISABLE;
-            pHalRuartAdapter->RTSCtrl = 1;  // RTS pin allways Low, peer can send data
             break;
                 
     }
 
     HalRuartFlowCtrl((VOID *)pHalRuartAdapter);
-}
-
-void serial_rts_control(serial_t *obj, BOOLEAN rts_state)
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter;
-
-    pHalRuartAdapter = &(obj->hal_uart_adp);
-    pHalRuartAdapter->RTSCtrl = !rts_state;
-    // RTS_Pin = AFE ? (~rts | RX_FIFO_Level_Over) : ~rts;
-    HalRuartRTSCtrlRtl8195a(pHalRuartAdapter, pHalRuartAdapter->RTSCtrl);    
 }
 
 // Blocked(busy wait) receive, return received bytes count
@@ -556,7 +515,7 @@ int32_t serial_recv_stream_dma (serial_t *obj, char *prxbuf, uint32_t len)
         PUART_DMA_CONFIG   pHalRuartDmaCfg;
 
         pHalRuartDmaCfg = &obj->uart_gdma_cfg;
-        if (HAL_OK == HalRuartRxGdmaInit(pHalRuartAdapter, pHalRuartDmaCfg, 0)) {
+        if (HAL_OK == HalRuartRxGdmaInit(pHalRuartOp, pHalRuartAdapter, pHalRuartDmaCfg)) {
             serial_dma_en[uart_idx] |= SERIAL_RX_DMA_EN;
         }
         else {
@@ -566,7 +525,7 @@ int32_t serial_recv_stream_dma (serial_t *obj, char *prxbuf, uint32_t len)
     
     obj->rx_len = len;
     HalRuartEnterCritical(pHalRuartAdapter);
-    ret = HalRuartDmaRecv(pHalRuartAdapter, (u8*)prxbuf, len);
+    ret = pHalRuartOp->HalRuartDmaRecv(pHalRuartAdapter, (u8*)prxbuf, len);
     HalRuartExitCritical(pHalRuartAdapter);
     return (ret);
 }
@@ -584,7 +543,7 @@ int32_t serial_send_stream_dma (serial_t *obj, char *ptxbuf, uint32_t len)
         PUART_DMA_CONFIG   pHalRuartDmaCfg;
         
         pHalRuartDmaCfg = &obj->uart_gdma_cfg;
-        if (HAL_OK == HalRuartTxGdmaInit(pHalRuartAdapter, pHalRuartDmaCfg, 0)) {
+        if (HAL_OK == HalRuartTxGdmaInit(pHalRuartOp, pHalRuartAdapter, pHalRuartDmaCfg)) {
             serial_dma_en[uart_idx] |= SERIAL_TX_DMA_EN;
         }
         else {
@@ -593,7 +552,7 @@ int32_t serial_send_stream_dma (serial_t *obj, char *ptxbuf, uint32_t len)
     }    
     obj->tx_len = len;
     HalRuartEnterCritical(pHalRuartAdapter);
-    ret = HalRuartDmaSend(pHalRuartAdapter, (u8*)ptxbuf, len);
+    ret = pHalRuartOp->HalRuartDmaSend(pHalRuartAdapter, (u8*)ptxbuf, len);
     HalRuartExitCritical(pHalRuartAdapter);
     return (ret);
 }
@@ -612,7 +571,7 @@ int32_t serial_recv_stream_dma_timeout (serial_t *obj, char *prxbuf, uint32_t le
         PUART_DMA_CONFIG   pHalRuartDmaCfg;
 
         pHalRuartDmaCfg = &obj->uart_gdma_cfg;
-        if (HAL_OK == HalRuartRxGdmaInit(pHalRuartAdapter, pHalRuartDmaCfg, 0)) {
+        if (HAL_OK == HalRuartRxGdmaInit(pHalRuartOp, pHalRuartAdapter, pHalRuartDmaCfg)) {
             serial_dma_en[uart_idx] |= SERIAL_RX_DMA_EN;
         }
         else {
@@ -620,7 +579,7 @@ int32_t serial_recv_stream_dma_timeout (serial_t *obj, char *prxbuf, uint32_t le
         }
     }
     HalRuartEnterCritical(pHalRuartAdapter);
-    ret = HalRuartDmaRecv(pHalRuartAdapter, (u8*)prxbuf, len);
+    ret = pHalRuartOp->HalRuartDmaRecv(pHalRuartAdapter, (u8*)prxbuf, len);
     HalRuartExitCritical(pHalRuartAdapter);
     
     if ((ret == HAL_OK) && (timeout_ms > 0)) {
@@ -647,6 +606,7 @@ int32_t serial_recv_stream_dma_timeout (serial_t *obj, char *prxbuf, uint32_t le
     } else {
         return (-ret);
     }
+//  return (ret);
 }
 
 
@@ -781,7 +741,7 @@ uint8_t serial_raed_lsr(serial_t *obj)
 // Bit 5: Complement of the DSR input 
 // Bit 6: Complement of the RI input 
 // Bit 7: Complement of the DCD input 
-uint8_t serial_read_msr(serial_t *obj) 
+uint8_t serial_raed_msr(serial_t *obj) 
 {
     PHAL_RUART_ADAPTER pHalRuartAdapter;
     uint8_t RegValue;
@@ -789,22 +749,6 @@ uint8_t serial_read_msr(serial_t *obj)
     pHalRuartAdapter = &(obj->hal_uart_adp);
     RegValue = HAL_RUART_READ8(pHalRuartAdapter->UartIndex, RUART_MODEM_STATUS_REG_OFF);
     return RegValue;
-}
-
-// to set the RX FIFO level to trigger RX interrupt/RTS de-assert
-// FifoLv:
-//     0: 1-Byte
-//     1: 4-Byte
-//     2: 8-Byte
-//     3: 14-Byte
-void serial_rx_fifo_level(serial_t *obj, SerialFifoLevel FifoLv) 
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter;
-    uint8_t RegValue;
-    
-    pHalRuartAdapter = &(obj->hal_uart_adp);
-    RegValue = (RUART_FIFO_CTL_REG_DMA_ENABLE | RUART_FIFO_CTL_REG_FIFO_ENABLE) | (((uint8_t)FifoLv&0x03) << 6);
-    HAL_RUART_WRITE8(pHalRuartAdapter->UartIndex, RUART_FIFO_CTL_REG_OFF, RegValue);
 }
 
 #endif

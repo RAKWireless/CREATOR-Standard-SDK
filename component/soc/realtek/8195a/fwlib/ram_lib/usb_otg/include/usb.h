@@ -41,21 +41,15 @@
 #ifndef _USB_H_
 #define _USB_H_
 #include "basic_types.h"
-#include "dwc_os.h"
-#if defined(DWC_WITH_WLAN_OSDEP)
 #include "osdep_service.h"
-#else
-#include "osdep_api.h"
-#include "rtl8195a.h"
-#endif
+//#include "osdep_api.h"
 #include "hal_util.h"
 
-#include "usb_errno.h"
+#include "errno.h"
 #include "diag.h"
 #include "usb_ch9.h"
 #include "usb_defs.h"
 
-#define USB_FAST_HUB_ENUM   1
 /*
  * The USB records contain some unaligned little-endian word
  * components.  The U[SG]ETW macros take care of both the alignment
@@ -1050,11 +1044,7 @@ enum {
 
 struct usb_host_endpoint {
 	struct usb_endpoint_descriptor		desc;
-#if defined(DWC_WITH_WLAN_OSDEP)
 	_list		urb_list;
-#else
-    _LIST		urb_list;
-#endif
 	void				*hcpriv;
 	unsigned char *extra;   /* Extra descriptors */
 	int extralen;
@@ -1186,11 +1176,8 @@ struct usb_device {
 	char mf[32];			/* manufacturer */
 	char prod[32];		/* product */
 	char serial[32];		/* serial number */
-#if defined(DWC_WITH_WLAN_OSDEP)
+
     _mutex Mutex;
-#else
-	_Mutex Mutex;
-#endif
 };
 
 /*
@@ -1241,17 +1228,9 @@ struct urb {
 	int unlinked;			/* unlink error code */
 
 	/* public: documented fields in the urb that can be used by drivers */
-#if defined(DWC_WITH_WLAN_OSDEP)
 	_list urb_list;	/* list head for use by the urb's
-	
 					 * current owner */
-//	_list anchor_list;	/* the URB may be anchored */
-#else
-    _LIST urb_list;	/* list head for use by the urb's
-					 * current owner */
-//	_LIST anchor_list;	/* the URB may be anchored */
-#endif
-//	struct usb_anchor *anchor;
+
 	struct usb_device *dev;		/* (in) pointer to associated device */
 	struct usb_host_endpoint *ep;	/* (internal) pointer to endpoint */
 	unsigned int pipe;		/* (in) pipe information */
@@ -1270,11 +1249,7 @@ struct urb {
 					 * (INT/ISO) */
 	int error_count;		/* (return) number of ISO errors */
 	void *context;			/* (in) context for completion */
-#if defined(DWC_WITH_WLAN_OSDEP)
     _mutex Mutex;   // mutext for atomic or link-list operation
-#else
-    _Mutex Mutex;   // mutext for atomic or link-list operation
-#endif
 	usb_complete_t complete;	/* (in) completion routine */
     unsigned int iso_packets;
 	struct usb_iso_packet_descriptor iso_frame_desc[0];
@@ -1330,25 +1305,16 @@ struct usb_hcd {
 	 * bandwidth_mutex should be dropped after a successful control message
 	 * to the device, or resetting the bandwidth after a failed attempt.
 	 */
-#if defined(DWC_WITH_WLAN_OSDEP)
 	_mutex		bandwidth_mutex;
-#else
-    _Mutex		bandwidth_mutex;
-#endif
 
 	int	state;
 	 
     int devnum_next;        /* Next open device number in
                              * round-robin allocation */
-#if defined(DWC_WITH_WLAN_OSDEP)
+
     _mutex hcd_urb_list_lock;
     _mutex hcd_urb_unlink_lock;
     _mutex hcd_root_hub_lock;   // mutext for atomic or link-list operation
-#else
-    _Mutex hcd_urb_list_lock;
-    _Mutex hcd_urb_unlink_lock;
-    _Mutex hcd_root_hub_lock;   // mutext for atomic or link-list operation
-#endif
 
 	/* The HC driver's private data is stored at the end of
 	 * this structure.
@@ -1964,9 +1930,8 @@ typedef struct {
 #define USB_OTG_HNP		(1 << 1)	/* swap host/device roles */
 
 
-extern void _usb_init(void);
-extern void _usb_deinit(void);
-extern int wait_usb_ready(void);
+extern int usb_init(void);
+extern int usb_stop(void);
 extern void usb_disable_asynch(int disable);
 extern unsigned short usb_maxpacket(struct usb_device *udev, int pipe, int is_out);
 extern int usb_set_interface(struct usb_device *dev, int interface, int alternate);
@@ -2029,13 +1994,10 @@ extern int usb_get_descriptor(struct usb_device *dev, unsigned char type,
 		       unsigned char index, void *buf, int size);
 extern int usb_get_device_descriptor(struct usb_device *dev, unsigned int size);
 extern int usb_clear_halt(struct usb_device *dev, int pipe);
-#if defined(DWC_WITH_WLAN_OSDEP)
+
 extern _sema  CtrlUrbCompSema;  /* Semaphore for for Control URB Complete waiting */    
 extern _sema  UrbKillSema;  /* Semaphore for for URB Kill waiting */
-#else
-extern _Sema  CtrlUrbCompSema;  /* Semaphore for for Control URB Complete waiting */    
-extern _Sema  UrbKillSema;  /* Semaphore for for URB Kill waiting */
-#endif
+
 typedef unsigned long kernel_ulong_t;
 
 struct usb_device_id {
@@ -2143,28 +2105,4 @@ struct usb_device_id {
 	.bInterfaceSubClass = (sc), \
 	.bInterfaceProtocol = (pr)                
 
-typedef enum{
-	USB_INIT_NONE = -1,
-	USB_INIT_OK = 0,
-	USB_INIT_FAIL = 1,
-	USB_NOT_ATTACHED = 2
-}_usb_init_s;
-
-struct usb_driver {
-	const char *name;
-
-	int (*probe) (struct usb_interface *intf);
-
-	void (*disconnect) (struct usb_interface *intf);
-
-	int (*resume) (struct usb_interface *intf);
-	int (*reset_resume)(struct usb_interface *intf);
-
-	int (*pre_reset)(struct usb_interface *intf);
-	int (*post_reset)(struct usb_interface *intf);
-
-	const struct usb_device_id *id_table;
-};
-
-int usb_register_class_driver(struct usb_driver *driver);
 #endif /* _USB_H_ */

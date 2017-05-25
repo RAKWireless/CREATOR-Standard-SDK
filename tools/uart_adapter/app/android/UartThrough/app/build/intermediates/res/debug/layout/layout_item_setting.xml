@@ -45,4 +45,4 @@
         android:marqueeRepeatLimit="marquee_forever">
         </com.realtek.myspeaker.SpeakerTextView-->
 
-</RelativeLayout><!-- From: file:/D:/temp/android/mdis_discovery/UartThrough1/app/src/main/res/layout/layout_item_setting.xml -->
+</RelativeLayout><!-- From: file:/D:/branch/v3.3a/tools/uart_adapter/app/android/UartThrough/app/src/main/res/layout/layout_item_setting.xml -->

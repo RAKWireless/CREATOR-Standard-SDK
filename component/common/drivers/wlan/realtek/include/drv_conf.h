@@ -21,7 +21,7 @@
 #define __DRV_CONF_H__
 
 #include "autoconf.h"
-#if ((RTL8195A_SUPPORT==1) || (RTL8711B_SUPPORT==1))
+#if (RTL8195A_SUPPORT==1)
 #include "platform_autoconf.h"
 #endif
 

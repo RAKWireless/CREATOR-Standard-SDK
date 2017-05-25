@@ -9,19 +9,20 @@
 #define snprintf	DiagSnPrintf
 
 #define strstr		__rtl_strstr
+#define vsnprintf	__rtl_vfprintf_r
 #define memmove		__rtl_memmove
 
 /* these functions will be move to rom libc */
 #ifndef SSL_LIBC_ROM_PATCH
 #define SSL_LIBC_ROM_PATCH
 
-SSL_ROM_TEXT_SECTION
+//SSL_ROM_TEXT_SECTION
 static inline char __rtl_tolower_v1_00(const char c)
 {
 	return c | 0x20;
 }
 
-SSL_ROM_TEXT_SECTION
+//SSL_ROM_TEXT_SECTION
 static inline int __rtl_strcasecmp_v1_00(const char *s1, const char *s2)
 {
 	const unsigned char *ucs1 = (const unsigned char *) s1;
@@ -37,7 +38,7 @@ static inline int __rtl_strcasecmp_v1_00(const char *s1, const char *s2)
 	return d;
 }
 
-SSL_ROM_TEXT_SECTION
+//SSL_ROM_TEXT_SECTION
 static inline int __rtl_strncasecmp_v1_00(const char *s1, const char *s2, size_t n)
 {
 	const unsigned char *ucs1 = (const unsigned char *) s1;

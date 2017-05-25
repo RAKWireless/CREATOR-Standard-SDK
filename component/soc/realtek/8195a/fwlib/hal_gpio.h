@@ -232,11 +232,5 @@ HAL_GPIO_Irq_Init(
     HAL_GPIO_PIN  *GPIO_Pin
 );
 
-VOID
-HAL_GPIO_IP_DeInit(
-    VOID
-);
-
-
 #endif  // end of "#define _HAL_GPIO_H_"
 

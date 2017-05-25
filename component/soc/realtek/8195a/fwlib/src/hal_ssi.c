@@ -32,14 +32,6 @@ const HAL_GDMA_CHNL Ssi2_RX_GDMA_Chnl_Option[] = {
     {0xff,0,0,0}    // end
 };
 
-const HAL_GDMA_CHNL Ssi_MultiBlk_GDMA_Chnl_Option[] = {
-    {0,4,GDMA0_CHANNEL4_IRQ,0},
-    {0,5,GDMA0_CHANNEL5_IRQ,0},
-    {1,4,GDMA1_CHANNEL4_IRQ,0},
-    {1,5,GDMA1_CHANNEL5_IRQ,0},
-    {0xff,0,0,0}    // end
-};
-
 //TODO: Load default Setting: It should be loaded from external setting file.
 const DW_SSI_DEFAULT_SETTING SpiDefaultSetting =
 {
@@ -51,7 +43,7 @@ const DW_SSI_DEFAULT_SETTING SpiDefaultSetting =
     .TxData            = NULL,
     .DmaRxDataLevel    =    7,  // RX FIFO stored bytes > (DMARDLR(7) + 1) then trigger DMA transfer
     .DmaTxDataLevel    =   48,  // TX FIFO free space > (FIFO_SPACE(64)-DMATDLR(48)) then trigger DMA transfer
-    .InterruptPriority = 10,
+    .InterruptPriority = 0x20,
     .RxLength          =    0,
     .RxLengthRemainder =    0,
     .RxThresholdLevel  =    7,  // if number of entries in th RX FIFO >= (RxThresholdLevel+1), RX interrupt asserted
@@ -83,11 +75,6 @@ extern HAL_Status HalSsiClockOffRtl8195a(VOID * Adapter);
 extern HAL_Status HalSsiClockOnRtl8195a(VOID * Adapter);
 extern HAL_Status HalSsiIntReadRtl8195a(VOID *Adapter, VOID *RxData, u32 Length);
 extern HAL_Status HalSsiIntWriteRtl8195a(VOID *Adapter, u8 *pTxData, u32 Length);
-extern HAL_Status HalSsiEnterCriticalRtl8195a(VOID * Data);
-extern HAL_Status HalSsiExitCriticalRtl8195a(VOID * Data);
-extern HAL_Status HalSsiIsTimeoutRtl8195a(u32 StartCount, u32 TimeoutCnt);
-extern HAL_Status HalSsiStopRecvRtl8195a(VOID * Data);
-extern HAL_Status HalSsiSetFormatRtl8195a(VOID * Adaptor);
 extern VOID HalSsiSetSclkRtl8195a(VOID *Adapter, u32 ClkRate);
 #ifdef CONFIG_GDMA_EN
 extern VOID HalSsiDmaInitRtl8195a(VOID *Adapter);
@@ -98,22 +85,12 @@ VOID HalSsiOpInit(VOID *Adaptor)
     PHAL_SSI_OP pHalSsiOp = (PHAL_SSI_OP) Adaptor;
 
 //    pHalSsiOp->HalSsiPinmuxEnable            = HalSsiPinmuxEnableRtl8195a;
-#if CONFIG_CHIP_E_CUT
-    pHalSsiOp->HalSsiPinmuxEnable            = HalSsiPinmuxEnableRtl8195a_V04;
-    pHalSsiOp->HalSsiPinmuxDisable           = HalSsiPinmuxDisableRtl8195a_V04;
-#else
     pHalSsiOp->HalSsiPinmuxEnable            = HalSsiPinmuxEnableRtl8195a_Patch;
     pHalSsiOp->HalSsiPinmuxDisable           = HalSsiPinmuxDisableRtl8195a;
-#endif
-
     pHalSsiOp->HalSsiEnable                  = HalSsiEnableRtl8195a;
     pHalSsiOp->HalSsiDisable                 = HalSsiDisableRtl8195a;
 //    pHalSsiOp->HalSsiInit                    = HalSsiInitRtl8195a;
-#if CONFIG_CHIP_E_CUT
-    pHalSsiOp->HalSsiInit                    = HalSsiInitRtl8195a_V04;
-#else
     pHalSsiOp->HalSsiInit                    = HalSsiInitRtl8195a_Patch;
-#endif
     pHalSsiOp->HalSsiSetSclkPolarity         = HalSsiSetSclkPolarityRtl8195a;
     pHalSsiOp->HalSsiSetSclkPhase            = HalSsiSetSclkPhaseRtl8195a;
     pHalSsiOp->HalSsiWrite                   = HalSsiWriteRtl8195a;
@@ -132,19 +109,11 @@ VOID HalSsiOpInit(VOID *Adaptor)
     pHalSsiOp->HalSsiInterruptEnable         = HalSsiInterruptEnableRtl8195a;
     pHalSsiOp->HalSsiInterruptDisable        = HalSsiInterruptDisableRtl8195a;
 //    pHalSsiOp->HalSsiReadInterrupt           = HalSsiReadInterruptRtl8195a;
-#if CONFIG_CHIP_E_CUT
-    pHalSsiOp->HalSsiReadInterrupt           = HalSsiIntReadRtl8195a_V04;
-#else
     pHalSsiOp->HalSsiReadInterrupt           = HalSsiIntReadRtl8195a;
-#endif
     pHalSsiOp->HalSsiSetRxFifoThresholdLevel = HalSsiSetRxFifoThresholdLevelRtl8195a;
     pHalSsiOp->HalSsiSetTxFifoThresholdLevel = HalSsiSetTxFifoThresholdLevelRtl8195a;
 //    pHalSsiOp->HalSsiWriteInterrupt          = HalSsiWriteInterruptRtl8195a;
-#if CONFIG_CHIP_E_CUT
-    pHalSsiOp->HalSsiWriteInterrupt          = HalSsiIntWriteRtl8195a_V04;
-#else
     pHalSsiOp->HalSsiWriteInterrupt          = HalSsiIntWriteRtl8195a;
-#endif
     pHalSsiOp->HalSsiGetRawInterruptStatus   = HalSsiGetRawInterruptStatusRtl8195a;
     pHalSsiOp->HalSsiGetSlaveEnableRegister  = HalSsiGetSlaveEnableRegisterRtl8195a;
     pHalSsiOp->HalSsiSetSlaveEnableRegister  = HalSsiSetSlaveEnableRegisterRtl8195a;
@@ -152,89 +121,6 @@ VOID HalSsiOpInit(VOID *Adaptor)
 
 
 #ifdef CONFIG_GDMA_EN    
-HAL_Status
-HalSsiTxMultiBlkChnl(
-    IN PHAL_SSI_ADAPTOR pHalSsiAdapter
-)
-{
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-    PSSI_DMA_CONFIG pDmaConfig;    
-    HAL_GDMA_CHNL *pgdma_chnl;
-
-    pDmaConfig = &pHalSsiAdapter->DmaConfig;
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pTxHalGdmaAdapter;
-
-    if((pHalSsiAdapter->HaveTxChannel == 1) && (pHalGdmaAdapter->ChNum != 4) && (pHalGdmaAdapter->ChNum != 5)){
-        HalSsiTxGdmaDeInit(pHalSsiAdapter);
-    }
-    if(pHalSsiAdapter->HaveTxChannel == 0){
-        pgdma_chnl = HalGdmaChnlAlloc((HAL_GDMA_CHNL*)Ssi_MultiBlk_GDMA_Chnl_Option);
-        if (pgdma_chnl == NULL) {
-            DBG_SSI_ERR("No Available DMA channel\n");
-            return HAL_BUSY;
-        }
-        else {
-            pHalGdmaAdapter->GdmaIndex   = pgdma_chnl->GdmaIndx;
-            pHalGdmaAdapter->ChNum       = pgdma_chnl->GdmaChnl;
-            pHalGdmaAdapter->ChEn        = 0x0101 << pgdma_chnl->GdmaChnl;
-            pDmaConfig->TxGdmaIrqHandle.IrqNum = pgdma_chnl->IrqNum;       
-            pHalSsiAdapter->HaveTxChannel = 1;
-            InterruptRegister(&pDmaConfig->TxGdmaIrqHandle);
-            InterruptEn(&pDmaConfig->TxGdmaIrqHandle);    
-        }
-        HalSsiDmaInit(pHalSsiAdapter);  
-    }
-    DBG_SSI_INFO("TX GDMA Index = %x, Channel = %x\n",pHalGdmaAdapter->GdmaIndex,pHalGdmaAdapter->ChNum);
-    return HAL_OK;
-}
-
-HAL_Status
-HalSsiTxSingleBlkChnl(
-    IN PHAL_SSI_ADAPTOR pHalSsiAdapter
-)
-{
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-    PSSI_DMA_CONFIG pDmaConfig;    
-    HAL_GDMA_CHNL *pgdma_chnl;
-
-    pDmaConfig = &pHalSsiAdapter->DmaConfig;
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pTxHalGdmaAdapter;
-
-    if(pHalSsiAdapter->HaveTxChannel == 0){
-        if (HalGdmaChnlRegister(pHalGdmaAdapter->GdmaIndex, pHalGdmaAdapter->ChNum) != HAL_OK) {
-            // The default GDMA Channel is not available, try others
-            if (pHalSsiAdapter->Index == 2) {
-                // SSI2 TX Only can use GDMA 0
-                pgdma_chnl = HalGdmaChnlAlloc((HAL_GDMA_CHNL*)Ssi2_TX_GDMA_Chnl_Option);
-            }
-            else {
-                pgdma_chnl = HalGdmaChnlAlloc(NULL);
-            }
-
-            if (pgdma_chnl == NULL) {
-                DBG_SSI_ERR("No Available DMA channel\n");
-                return HAL_BUSY;
-            }
-            else {
-                pHalGdmaAdapter->GdmaIndex   = pgdma_chnl->GdmaIndx;
-                pHalGdmaAdapter->ChNum       = pgdma_chnl->GdmaChnl;
-                pHalGdmaAdapter->ChEn        = 0x0101 << pgdma_chnl->GdmaChnl;
-                pDmaConfig->TxGdmaIrqHandle.IrqNum = pgdma_chnl->IrqNum;
-                pHalSsiAdapter->HaveTxChannel = 1;
-            }
-        }
-        else{
-            pHalSsiAdapter->HaveTxChannel = 1;
-        }
-        InterruptRegister(&pDmaConfig->TxGdmaIrqHandle);
-        InterruptEn(&pDmaConfig->TxGdmaIrqHandle);            
-        DBG_SSI_INFO("TX GDMA Index = %x, Channle number = %x\n",pHalGdmaAdapter->GdmaIndex,pHalGdmaAdapter->ChNum);
-        HalSsiDmaInit(pHalSsiAdapter);  
-    }
-    
-    return HAL_OK;
-
-}
 
 HAL_Status
 HalSsiTxGdmaInit(
@@ -242,17 +128,53 @@ HalSsiTxGdmaInit(
     IN PHAL_SSI_ADAPTOR pHalSsiAdapter
 )
 {
+    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
+    PSSI_DMA_CONFIG pDmaConfig;    
+    HAL_GDMA_CHNL *pgdma_chnl;
+    PHAL_GDMA_OP pHalGdmaOp;
     
     if ((NULL == pHalSsiOp) || (NULL == pHalSsiAdapter)) {
         return HAL_ERR_PARA;
     }
 
+    pDmaConfig = &pHalSsiAdapter->DmaConfig;
+
     // Load default setting
-    #if CONFIG_CHIP_E_CUT
-    HalSsiTxGdmaLoadDefRtl8195a_V04((void*)pHalSsiAdapter);
-    #else
     HalSsiTxGdmaLoadDefRtl8195a((void*)pHalSsiAdapter);
-    #endif
+
+    // Start to patch the default setting
+    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pTxHalGdmaAdapter;
+    if (HalGdmaChnlRegister(pHalGdmaAdapter->GdmaIndex, pHalGdmaAdapter->ChNum) != HAL_OK) {
+        // The default GDMA Channel is not available, try others
+        if (pHalSsiAdapter->Index == 2) {
+            // SSI2 TX Only can use GDMA 0
+            pgdma_chnl = HalGdmaChnlAlloc((HAL_GDMA_CHNL*)Ssi2_TX_GDMA_Chnl_Option);
+        }
+        else {
+            pgdma_chnl = HalGdmaChnlAlloc(NULL);
+        }
+
+        if (pgdma_chnl == NULL) {
+            // No Available DMA channel
+            return HAL_BUSY;
+        }
+        else {
+            pHalGdmaAdapter->GdmaIndex   = pgdma_chnl->GdmaIndx;
+            pHalGdmaAdapter->ChNum       = pgdma_chnl->GdmaChnl;
+            pHalGdmaAdapter->ChEn        = 0x0101 << pgdma_chnl->GdmaChnl;
+            pDmaConfig->TxGdmaIrqHandle.IrqNum = pgdma_chnl->IrqNum;            
+        }
+    }
+
+    DBG_SSI_INFO("HalSsiTxGdmaInit: GdmaIndex=%d ChNum=%d \r\n", pHalGdmaAdapter->GdmaIndex, pHalGdmaAdapter->ChNum);
+    pHalGdmaOp = (PHAL_GDMA_OP)pDmaConfig->pHalGdmaOp;
+    pHalGdmaOp->HalGdmaOnOff((VOID*)(pHalGdmaAdapter));
+    pHalGdmaOp->HalGdmaChIsrEnAndDis((VOID*)(pHalGdmaAdapter));
+
+    HalSsiDmaInit(pHalSsiAdapter);
+    InterruptRegister(&pDmaConfig->TxGdmaIrqHandle);
+    InterruptEn(&pDmaConfig->TxGdmaIrqHandle);
+
     return HAL_OK;
 }
 
@@ -276,147 +198,8 @@ HalSsiTxGdmaDeInit(
     GdmaChnl.GdmaChnl = pHalGdmaAdapter->ChNum;
     GdmaChnl.IrqNum = pDmaConfig->TxGdmaIrqHandle.IrqNum;
     HalGdmaChnlFree(&GdmaChnl);
-    pHalSsiAdapter->HaveTxChannel = 0;
 }
 
-
-HAL_Status
-HalSsiDmaSend(
-    IN VOID *Adapter,      // PHAL_SSI_ADAPTOR
-    IN u8  *pTxData,  ///< Rx buffer
-    IN u32 Length      // buffer length
-)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdapter = (PHAL_SSI_ADAPTOR) Adapter;
-    PSSI_DMA_CONFIG pDmaConfig;
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-    PHAL_GDMA_OP pHalGdmaOp;
-    
-    pDmaConfig = &pHalSsiAdapter->DmaConfig;    
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pTxHalGdmaAdapter;
-
-    #if CONFIG_CHIP_E_CUT
-    HalSsiDmaSendRtl8195a_V04(pHalSsiAdapter,pTxData,Length);
-    #else
-    HalSsiDmaSendRtl8195a(pHalSsiAdapter,pTxData,Length);
-    #endif
-    if (pHalGdmaAdapter->GdmaCtl.BlockSize > MAX_DMA_BLOCK_SIZE) {
-        // Maximum Data Length is 4092*16
-        #if CONFIG_CHIP_E_CUT
-        HalSsiDmaSendMultiBlockRtl8195a_V04(pHalSsiAdapter, pTxData, pHalGdmaAdapter->GdmaCtl.BlockSize);
-        #else
-        HalSsiDmaSendMultiBlockRtl8195a(pHalSsiAdapter, pTxData, pHalGdmaAdapter->GdmaCtl.BlockSize);
-        #endif
-        HalSsiTxMultiBlkChnl(pHalSsiAdapter);
-    }
-    else{
-        pHalGdmaAdapter->ChSar= (u32)pTxData;
-        HalSsiTxSingleBlkChnl(pHalSsiAdapter);
-        pHalGdmaAdapter->Rsvd4to7 = 0;
-        pHalGdmaAdapter->Llpctrl = 0;
-        pHalGdmaAdapter->GdmaCtl.LlpSrcEn = 0;
-        pHalGdmaAdapter->GdmaCtl.LlpDstEn = 0;
-        pHalGdmaAdapter->GdmaCfg.ReloadDst = 0;
-        pHalGdmaAdapter->GdmaCfg.ReloadSrc = 0;        
-    }
-
-    // Enable GDMA for TX
-    pHalGdmaOp = (PHAL_GDMA_OP)pDmaConfig->pHalGdmaOp;
-    pHalGdmaOp->HalGdmaOnOff((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChIsrEnAndDis((VOID*)(pHalGdmaAdapter));
-
-    if(pHalGdmaAdapter->Llpctrl)
-        pHalGdmaOp->HalGdmaChBlockSeting((VOID*)(pHalGdmaAdapter));
-    else
-        pHalGdmaOp->HalGdmaChSeting((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChEn((VOID*)(pHalGdmaAdapter));
-
-    return HAL_OK;
-}
-
-
-HAL_Status
-HalSsiRxMultiBlkChnl(
-    IN PHAL_SSI_ADAPTOR pHalSsiAdapter
-)
-{
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-    PSSI_DMA_CONFIG pDmaConfig;    
-    HAL_GDMA_CHNL *pgdma_chnl;
-
-    pDmaConfig = &pHalSsiAdapter->DmaConfig;
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pRxHalGdmaAdapter;
-    
-    if((pHalSsiAdapter->HaveRxChannel == 1) && (pHalGdmaAdapter->ChNum != 4) && (pHalGdmaAdapter->ChNum != 5)){
-        HalSsiRxGdmaDeInit(pHalSsiAdapter);
-    }
-    if(pHalSsiAdapter->HaveRxChannel == 0){
-        pgdma_chnl = HalGdmaChnlAlloc((HAL_GDMA_CHNL*)Ssi_MultiBlk_GDMA_Chnl_Option);
-        if (pgdma_chnl == NULL) {
-            DBG_SSI_ERR("No Available DMA channel\n");
-            return HAL_BUSY;
-        }
-        else {
-            pHalGdmaAdapter->GdmaIndex   = pgdma_chnl->GdmaIndx;
-            pHalGdmaAdapter->ChNum       = pgdma_chnl->GdmaChnl;
-            pHalGdmaAdapter->ChEn        = 0x0101 << pgdma_chnl->GdmaChnl;
-            pDmaConfig->RxGdmaIrqHandle.IrqNum = pgdma_chnl->IrqNum; 
-            pHalSsiAdapter->HaveRxChannel = 1;
-            InterruptRegister(&pDmaConfig->RxGdmaIrqHandle);
-            InterruptEn(&pDmaConfig->RxGdmaIrqHandle);
-        }
-        HalSsiDmaInit(pHalSsiAdapter);  
-    }
-    DBG_SSI_INFO("RX GDMA index = %x, Channel = %x\n",pHalGdmaAdapter->GdmaIndex,pHalGdmaAdapter->ChNum);
-    return HAL_OK;
-}
-
-HAL_Status
-HalSsiRxSingleBlkChnl(
-    IN PHAL_SSI_ADAPTOR pHalSsiAdapter
-)
-{
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-    PSSI_DMA_CONFIG pDmaConfig;    
-    HAL_GDMA_CHNL *pgdma_chnl;
-
-    pDmaConfig = &pHalSsiAdapter->DmaConfig;
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pRxHalGdmaAdapter;
-
-    if(pHalSsiAdapter->HaveRxChannel == 0){    
-        if (HalGdmaChnlRegister(pHalGdmaAdapter->GdmaIndex, pHalGdmaAdapter->ChNum) != HAL_OK) {
-            // The default GDMA Channel is not available, try others
-            if (pHalSsiAdapter->Index == 2) {
-                // SSI2 RX Only can use GDMA 1
-                pgdma_chnl = HalGdmaChnlAlloc((HAL_GDMA_CHNL*)Ssi2_RX_GDMA_Chnl_Option);
-            }
-            else {
-                pgdma_chnl = HalGdmaChnlAlloc(NULL);
-            }
-
-            if (pgdma_chnl == NULL) {
-                DBG_SSI_ERR("No Available DMA channel\n");
-                return HAL_BUSY;
-            }
-            else {
-                pHalGdmaAdapter->GdmaIndex   = pgdma_chnl->GdmaIndx;
-                pHalGdmaAdapter->ChNum       = pgdma_chnl->GdmaChnl;
-                pHalGdmaAdapter->ChEn        = 0x0101 << pgdma_chnl->GdmaChnl;
-                pDmaConfig->RxGdmaIrqHandle.IrqNum = pgdma_chnl->IrqNum; 
-                pHalSsiAdapter->HaveRxChannel = 1;
-            }
-        }
-        else{
-            pHalSsiAdapter->HaveRxChannel = 1;
-        }
-        InterruptRegister(&pDmaConfig->RxGdmaIrqHandle);
-        InterruptEn(&pDmaConfig->RxGdmaIrqHandle);
-        DBG_SSI_INFO("RX GDMA Index = %x, Channle number = %x\n",pHalGdmaAdapter->GdmaIndex,pHalGdmaAdapter->ChNum);
-        HalSsiDmaInit(pHalSsiAdapter);  
-    }   
-    return HAL_OK;
-
-}
 
 HAL_Status
 HalSsiRxGdmaInit(
@@ -424,17 +207,52 @@ HalSsiRxGdmaInit(
     IN PHAL_SSI_ADAPTOR pHalSsiAdapter
 )
 {
+    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
+    PSSI_DMA_CONFIG pDmaConfig;    
+    HAL_GDMA_CHNL *pgdma_chnl;
+    PHAL_GDMA_OP pHalGdmaOp;
     
     if ((NULL == pHalSsiOp) || (NULL == pHalSsiAdapter)) {
         return HAL_ERR_PARA;
     }
 
+    pDmaConfig = &pHalSsiAdapter->DmaConfig;
     // Load default setting
-    #if CONFIG_CHIP_E_CUT
-    HalSsiRxGdmaLoadDefRtl8195a_V04((void*)pHalSsiAdapter);
-    #else
     HalSsiRxGdmaLoadDefRtl8195a((void*)pHalSsiAdapter);
-    #endif
+
+    // Start to patch the default setting
+    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pRxHalGdmaAdapter;
+    if (HalGdmaChnlRegister(pHalGdmaAdapter->GdmaIndex, pHalGdmaAdapter->ChNum) != HAL_OK) {
+        // The default GDMA Channel is not available, try others
+        if (pHalSsiAdapter->Index == 2) {
+            // SSI2 RX Only can use GDMA 1
+            pgdma_chnl = HalGdmaChnlAlloc((HAL_GDMA_CHNL*)Ssi2_RX_GDMA_Chnl_Option);
+        }
+        else {
+            pgdma_chnl = HalGdmaChnlAlloc(NULL);
+        }
+
+        if (pgdma_chnl == NULL) {
+            // No Available DMA channel
+            return HAL_BUSY;
+        }
+        else {
+            pHalGdmaAdapter->GdmaIndex   = pgdma_chnl->GdmaIndx;
+            pHalGdmaAdapter->ChNum       = pgdma_chnl->GdmaChnl;
+            pHalGdmaAdapter->ChEn        = 0x0101 << pgdma_chnl->GdmaChnl;
+            pDmaConfig->RxGdmaIrqHandle.IrqNum = pgdma_chnl->IrqNum;            
+        }
+    }
+
+    DBG_SSI_INFO("HalSsiRxGdmaInit: GdmaIndex=%d ChNum=%d \r\n", pHalGdmaAdapter->GdmaIndex, pHalGdmaAdapter->ChNum);
+    pHalGdmaOp = (PHAL_GDMA_OP)pDmaConfig->pHalGdmaOp;
+    pHalGdmaOp->HalGdmaOnOff((VOID*)(pHalGdmaAdapter));
+    pHalGdmaOp->HalGdmaChIsrEnAndDis((VOID*)(pHalGdmaAdapter));
+
+    HalSsiDmaInit(pHalSsiAdapter);
+    InterruptRegister(&pDmaConfig->RxGdmaIrqHandle);
+    InterruptEn(&pDmaConfig->RxGdmaIrqHandle);
+
     return HAL_OK;
 }
 
@@ -458,118 +276,19 @@ HalSsiRxGdmaDeInit(
     GdmaChnl.GdmaChnl = pHalGdmaAdapter->ChNum;
     GdmaChnl.IrqNum = pDmaConfig->RxGdmaIrqHandle.IrqNum;
     HalGdmaChnlFree(&GdmaChnl);
-    pHalSsiAdapter->HaveRxChannel = 0;
-}
-
-HAL_Status
-HalSsiDmaRecv(
-    IN VOID *Adapter,      // PHAL_SSI_ADAPTOR
-    IN u8  *pRxData,  ///< Rx buffer
-    IN u32 Length      // buffer length
-)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdapter = (PHAL_SSI_ADAPTOR) Adapter;
-    PSSI_DMA_CONFIG pDmaConfig;
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-    PHAL_GDMA_OP pHalGdmaOp;
-    
-    pDmaConfig = &pHalSsiAdapter->DmaConfig;    
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pRxHalGdmaAdapter;
-
-    #if CONFIG_CHIP_E_CUT
-    HalSsiDmaRecvRtl8195a_V04(pHalSsiAdapter,pRxData,Length);
-    #else
-    HalSsiDmaRecvRtl8195a(pHalSsiAdapter,pRxData,Length);
-    #endif
-    
-    if (pHalGdmaAdapter->GdmaCtl.BlockSize > MAX_DMA_BLOCK_SIZE) {
-        // Maximum Data Length is 4092*16
-        #if CONFIG_CHIP_E_CUT
-        HalSsiDmaRecvMultiBlockRtl8195a_V04(pHalSsiAdapter, pRxData, pHalGdmaAdapter->GdmaCtl.BlockSize);
-        #else
-        HalSsiDmaRecvMultiBlockRtl8195a(pHalSsiAdapter, pRxData, pHalGdmaAdapter->GdmaCtl.BlockSize);
-        #endif
-        HalSsiRxMultiBlkChnl(pHalSsiAdapter);
-    }
-    else{
-        pHalGdmaAdapter->ChDar = (u32)pRxData;
-        HalSsiRxSingleBlkChnl(pHalSsiAdapter);
-        pHalGdmaAdapter->Rsvd4to7 = 0;
-        pHalGdmaAdapter->Llpctrl = 0;
-        pHalGdmaAdapter->GdmaCtl.LlpSrcEn = 0;
-        pHalGdmaAdapter->GdmaCtl.LlpDstEn = 0;
-        pHalGdmaAdapter->GdmaCfg.ReloadDst = 0;
-        pHalGdmaAdapter->GdmaCfg.ReloadSrc = 0;     
-
-    }
-
-    // Enable GDMA for RX
-    pHalGdmaOp = (PHAL_GDMA_OP)pDmaConfig->pHalGdmaOp;
-    pHalGdmaOp->HalGdmaOnOff((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChIsrEnAndDis((VOID*)(pHalGdmaAdapter));
-    
-    if(pHalGdmaAdapter->Llpctrl)
-        pHalGdmaOp->HalGdmaChBlockSeting((VOID*)(pHalGdmaAdapter));
-    else
-        pHalGdmaOp->HalGdmaChSeting((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChEn((VOID*)(pHalGdmaAdapter));
-    
-    return HAL_OK;
-
 }
 
 #endif  // end of "#ifdef CONFIG_GDMA_EN"
-
-VOID HalSsiClearFIFO(VOID *Data)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdapter = (PHAL_SSI_ADAPTOR) Data;
-
-    //Clear FIFO
-    HalSsiDisableRtl8195a(pHalSsiAdapter);
-    HalSsiEnableRtl8195a(pHalSsiAdapter);
-}
-
 
 HAL_Status
 HalSsiInit(VOID *Data)
 {
     HAL_Status ret;
     PHAL_SSI_ADAPTOR pHalSsiAdapter = (PHAL_SSI_ADAPTOR) Data;
-    u32 Function;
-    u8 PinmuxSelect;
-    u8 Index;
-
-    PinmuxSelect = pHalSsiAdapter->PinmuxSelect;
-    Index = pHalSsiAdapter->Index;
-    switch (Index){
-        case 0:
-            Function = SPI0;
-            break;
-        case 1:
-            Function = SPI1;
-            break;
-        case 2:
-            Function = SPI2;
-            break;
-        default:
-            DBG_SSI_ERR("Invalid SPI Index.\n");
-            break;
-    }
-
-    ret = FunctionChk(Function, (u32)PinmuxSelect);
-    if(ret == _FALSE){
-        DBG_SSI_ERR("Invalid Pinmux Setting.\n");
-        return HAL_ERR_PARA;
-    }
-
 #ifdef CONFIG_SOC_PS_MODULE
         REG_POWER_STATE SsiPwrState;
 #endif
-#if CONFIG_CHIP_E_CUT
-    ret = HalSsiInitRtl8195a_V04(pHalSsiAdapter);    
-#else
     ret = HalSsiInitRtl8195a_Patch(pHalSsiAdapter);
-#endif
 #ifdef CONFIG_SOC_PS_MODULE
         if(ret == HAL_OK) {
             // To register a new peripheral device power state
@@ -610,11 +329,7 @@ HalSsiDeInit(VOID *Data)
             }          
         }
 #endif
-#if CONFIG_CHIP_E_CUT
-    ret = HalSsiDeInitRtl8195a_V04(pHalSsiAdapter);
-#else
     ret = HalSsiDeInitRtl8195a(pHalSsiAdapter);
-#endif
     return ret;
 }
 
@@ -627,11 +342,7 @@ HalSsiEnable(VOID *Data)
 #ifdef CONFIG_SOC_PS_MODULE
         REG_POWER_STATE SsiPwrState;
 #endif
-#if CONFIG_CHIP_E_CUT
-    ret = HalSsiClockOnRtl8195a_V04(pHalSsiAdapter);
-#else
     ret = HalSsiClockOnRtl8195a(pHalSsiAdapter);
-#endif
 #ifdef CONFIG_SOC_PS_MODULE
         if(ret == HAL_OK) {
             // To register a new peripheral device power state
@@ -652,11 +363,7 @@ HalSsiDisable(VOID *Data)
 #ifdef CONFIG_SOC_PS_MODULE
         REG_POWER_STATE SsiPwrState;
 #endif
-#if CONFIG_CHIP_E_CUT
-    ret = HalSsiClockOffRtl8195a_V04(pHalSsiAdapter);
-#else
     ret = HalSsiClockOffRtl8195a(pHalSsiAdapter);
-#endif
 #ifdef CONFIG_SOC_PS_MODULE
         if(ret == HAL_OK) {
             // To register a new peripheral device power state
@@ -667,29 +374,4 @@ HalSsiDisable(VOID *Data)
 #endif
 
     return ret;   
-}
-
-HAL_Status HalSsiEnterCritical(VOID *Data)
-{
-    return HalSsiEnterCriticalRtl8195a(Data);
-}
-
-HAL_Status HalSsiExitCritical(VOID *Data)
-{
-    return HalSsiExitCriticalRtl8195a(Data);
-}
-
-HAL_Status HalSsiTimeout(u32 StartCount, u32 TimeoutCnt)
-{
-    return HalSsiIsTimeoutRtl8195a(StartCount,TimeoutCnt);
-}
-
-HAL_Status HalSsiStopRecv(VOID * Data)
-{
-    return HalSsiStopRecvRtl8195a(Data);
-}
-
-HAL_Status HalSsiSetFormat(VOID * Data)
-{
-    return HalSsiSetFormatRtl8195a(Data);
 }

@@ -11,7 +11,6 @@
 #include "cloud_updater.h"
 #else
 #include "flash_api.h"
-#include "device_lock.h"
 #endif
 
 #define BUF_LEN 512
@@ -49,14 +48,10 @@ int file_check_sum(uint32_t addr, uint32_t image_len, u8* check_sum)
 	
 	while(len < image_len){
 		if ((image_len-len) >= BUF_LEN){
-			device_mutex_lock(RT_DEV_LOCK_FLASH);
 			flash_stream_read(&flash, read_addr, BUF_LEN, buf);		
-			device_mutex_unlock(RT_DEV_LOCK_FLASH);
 			file_md5_update(&md5, buf, BUF_LEN);
 		}else{
-			device_mutex_lock(RT_DEV_LOCK_FLASH);
 			flash_stream_read(&flash, read_addr, (image_len-len), buf);
-			device_mutex_unlock(RT_DEV_LOCK_FLASH);
 			file_md5_update(&md5, buf, (image_len-len)); 				
 		}
 		len += BUF_LEN;

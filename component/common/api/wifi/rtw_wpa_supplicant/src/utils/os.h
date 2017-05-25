@@ -12,9 +12,7 @@
 //#include "basic_types.h"
 #include <autoconf.h>
 #include "osdep_service.h"
-#include "freertos/wrapper.h"
 #include "utils/rom/rom_wps_os.h"
-
 
 typedef void* xqueue_handle_t;
 
@@ -226,7 +224,7 @@ int os_unsetenv(const char *name);
  */
 char * os_readfile(const char *name, size_t *len);
 
-//#if 0
+#if 0
 /**
  * os_zalloc - Allocate and zero memory
  * @size: Number of bytes to allocate
@@ -254,21 +252,7 @@ static inline void * os_calloc(size_t nmemb, size_t size)
 		return NULL;
 	return os_zalloc(nmemb * size);
 }
-//#endif
-
-
-static inline int os_memcmp_const(const void *a, const void *b, size_t len)
-{
-	const u8 *aa = a;
-	const u8 *bb = b;
-	size_t i;
-	u8 res;
-
-	for (res = 0, i = 0; i < len; i++)
-		res |= aa[i] ^ bb[i];
-
-	return res;
-}
+#endif
 
 /*
  * The following functions are wrapper for standard ANSI C or POSIX functions.

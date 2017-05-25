@@ -353,16 +353,6 @@ const u8 DEF_OVSR_ADJ_BITS_C_CUT_8B[] = {
     0, 0, 0, 0,
     0, 0
 };
-#else
-extern const u32 DEF_BAUDRATE_TABLE_ROM[];
-extern const u16 ovsr_adj_table_10bit_rom[10];
-extern const u16 ovsr_adj_table_9bit_rom[9];
-extern const u16 ovsr_adj_table_8bit_rom[8];
-extern const u8 DEF_OVSR_ROM[];
-extern const u16 DEF_DIV_ROM[];
-extern const u8 DEF_OVSR_ADJ_10BITS_ROM[];
-extern const u8 DEF_OVSR_ADJ_9BITS_ROM[];
-extern const u8 DEF_OVSR_ADJ_8BITS_ROM[];
 
 #endif  // #if !(CONFIG_CHIP_E_CUT)
 
@@ -404,30 +394,6 @@ const HAL_GDMA_CHNL Uart2_RX_GDMA_Chnl_Option[] = {
     {0xff,0,0,0}    // end
 };
 
-const HAL_GDMA_CHNL Uart_GDMA_MB_Chnl_Option[] = { 
-    {0,4,GDMA0_CHANNEL4_IRQ,0},
-    {1,4,GDMA1_CHANNEL4_IRQ,0},
-    {0,5,GDMA0_CHANNEL5_IRQ,0},
-    {1,5,GDMA1_CHANNEL5_IRQ,0},
-    
-    {0xff,0,0,0}    // end
-};
-
-const HAL_GDMA_CHNL Uart2_TX_GDMA_MB_Chnl_Option[] = { 
-    {0,4,GDMA0_CHANNEL4_IRQ,0},
-    {0,5,GDMA0_CHANNEL5_IRQ,0},
-    
-    {0xff,0,0,0}    // end
-};
-
-const HAL_GDMA_CHNL Uart2_RX_GDMA_MB_Chnl_Option[] = { 
-    {1,4,GDMA1_CHANNEL4_IRQ,0},
-    {1,5,GDMA1_CHANNEL5_IRQ,0},
-    
-    {0xff,0,0,0}    // end
-};
-
-
 VOID
 HalRuartOpInit(
         IN VOID *Data
@@ -438,7 +404,7 @@ HalRuartOpInit(
     pHalRuartOp->HalRuartAdapterLoadDef     = HalRuartAdapterLoadDefRtl8195a;
     pHalRuartOp->HalRuartTxGdmaLoadDef      = HalRuartTxGdmaLoadDefRtl8195a;
     pHalRuartOp->HalRuartRxGdmaLoadDef      = HalRuartRxGdmaLoadDefRtl8195a;
-    pHalRuartOp->HalRuartResetRxFifo        = HalRuartResetRxFifoRtl8195a_Patch;
+    pHalRuartOp->HalRuartResetRxFifo        = HalRuartResetRxFifoRtl8195a;
 #if CONFIG_CHIP_E_CUT
     pHalRuartOp->HalRuartInit               = HalRuartInitRtl8195a_V04;
 #else
@@ -504,7 +470,7 @@ HalRuartAdapterInit(
     // Load default setting
     if (pHalRuartOp->HalRuartAdapterLoadDef != NULL) {
         pHalRuartOp->HalRuartAdapterLoadDef (pHalRuartAdapter, UartIdx);
-        pHalRuartAdapter->IrqHandle.Priority = 10;
+        pHalRuartAdapter->IrqHandle.Priority = 6;
     }
     else {
         // Initial your UART HAL adapter here
@@ -531,53 +497,41 @@ HalRuartAdapterInit(
  */
 HAL_Status
 HalRuartTxGdmaInit(
+    PHAL_RUART_OP pHalRuartOp,
     PHAL_RUART_ADAPTER pHalRuartAdapter,
-    PUART_DMA_CONFIG pUartGdmaConfig,
-    u8 IsMultiBlk
+    PUART_DMA_CONFIG pUartGdmaConfig
 )
 {
     PHAL_GDMA_ADAPTER pHalGdmaAdapter;
     HAL_GDMA_CHNL *pgdma_chnl;
-    HAL_GDMA_CHNL *pgdma_chnl_tbl=NULL;
-    UART_DMA_MULTIBLK *pDmaBlkList;
     
-    if ((NULL == pHalRuartAdapter) || (NULL == pUartGdmaConfig)) {
+    if ((NULL == pHalRuartOp) || (NULL == pHalRuartAdapter) || (NULL == pUartGdmaConfig)) {
         return HAL_ERR_PARA;
     }
 
     // Load default setting
-    HalRuartTxGdmaLoadDefRtl8195a (pHalRuartAdapter, pUartGdmaConfig);
-
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pUartGdmaConfig->pTxHalGdmaAdapter;
-    if (IsMultiBlk) {
-        // need to allocate a multiple block channel
-        if (pHalRuartAdapter->UartIndex != 2) {
-            pgdma_chnl_tbl = (HAL_GDMA_CHNL*)Uart_GDMA_MB_Chnl_Option;
-        } else {
-            // UART2 TX Only can use GDMA 0
-            pgdma_chnl_tbl = (HAL_GDMA_CHNL*)Uart2_TX_GDMA_MB_Chnl_Option;        
-        }
-        // Default use the 1st channel of the table
-        pgdma_chnl = pgdma_chnl_tbl;
-        pHalGdmaAdapter->GdmaIndex   = pgdma_chnl->GdmaIndx;
-        pHalGdmaAdapter->ChNum       = pgdma_chnl->GdmaChnl;
-        pHalGdmaAdapter->ChEn        = 0x0101 << pgdma_chnl->GdmaChnl;
-        pUartGdmaConfig->TxGdmaIrqHandle.IrqNum = pgdma_chnl->IrqNum;            
-    } else {
-        if (pHalRuartAdapter->UartIndex == 2) {
-            // UART2 TX Only can use GDMA 0
-            pgdma_chnl_tbl = (HAL_GDMA_CHNL *)Uart2_TX_GDMA_Chnl_Option;
-        }
+    if (pHalRuartOp->HalRuartTxGdmaLoadDef != NULL) {
+        pHalRuartOp->HalRuartTxGdmaLoadDef (pHalRuartAdapter, pUartGdmaConfig);
+        pUartGdmaConfig->TxGdmaIrqHandle.Priority = 6;
     }
-    
+    else {
+        // Initial your GDMA setting here
+    }
+
     // Start to patch the default setting
+    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pUartGdmaConfig->pTxHalGdmaAdapter;
     if (HalGdmaChnlRegister(pHalGdmaAdapter->GdmaIndex, pHalGdmaAdapter->ChNum) != HAL_OK) {
         // The default GDMA Channel is not available, try others
-        pgdma_chnl = HalGdmaChnlAlloc(pgdma_chnl_tbl);
+        if (pHalRuartAdapter->UartIndex == 2) {
+            // UART2 TX Only can use GDMA 0
+            pgdma_chnl = HalGdmaChnlAlloc((HAL_GDMA_CHNL*)Uart2_TX_GDMA_Chnl_Option);
+        }
+        else {
+            pgdma_chnl = HalGdmaChnlAlloc(NULL);
+        }
 
         if (pgdma_chnl == NULL) {
             // No Available DMA channel
-            DBG_UART_WARN("HalRuartTxGdmaInit: Allocate DMA Channel Failed\n");
             return HAL_BUSY;
         }
         else {
@@ -591,29 +545,12 @@ HalRuartTxGdmaInit(
     // User can assign a Interrupt Handler here
 //    pUartGdmaConfig->TxGdmaIrqHandle.Data = pHalRuartAdapter;
 //    pUartGdmaConfig->TxGdmaIrqHandle.IrqFun = (IRQ_FUN)_UartTxDmaIrqHandle
-//    pUartGdmaConfig->TxGdmaIrqHandle.Priority = 12;
-    pUartGdmaConfig->TxGdmaIrqHandle.Priority = 12;
-#if CONFIG_CHIP_E_CUT
-    pUartGdmaConfig->TxGdmaIrqHandle.IrqFun = (IRQ_FUN)_UartTxDmaIrqHandle_V04;
-#else
-    pUartGdmaConfig->TxGdmaIrqHandle.IrqFun = (IRQ_FUN)_UartTxDmaIrqHandle_Patch;
-#endif
-    HalRuartDmaInitRtl8195a (pHalRuartAdapter);
-    HalRuartTxGdmaDisable8195a (pHalRuartAdapter);   // default disable TX DMA
+//    pUartGdmaConfig->TxGdmaIrqHandle.Priority = 0x20;
+
+    pHalRuartOp->HalRuartDmaInit (pHalRuartAdapter);
     InterruptRegister(&pUartGdmaConfig->TxGdmaIrqHandle);
     InterruptEn(&pUartGdmaConfig->TxGdmaIrqHandle);
-    pUartGdmaConfig->TxDmaMBChnl = IsMultiBlk;
 
-    if (IsMultiBlk) {
-        pDmaBlkList = pUartGdmaConfig->pTxDmaBlkList;
-        if (NULL != pDmaBlkList) {
-            pHalGdmaAdapter->pBlockSizeList = (struct BLOCK_SIZE_LIST*) &(pDmaBlkList->BlockSizeList);
-            pHalGdmaAdapter->pLlix = (struct GDMA_CH_LLI*) &(pDmaBlkList->Lli);
-        } else {
-            DBG_UART_WARN("HalRuartTxGdmaInit: no Block List for DMA\n");
-        }
-    }
-    
     return HAL_OK;
 }
 
@@ -630,7 +567,6 @@ HalRuartTxGdmaDeInit(
     GdmaChnl.GdmaChnl = pHalGdmaAdapter->ChNum;
     GdmaChnl.IrqNum = pUartGdmaConfig->TxGdmaIrqHandle.IrqNum;
     HalGdmaChnlFree(&GdmaChnl);
-    pUartGdmaConfig->TxDmaMBChnl = 0;
 }
 
 /**
@@ -642,52 +578,41 @@ HalRuartTxGdmaDeInit(
  */
 HAL_Status
 HalRuartRxGdmaInit(
+    PHAL_RUART_OP pHalRuartOp,
     PHAL_RUART_ADAPTER pHalRuartAdapter,
-    PUART_DMA_CONFIG pUartGdmaConfig,
-    u8 IsMultiBlk    
+    PUART_DMA_CONFIG pUartGdmaConfig
 )
 {
     PHAL_GDMA_ADAPTER pHalGdmaAdapter;
     HAL_GDMA_CHNL *pgdma_chnl;
-    HAL_GDMA_CHNL *pgdma_chnl_tbl=NULL;
-    UART_DMA_MULTIBLK *pDmaBlkList;
     
-    if ((NULL == pHalRuartAdapter) || (NULL == pUartGdmaConfig)) {
+    if ((NULL == pHalRuartOp) || (NULL == pHalRuartAdapter) || (NULL == pUartGdmaConfig)) {
         return HAL_ERR_PARA;
     }
 
     // Load default setting
-    HalRuartRxGdmaLoadDefRtl8195a (pHalRuartAdapter, pUartGdmaConfig);
-
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pUartGdmaConfig->pRxHalGdmaAdapter;
-    if (IsMultiBlk) {
-        // need to allocate a multiple block channel
-        if (pHalRuartAdapter->UartIndex != 2) {
-            pgdma_chnl_tbl = (HAL_GDMA_CHNL *)Uart_GDMA_MB_Chnl_Option;
-        } else {
-            // UART2 RX Only can use GDMA 1
-            pgdma_chnl_tbl = (HAL_GDMA_CHNL *)Uart2_RX_GDMA_MB_Chnl_Option;        
-        }
-        // Default use the 1st channel of the table
-        pgdma_chnl = pgdma_chnl_tbl;
-        pHalGdmaAdapter->GdmaIndex   = pgdma_chnl->GdmaIndx;
-        pHalGdmaAdapter->ChNum       = pgdma_chnl->GdmaChnl;
-        pHalGdmaAdapter->ChEn        = 0x0101 << pgdma_chnl->GdmaChnl;
-        pUartGdmaConfig->RxGdmaIrqHandle.IrqNum = pgdma_chnl->IrqNum;            
-    } else {
-        if (pHalRuartAdapter->UartIndex == 2) {
-            // UART2 RX Only can use GDMA 1
-            pgdma_chnl_tbl = (HAL_GDMA_CHNL *)Uart2_RX_GDMA_Chnl_Option;
-        }
+    if (pHalRuartOp->HalRuartRxGdmaLoadDef != NULL) {
+        pHalRuartOp->HalRuartRxGdmaLoadDef (pHalRuartAdapter, pUartGdmaConfig);
+        pUartGdmaConfig->RxGdmaIrqHandle.Priority = 6;
+    }
+    else {
+        // Initial your GDMA setting here
     }
 
     // Start to patch the default setting
+    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pUartGdmaConfig->pRxHalGdmaAdapter;
     if (HalGdmaChnlRegister(pHalGdmaAdapter->GdmaIndex, pHalGdmaAdapter->ChNum) != HAL_OK) {
         // The default GDMA Channel is not available, try others
-        pgdma_chnl = HalGdmaChnlAlloc((HAL_GDMA_CHNL*)pgdma_chnl_tbl);
+        if (pHalRuartAdapter->UartIndex == 2) {
+            // UART2 RX Only can use GDMA 1
+            pgdma_chnl = HalGdmaChnlAlloc((HAL_GDMA_CHNL*)Uart2_RX_GDMA_Chnl_Option);
+        }
+        else {
+            pgdma_chnl = HalGdmaChnlAlloc(NULL);
+        }
+
         if (pgdma_chnl == NULL) {
             // No Available DMA channel
-            DBG_UART_WARN("HalRuartRxGdmaInit: Allocate DMA Channel Failed\n");
             return HAL_BUSY;
         }
         else {
@@ -699,27 +624,12 @@ HalRuartRxGdmaInit(
     }
 
 //    pUartGdmaConfig->RxGdmaIrqHandle.Data = pHalRuartAdapter;
-#if CONFIG_CHIP_E_CUT
-    pUartGdmaConfig->RxGdmaIrqHandle.IrqFun = (IRQ_FUN)_UartRxDmaIrqHandle_V04;
-#else
-    pUartGdmaConfig->RxGdmaIrqHandle.IrqFun = (IRQ_FUN)_UartRxDmaIrqHandle_Patch;
-#endif
-    pUartGdmaConfig->RxGdmaIrqHandle.Priority = 11;
+//    pUartGdmaConfig->RxGdmaIrqHandle.IrqFun = (IRQ_FUN)_UartTxDmaIrqHandle;
+//    pUartGdmaConfig->RxGdmaIrqHandle.Priority = 0x20;
 
-    HalRuartDmaInitRtl8195a (pHalRuartAdapter);
-    HalRuartRxGdmaDisable8195a (pHalRuartAdapter);
+    pHalRuartOp->HalRuartDmaInit (pHalRuartAdapter);
     InterruptRegister(&pUartGdmaConfig->RxGdmaIrqHandle);
     InterruptEn(&pUartGdmaConfig->RxGdmaIrqHandle);
-    pUartGdmaConfig->RxDmaMBChnl = IsMultiBlk;
-    if (IsMultiBlk) {
-        pDmaBlkList = pUartGdmaConfig->pRxDmaBlkList;
-        if (NULL != pDmaBlkList) {
-            pHalGdmaAdapter->pBlockSizeList = (struct BLOCK_SIZE_LIST*) &(pDmaBlkList->BlockSizeList);
-            pHalGdmaAdapter->pLlix = (struct GDMA_CH_LLI*) &(pDmaBlkList->Lli);
-        } else {
-            DBG_UART_WARN("HalRuartRxGdma: no Block List for DMA\n");
-        }
-    }
 
     return HAL_OK;
 }
@@ -737,7 +647,6 @@ HalRuartRxGdmaDeInit(
     GdmaChnl.GdmaChnl = pHalGdmaAdapter->ChNum;
     GdmaChnl.IrqNum = pUartGdmaConfig->RxGdmaIrqHandle.IrqNum;
     HalGdmaChnlFree(&GdmaChnl);
-    pUartGdmaConfig->RxDmaMBChnl = 0;
 }
 
 /**
@@ -770,35 +679,7 @@ HalRuartResetTxFifo(
     IN VOID *Data
 )
 {
-#if CONFIG_CHIP_E_CUT
-    return (HalRuartResetTxFifoRtl8195a_V04(Data));
-#else
     return (HalRuartResetTxFifoRtl8195a(Data));
-#endif
-}
-
-HAL_Status
-HalRuartResetRxFifo(
-    IN VOID *Data
-)
-{
-#if CONFIG_CHIP_E_CUT
-    return (HalRuartResetRxFifoRtl8195a_V04(Data));
-#else
-    return (HalRuartResetRxFifoRtl8195a_Patch(Data));
-#endif
-}
-
-HAL_Status
-HalRuartResetTRxFifo(
-    IN VOID *Data
-)
-{
-#if CONFIG_CHIP_E_CUT
-    return (HalRuartResetTRxFifoRtl8195a_V04(Data));
-#else
-    return (HalRuartResetTRxFifoRtl8195a(Data));
-#endif
 }
 
 HAL_Status 
@@ -824,18 +705,10 @@ HalRuartInit(
     REG_POWER_STATE UartPwrState;
 #endif
 #if CONFIG_CHIP_E_CUT
-    pHalRuartAdapter->pDefaultBaudRateTbl = (uint32_t*)DEF_BAUDRATE_TABLE_ROM;
-
-    pHalRuartAdapter->pDefaultOvsrRTbl = (uint8_t*)DEF_OVSR_ROM;
-    pHalRuartAdapter->pDefaultDivTbl = (uint16_t*)DEF_DIV_ROM;
-    pHalRuartAdapter->pDefOvsrAdjBitTbl_10 = (uint8_t*)DEF_OVSR_ADJ_10BITS_ROM;
-    pHalRuartAdapter->pDefOvsrAdjBitTbl_9 = (uint8_t*)DEF_OVSR_ADJ_9BITS_ROM;
-    pHalRuartAdapter->pDefOvsrAdjBitTbl_8 = (uint8_t*)DEF_OVSR_ADJ_8BITS_ROM;
-        
-    pHalRuartAdapter->pDefOvsrAdjTbl_10 = (uint16_t*)ovsr_adj_table_10bit_rom;
-    pHalRuartAdapter->pDefOvsrAdjTbl_9 = (uint16_t*)ovsr_adj_table_9bit_rom;
-    pHalRuartAdapter->pDefOvsrAdjTbl_8 = (uint16_t*)ovsr_adj_table_8bit_rom;
-    
+    pHalRuartAdapter->pDefaultBaudRateTbl = (uint32_t*)BAUDRATE_166_ROM_V04;
+    pHalRuartAdapter->pDefaultOvsrRTbl = (uint8_t*)OVSR_166_ROM_V04;
+    pHalRuartAdapter->pDefaultOvsrAdjTbl = (uint16_t*)OVSR_ADJ_166_ROM_V04;
+    pHalRuartAdapter->pDefaultDivTbl = (uint16_t*)DIV_166_ROM_V04;
     ret = HalRuartInitRtl8195a_V04(Data);
 #else
     pHalRuartAdapter->pDefaultBaudRateTbl = (uint32_t*)DEF_BAUDRATE_TABLE;
@@ -862,10 +735,7 @@ HalRuartInit(
     pHalRuartAdapter->pDefOvsrAdjTbl_10 = (uint16_t*)ovsr_adj_table_10bit;
     pHalRuartAdapter->pDefOvsrAdjTbl_9 = (uint16_t*)ovsr_adj_table_9bit;
     pHalRuartAdapter->pDefOvsrAdjTbl_8 = (uint16_t*)ovsr_adj_table_8bit;
-
-    if (_FALSE == FunctionChk((pHalRuartAdapter->UartIndex+UART0), pHalRuartAdapter->PinmuxSelect)) {
-        return HAL_ERR_HW;
-    }
+    
     ret = HalRuartInitRtl8195a_Patch(Data);
 #endif    
 
@@ -966,17 +836,13 @@ HalRuartFlowCtrl(
 )
 {
     HAL_Status ret;
-    PHAL_RUART_ADAPTER pHalRuartAdapter = (PHAL_RUART_ADAPTER) Data;
 
 #if CONFIG_CHIP_E_CUT
     ret = HalRuartFlowCtrlRtl8195a_V04((VOID *)Data);
 #else
     ret = HalRuartFlowCtrlRtl8195a((VOID *)Data);
 #endif
-    // RTS_Pin = AFE ? (~rts | RX_FIFO_Level_Over) : ~rts;
-    HalRuartRTSCtrlRtl8195a(Data, pHalRuartAdapter->RTSCtrl);
-	
-	return ret;
+    return ret;
 }
 
 VOID
@@ -1001,116 +867,5 @@ HalRuartExitCritical(
 #else
     HalRuartExitCriticalRtl8195a(Data);
 #endif
-}
-
-/**
- * RUART send a data buffer by DMA(non-block) mode.
- *
- * RUART send data.
- *
- * @return VOID
- */
-HAL_Status
-HalRuartDmaSend(
-    IN VOID *Data,      // PHAL_RUART_ADAPTER
-    IN u8 *pTxBuf,     // the Buffer to be send
-    IN u32 Length      // the length of data to be send
-)
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter=(PHAL_RUART_ADAPTER)Data;
-    u32 BlockSize;
-    HAL_Status ret;
-    PUART_DMA_CONFIG pUartGdmaConfig;
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-    
-    if (((Length & 0x03)==0) &&
-        (((u32)(pTxBuf) & 0x03)==0)) {
-        // 4-bytes aligned, move 4 bytes each transfer
-        BlockSize = Length >> 2;
-    } else {
-        BlockSize = Length;
-    }
-   
-    if (BlockSize < 4096) {
-        HalRuartTxGdmaEnable8195a(pHalRuartAdapter);
-#if CONFIG_CHIP_E_CUT
-        ret = HalRuartDmaSendRtl8195a_V04(Data, pTxBuf, Length);
-#else
-        ret = HalRuartDmaSendRtl8195a_Patch(Data, pTxBuf, Length);
-#endif    
-    } else {
-        // over Maximum block size 4095, use multiple block DMA
-        pUartGdmaConfig = pHalRuartAdapter->DmaConfig;
-        
-        if (0 == pUartGdmaConfig->TxDmaMBChnl) {
-            // Current DMA channel doesn't support multiple block, so re-allocate DMA channel
-            HalRuartTxGdmaDeInit (pHalRuartAdapter->DmaConfig);
-            ret = HalRuartTxGdmaInit(pHalRuartAdapter, pUartGdmaConfig, 1);
-            if (HAL_OK != ret) {
-                DBG_UART_WARN("HalRuartDmaSend: Reallocate DMA Multi-Block Chnl failed(%d)\n", ret);
-                return ret;
-            }
-        }
-
-        HalRuartTxGdmaEnable8195a(pHalRuartAdapter);
-#if CONFIG_CHIP_E_CUT
-        ret = HalRuartMultiBlkDmaSendRtl8195a_V04(Data, pTxBuf, Length);        
-#else
-        ret = HalRuartMultiBlkDmaSendRtl8195a(Data, pTxBuf, Length);        
-#endif
-    }
-
-    return ret;
-}
-
-/**
- * RUART receive a data buffer by DMA(non-block) mode.
- *
- * RUART send data.
- *
- * @return VOID
- */
-HAL_Status
-HalRuartDmaRecv(
-    IN VOID *Data,      // PHAL_RUART_ADAPTER
-    IN u8 *pRxBuf,     // the Buffer for store RX data
-    IN u32 Length      // the length of data to receive
-)
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter=(PHAL_RUART_ADAPTER)Data;
-//    u32 BlockSize;
-    HAL_Status ret;
-    PUART_DMA_CONFIG pUartGdmaConfig;
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-    
-    if (Length < 4096) {
-        HalRuartRxGdmaEnable8195a (pHalRuartAdapter);
-#if CONFIG_CHIP_E_CUT
-        ret = HalRuartDmaRecvRtl8195a_V04(Data, pRxBuf, Length);
-#else
-        ret = HalRuartDmaRecvRtl8195a_Patch(Data, pRxBuf, Length);
-#endif
-    } else {
-        // over Maximum block size 4095, use multiple block DMA
-        pUartGdmaConfig = pHalRuartAdapter->DmaConfig;
-        
-        if (!pUartGdmaConfig->RxDmaMBChnl) {
-            // Current DMA channel doesn't support multiple block, so re-allocate DMA channel
-            HalRuartRxGdmaDeInit (pHalRuartAdapter->DmaConfig);
-            ret = HalRuartRxGdmaInit(pHalRuartAdapter, pUartGdmaConfig, 1);
-            if (HAL_OK != ret) {
-                DBG_UART_WARN("HalRuartDmaRecv: Reallocate DMA Multi-Block Chnl failed(%d)\n", ret);
-                return ret;
-            }
-        }
-        HalRuartRxGdmaEnable8195a (pHalRuartAdapter);
-#if CONFIG_CHIP_E_CUT
-        ret = HalRuartMultiBlkDmaRecvRtl8195a_V04(Data, pRxBuf, Length);        
-#else
-        ret = HalRuartMultiBlkDmaRecvRtl8195a(Data, pRxBuf, Length);        
-#endif
-    }
-
-    return ret;
 }
 

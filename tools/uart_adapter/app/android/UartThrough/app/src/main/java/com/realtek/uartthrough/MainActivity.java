@@ -1,9 +1,7 @@
 package com.realtek.uartthrough;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
@@ -39,7 +37,10 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+
+
 import com.realtek.uartthrough.DeviceManager.DeviceInfo;
+import com.realtek.uartthrough.R;
 
 public class MainActivity extends Activity {
 
@@ -53,7 +54,7 @@ public class MainActivity extends Activity {
     private boolean rcvThreadExit = false;
 	
 	//UI Layout
-	private TextView		text_debug;
+	//private TextView		text_debug;
 	private ImageButton 	btn_scanDevices;
 	private ImageButton 	btn_setting;
 	private ProgressDialog 	pd;
@@ -145,15 +146,33 @@ public class MainActivity extends Activity {
 	}
 
 	@Override
-	protected void onStop() {
+	protected void onResume() {
+		super.onResume();
+		Log.e(TAG, "start onResume~~~");
+		if(g_d != null)
+			g_d.setCmd("stop");
+	}
 
+	@Override
+	protected void onStop() {
+        Log.i(TAG,"onStop!!");
         rcvThreadExit = true;
+        if (mNSD!=null){
+           // mNSD.tearDown();
+            stopDiscover();
+        }
 	    super.onStop();
 
 	}
 	
 	@Override
 	protected void onDestroy() {
+		  rcvThreadExit = true;
+	        if (mNSD!=null){
+	           // mNSD.tearDown();
+	            stopDiscover();
+	          
+	        }
 		super.onDestroy();
 	}
 	
@@ -180,7 +199,7 @@ public class MainActivity extends Activity {
 		btn_setting = null;
 		pd = null;
 		
-		text_debug		= (TextView) findViewById(R.id.text_debug);
+		//text_debug		= (TextView) findViewById(R.id.text_debug);
 		btn_scanDevices = (ImageButton) findViewById(R.id.btn_scanDevices);
 		btn_setting		= (ImageButton) findViewById(R.id.btn_setting);
 		gridView        = (GridView)findViewById(R.id.gridview_list);
@@ -206,11 +225,350 @@ public class MainActivity extends Activity {
 		}
 	}
 
+	private void device_config(int index) {
+		
+		
+		String listSelectedName = null;
+		
+		g_ctrl.resetInfo();
+
+
+		//Log.d(TAG,"setting_builder: "+g_ctrl.getDeviceList().elementAt(index).getServiceName());
+		//Log.d(TAG,"setting_builder: "+g_ctrl.getDeviceList().elementAt(index).getHost());
+		//Log.d(TAG,"setting_builder: "+g_ctrl.getDeviceList().elementAt(index).getPort());
+
+        if( g_ctrl.getDeviceList().elementAt(index)  == null )
+            return;                        
+		g_ctrl.setConnIP(g_ctrl.getDeviceList().elementAt(index).getInetAddress()); 
+		g_ctrl.setConnPort(g_ctrl.getDeviceList().elementAt(index).getPort());
+		
+
+		//TODO
+        byte[] cmdGet_AllSetting = new byte[]{0x02, 0x00, 0x0f};
+
+        ByteBuffer tmp = ByteBuffer.allocate(cmdPrefix.length + cmdGet_AllSetting.length);
+		tmp.clear();
+        tmp.put(cmdPrefix);
+        tmp.put(cmdGet_AllSetting);
+        byte[] test = tmp.array();
+
+        //g_ctrl.setTx(test);
+		g_ctrl.clearTx();
+		g_ctrl.setTx(tmp.array());
+		g_ctrl.setCmd("Request");
+
+		ctrlClient =  new TcpClient(g_ctrl);
+		ctrlClient.executeOnExecutor(TcpClient.THREAD_POOL_EXECUTOR);
+		pd = new ProgressDialog(MainActivity.this);
+		pd.setTitle("Serial port");
+		pd.setMessage("Please wait...");
+		pd.setIndeterminate(true);
+		pd.setCancelable(false);
+		pd.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
+
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				dialog.dismiss();
+			}					
+		});
+		pd.show();
+		
+		//Thread
+		Thread gettingThread  = new Thread() {
+			@Override
+			public void run() {
+
+				int retry = 20;
+				do{
+					try {
+						Thread.sleep(500);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}while(retry-->0 && recvBuf.length()==0);
+				
+				Message m = new Message();
+				m.what = 0;
+				handler_pd.sendMessage(m);
+
+				//show serial port setting
+				runOnUiThread(new Runnable() {
+					@Override
+					public void run() {
+
+						Toast.makeText(MainActivity.this,
+								recvBuf,
+								Toast.LENGTH_SHORT).show();
+
+						String[] type = recvBuf.split(";");
+						String[] info = {};
+						if(type.length!=4)
+							return;
+
+						for(int i=0;i<type.length;i++){
+								info = type[i].split(",");
+	                           
+								if(i==0 ){//rate
+									setting_rate = info[1];
+								}else if(i==1){//data
+									setting_data = info[1];
+								}else if(i==2){//parity
+									setting_parity = info[1];
+								}else if(i==3){//stopbit
+									setting_stopbit = info[1];
+								}/*else if(index==4){//flowcontrol
+									setting_flowc = info[1];
+								}*/
+							}
+						recvBuf = "";
+
+						LayoutInflater layoutInflater = (LayoutInflater) getBaseContext()
+								.getSystemService(LAYOUT_INFLATER_SERVICE);
+						View popupView = layoutInflater.inflate(R.layout.setting_serialport,null);
+						final PopupWindow popupWindow = new PopupWindow(
+								popupView,
+								LayoutParams.WRAP_CONTENT,
+								LayoutParams.WRAP_CONTENT);
+						
+						Button btnApply = (Button)popupView.findViewById(R.id.btn_setting_apply);
+						Button btnCancel = (Button)popupView.findViewById(R.id.btn_setting_cancel);
+						
+						//====== baud rate =======
+						final Spinner spinner_baudrate = (Spinner)popupView.findViewById(R.id.spinner_baudrate);
+						ArrayAdapter<String> adapter_baudrate = 
+							      new ArrayAdapter<String>(MainActivity.this, 
+							        android.R.layout.simple_spinner_item, Setting_baudrate);
+						adapter_baudrate.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);											    
+						spinner_baudrate.setAdapter(adapter_baudrate);
+						int spinnerPosition = adapter_baudrate.getPosition(setting_rate);
+						spinner_baudrate.setSelection(spinnerPosition);
+						
+						//====== data =======
+						final Spinner spinner_data = (Spinner)popupView.findViewById(R.id.spinner_data);
+						ArrayAdapter<String> adapter_data = 
+							      new ArrayAdapter<String>(MainActivity.this, 
+							        android.R.layout.simple_spinner_item, Setting_data);
+						adapter_data.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);											    
+						spinner_data.setAdapter(adapter_data);
+						spinnerPosition = adapter_data.getPosition(setting_data);
+						spinner_data.setSelection(spinnerPosition);
+						
+						//====== parity =======
+						final Spinner spinner_parity = (Spinner)popupView.findViewById(R.id.spinner_parity);
+						ArrayAdapter<String> adapter_parity = 
+							      new ArrayAdapter<String>(MainActivity.this, 
+							        android.R.layout.simple_spinner_item, Setting_parity);
+						adapter_parity.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);											    
+						spinner_parity.setAdapter(adapter_parity);
+						spinnerPosition = Integer.valueOf(setting_parity).intValue();//adapter_parity.getPosition(parity);
+						spinner_parity.setSelection(spinnerPosition);
+						
+						//====== stop bit =======
+						final Spinner spinner_stopbit = (Spinner)popupView.findViewById(R.id.spinner_stopbit);
+						ArrayAdapter<String> adapter_stopbit = 
+							      new ArrayAdapter<String>(MainActivity.this, 
+							        android.R.layout.simple_spinner_item, Setting_stopbit);
+						adapter_stopbit.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);											    
+						spinner_stopbit.setAdapter(adapter_stopbit);
+						spinnerPosition = Integer.valueOf(setting_stopbit).intValue();//adapter_stopbit.getPosition(stopbit);
+						spinner_stopbit.setSelection(spinnerPosition);
+						
+						//====== flow control=======
+						final Spinner spinner_flowc = (Spinner)popupView.findViewById(R.id.spinner_flowcontrol);
+						ArrayAdapter<String> adapter_flowc = 
+							      new ArrayAdapter<String>(MainActivity.this, 
+							        android.R.layout.simple_spinner_item, Setting_flowc);
+						adapter_flowc.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);											    
+							    spinner_flowc.setAdapter(adapter_flowc);
+						spinnerPosition = adapter_flowc.getPosition(setting_flowc);
+						spinner_flowc.setSelection(spinnerPosition);
+		                
+						btnApply.setOnClickListener(new Button.OnClickListener() {
+
+							@Override
+							public void onClick(View v) {
+								//TODO
+								setting_rate	= spinner_baudrate.getSelectedItem().toString();
+								setting_data 	= spinner_data.getSelectedItem().toString(); 
+								setting_parity 	= spinner_parity.getSelectedItem().toString();
+								setting_stopbit = spinner_stopbit.getSelectedItem().toString();
+								//setting_flowc 	= spinner_flowc.getSelectedItem().toString();
+								g_ctrl.clearTx();
+				                g_ctrl.setTx(combineReqCmd( setting_rate,
+                                        setting_data,
+                                        setting_parity,
+                                        setting_stopbit/*,
+                                        setting_flowc*/));
+
+								g_ctrl.setCmd("Request");
+								
+								ctrlClient =  new TcpClient(g_ctrl);
+								ctrlClient.executeOnExecutor(TcpClient.THREAD_POOL_EXECUTOR);
+						//		Log.d(TAG,"requestCmd: " + requestCmd);
+								
+								pd = new ProgressDialog(MainActivity.this);
+								pd.setTitle("Serial port");
+								pd.setMessage("Please wait...");
+								pd.setIndeterminate(true);
+								pd.setCancelable(false);
+								pd.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
+
+									@Override
+									public void onClick(DialogInterface dialog, int which) {
+										dialog.dismiss();
+									}					
+								});
+								pd.show();
+								
+								//Thread
+								Thread settingThread  = new Thread() {
+									@Override
+									public void run() {
+										
+										int retry = 20;
+										do{
+											try {
+												Thread.sleep(500);
+											} catch (InterruptedException e) {
+												e.printStackTrace();
+											}
+										}while(retry-->0 && recvBuf.length()==0);
+										
+										Message m = new Message();
+										m.what = 0;
+										handler_pd.sendMessage(m);
+                                        g_ctrl.setCmd("stop");
+										//show serial port setting
+										runOnUiThread(new Runnable() {
+											@Override
+											public void run() {
+												
+												Toast.makeText(MainActivity.this,
+														recvBuf,
+														Toast.LENGTH_SHORT).show();
+												recvBuf = "";
+											};
+										});
+								}};
+								settingThread.start();
+								
+								popupWindow.dismiss();
+							}
+
+								private byte[] combineReqCmd(String setting_rate, String setting_data, String setting_parity, String setting_stopbit/*, String setting_flowc*/) {
+								
+								
+								//<20150412> So far, flow control no support.
+								byte[] cmdSet_rate 		= null;
+								byte[] cmdSet_data 		= null;
+								byte[] cmdSet_parity 	= null;
+								byte[] cmdSet_stopbit 	= null;
+								//byte[] cmdSet_flowc 	= new byte[3];
+								
+								if(setting_rate.equals("1200")){
+										cmdSet_rate = new byte[]{ (byte)0x00,(byte)0x01,(byte)0x04,(byte)0xB0,(byte)0x04,(byte)0x00,(byte)0x00};
+									}else if(setting_rate.equals("9600")){
+										cmdSet_rate = new byte[]{ (byte)0x00,(byte)0x01,(byte)0x04,(byte) 0x80,0x25,(byte)0x00,(byte)0x00};
+									}else if(setting_rate.equals("14400")){
+										cmdSet_rate = new byte[]{ (byte)0x00,(byte)0x01,(byte)0x04,(byte)0x40,(byte)0x38,(byte)0x00,(byte)0x00};	
+									}else if(setting_rate.equals("19200")){
+										cmdSet_rate = new byte[]{ (byte)0x00,(byte)0x01,(byte)0x04,(byte)0x00,(byte)0x4B,(byte)0x00,(byte)0x00};	
+									}else if(setting_rate.equals("28800")){
+										cmdSet_rate = new byte[]{ (byte)0x00,(byte)0x01,(byte)0x04,(byte)0x80,(byte)0x70,(byte)0x00,(byte)0x00};	
+									}else if(setting_rate.equals("38400")){
+										cmdSet_rate = new byte[]{ (byte)0x00,(byte)0x01,(byte)0x04,(byte)0x00,(byte)0x96,(byte)0x00,(byte)0x00};
+									}else if(setting_rate.equals("57600")){
+										cmdSet_rate = new byte[]{ (byte)0x00,(byte)0x01,(byte)0x04,(byte)0x00,(byte)0xE1,(byte)0x00,(byte)0x00};
+									}else if(setting_rate.equals("76800")){
+										cmdSet_rate = new byte[]{ (byte)0x00,(byte)0x01,(byte)0x04,(byte)0x00,(byte)0x2C,(byte)0x01,(byte)0x00};
+									}else if(setting_rate.equals("115200")){
+										cmdSet_rate = new byte[]{ (byte)0x00,(byte)0x01,(byte)0x04,(byte)0x00,(byte)0xC2,(byte)0x01,(byte)0x00};
+									}else if(setting_rate.equals("128000")){
+										cmdSet_rate = new byte[]{ (byte)0x00,(byte)0x01,(byte)0x04,(byte)0x00,(byte)0xF4,(byte)0x01,(byte)0x00};
+									}else if(setting_rate.equals("153600")){
+										cmdSet_rate = new byte[]{ (byte)0x00,(byte)0x01,(byte)0x04,(byte)0x00,(byte)0x58,(byte)0x02,(byte)0x00};
+									}else if(setting_rate.equals("230400")){
+										cmdSet_rate = new byte[]{ (byte)0x00,(byte)0x01,(byte)0x04,(byte)0x00,(byte)0x84,(byte)0x03,(byte)0x00};
+									}else if(setting_rate.equals("460800")){
+										cmdSet_rate = new byte[]{ (byte)0x00,(byte)0x01,(byte)0x04,(byte)0x00,(byte)0x08,(byte)0x07,(byte)0x00};
+									}else if(setting_rate.equals("500000")){
+										cmdSet_rate = new byte[]{ (byte)0x00,(byte)0x01,(byte)0x04,(byte)0x20,(byte)0xA1,(byte)0x07,(byte)0x00};
+									}else if(setting_rate.equals("921600")){
+										cmdSet_rate = new byte[]{ (byte)0x00,(byte)0x01,(byte)0x04,(byte)0x00,(byte)0x10,(byte)0x0E,(byte)0x00};
+									} 
+									
+									if(setting_data.equals("8")){
+										cmdSet_data = new byte[]{ 0x00,0x02,0x01, 0x08};
+									}else{
+										cmdSet_data = new byte[]{ 0x00,0x02,0x01, 0x07};
+									}
+									
+									if(setting_parity.equals("none")){
+										cmdSet_parity = new byte[]{ 0x00,0x04,0x01, 0x00};
+									}else if(setting_parity.equals("odd")){
+										cmdSet_parity = new byte[]{ 0x00,0x04,0x01, 0x01};
+									}else if(setting_parity.equals("even")){
+										cmdSet_parity = new byte[]{ 0x00,0x04,0x01, 0x02};
+									}
+									
+									if(setting_stopbit.equals("none")){
+										cmdSet_stopbit = new byte[]{ 0x00,0x08,0x01, 0x00};
+									}else if(setting_stopbit.equals("1 bit")){
+										cmdSet_stopbit = new byte[]{ 0x00,0x08,0x01, 0x01};
+									}
+
+								byte[] reqCmdByte = new byte[]{0x00};
+								
+								//combine req cmd
+				                ByteBuffer reqTmp = ByteBuffer.allocate(cmdPrefix.length +
+				                									reqCmdByte.length+
+				                									cmdSet_rate.length+
+				                									cmdSet_data.length+
+				                									cmdSet_parity.length+
+				                									cmdSet_stopbit.length);
+
+
+								reqTmp.clear();
+				                reqTmp.put(cmdPrefix);
+				                reqTmp.put(reqCmdByte);
+				                reqTmp.put(cmdSet_rate);
+				                reqTmp.put(cmdSet_data);
+				                reqTmp.put(cmdSet_parity);
+				                reqTmp.put(cmdSet_stopbit);
+				                //byte[] test = reqTmp.array();
+
+								return reqTmp.array();
+							}
+
+						});
+						
+						btnCancel.setOnClickListener(new Button.OnClickListener() {
+
+							@Override
+							public void onClick(View v) {
+                                g_ctrl.setCmd("stop");
+                                popupWindow.dismiss();
+							}
+						});
+						popupWindow.showAtLocation(popupView, Gravity.CENTER, 0, 0);
+					}
+
+				});
+			}
+		};
+		gettingThread.start();
+		
+		
+	
+	
+	
+	}
 	private void initComponentAction() {
 		btn_scanDevices.setOnClickListener(new OnClickListener() {
 
 			@Override
 			public void onClick(View arg0) {
+
 				pd = new ProgressDialog(MainActivity.this);
 				pd.setTitle("Searching...");
 				pd.setMessage("Please wait...");
@@ -231,13 +589,29 @@ public class MainActivity extends Activity {
 					@SuppressLint("NewApi")
 					@Override
 					public void run() {
-						
-						
+
+						g_d.ResolveStatusReset();
+						devInfoList.clear();
+						g_ctrl.clearDeviceList();
+                        infoDevices = null;
+                        initData();
+
 						Log.i(TAG,"startDiscover");
-						
+						int tmp = 0;
 						try {
 							startDiscover();
-							Thread.sleep(3000);
+							do{
+								if( g_ctrl.getDeviceList().size() > 0 )
+								{
+									Thread.sleep(2000);
+									break;
+								}
+									
+								Thread.sleep(1000);
+								tmp++;
+								//Log.i(TAG,"startDiscover " + g_ctrl.getDeviceList().size() + " tmp " + tmp );
+							}while(  tmp < 30  );
+							g_ctrl.ResolveStatusReset();							
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
@@ -246,47 +620,72 @@ public class MainActivity extends Activity {
 						m.what = 0;
 						handler_pd.sendMessage(m);
 						
-						stopDiscover();
-						Log.i(TAG,"stopDiscover");
 						
-						deviceNumberNow = g_d.getDeviceList().size();
-						
-						for(int i=0;i<deviceNumberNow;i++){
-							/*Log.d(TAG_DISCOVER,"Name: " + g_d.getDeviceList().elementAt(i).getServiceName() );
-							Log.d(TAG_DISCOVER,"Type: " + g_d.getDeviceList().elementAt(i).getServiceType() );
-							Log.d(TAG_DISCOVER,"Host: " + g_d.getDeviceList().elementAt(i).getHost() );
-							Log.d(TAG_DISCOVER,"Port: " + g_d.getDeviceList().elementAt(i).getPort() );*/
+						if(tmp >= 30 && ( g_ctrl.getDeviceList().size() == 0)){
+							runOnUiThread(new Runnable() {
+								@Override
+								public void run() {
 							
-							infoDevices[i].setaliveFlag(1);
-							infoDevices[i].setName(g_d.getDeviceList().elementAt(i).getServiceName());
-							infoDevices[i].setName_small("");
-							infoDevices[i].setIP(g_d.getDeviceList().elementAt(i).getHost().getHostAddress());
-							infoDevices[i].setPort(g_d.getDeviceList().elementAt(i).getPort());
-							infoDevices[i].setmacAdrress("");
+								Toast.makeText(MainActivity.this,
+										"Devices search timeout!",
+										Toast.LENGTH_SHORT).show();
+								}
+	
+							});
 						}
+												
+						deviceNumberNow = g_ctrl.getDeviceList().size();
+
 						
+						
+						Log.i(TAG, "deviceNumberNow " + deviceNumberNow);
+
+                       
+                        if (deviceNumberNow == 0) {
+                            devInfoList.clear();
+                            g_ctrl.clearDeviceList();
+                            infoDevices = null;
+                            initData();
+                        }else{
+	                        
+							for(int i=0;i<deviceNumberNow;i++){
+							
+								/*Log.d(TAG_DISCOVER,"Name: " + g_d.getDeviceList().elementAt(i).getServiceName() );
+								Log.d(TAG_DISCOVER,"Type: " + g_d.getDeviceList().elementAt(i).getServiceType() );
+								Log.d(TAG_DISCOVER,"Host: " + g_d.getDeviceList().elementAt(i).getHost() );
+								Log.d(TAG_DISCOVER,"Port: " + g_d.getDeviceList().elementAt(i).getPort() );*/
+								
+								infoDevices[i].setaliveFlag(1);
+								infoDevices[i].setName(g_ctrl.getDeviceList().elementAt(i).getName());
+								infoDevices[i].setName_small("");
+								infoDevices[i].setIP(g_ctrl.getDeviceList().elementAt(i).getHostAddress());								
+								infoDevices[i].setPort(g_ctrl.getDeviceList().elementAt(i).getPort());
+								infoDevices[i].setmacAdrress("");
+							}
+                        }
+
 						runOnUiThread(new Runnable() {
 							@Override
 							public void run() {
-								
+
 								//show scan result
-								text_debug.setText("");
-								for(int i=0;i<deviceNumberNow;i++){
+								//text_debug.setText("");
+							/*	for(int i=0;i<deviceNumberNow;i++){
 									text_debug.append("==== " +i+ " ====\n");
 									text_debug.append("name: "+infoDevices[i].getName()+"\n");
 									text_debug.append("host: "+infoDevices[i].getIP()+"\n");
 									text_debug.append("port: "+infoDevices[i].getPort()+"\n");
 								}
-								
+								*/
 								Toast.makeText(MainActivity.this,
 										String.valueOf(deviceNumberNow) + " Ameba Found",
 										Toast.LENGTH_SHORT).show();
-								
 								reloadDeviceInfo();
+
 							}
 
 						});
-						
+						stopDiscover();
 					}
 				};
 				searchThread.start();
@@ -297,353 +696,34 @@ public class MainActivity extends Activity {
 			
 			@Override
 			public void onClick(View arg0) {
-
-				AlertDialog.Builder setting_builder;
-				
-				setting_builder=new AlertDialog.Builder(MainActivity.this);
-				//speaker_builder.setIcon(R.drawable.ic_dialog_question);
-				setting_builder.setTitle("Choose One Ameba");
-				setting_builder.setCancelable(false);
-				
-				setting_builder.setSingleChoiceItems(adapter_deviceInfo_setting, -1, new DialogInterface.OnClickListener(){
-
-					@SuppressLint("NewApi")
-					@Override
-					public void onClick(DialogInterface dialog, final int index) {
-                        //Log.d("!!!!!!!!!!!!!","popupView !!!!");
-
-						g_ctrl.resetInfo();
-
-
-						//Log.d(TAG,"setting_builder: "+g_ctrl.getDeviceList().elementAt(index).getServiceName());
-						//Log.d(TAG,"setting_builder: "+g_ctrl.getDeviceList().elementAt(index).getHost());
-						//Log.d(TAG,"setting_builder: "+g_ctrl.getDeviceList().elementAt(index).getPort());
+				//Log.d(TAG,"sean test " + adapter_deviceInfo_setting.getCount());
+				if (adapter_deviceInfo_setting.getCount() == 1) //only one device don't need setting_builder
+					device_config(0);
+				else{				 
+					AlertDialog.Builder setting_builder;				
+					setting_builder=new AlertDialog.Builder(MainActivity.this);
+					//speaker_builder.setIcon(R.drawable.ic_dialog_question);
+					setting_builder.setTitle("Choose One Ameba");
+					setting_builder.setCancelable(false);
+					setting_builder.setSingleChoiceItems(adapter_deviceInfo_setting, -1, new DialogInterface.OnClickListener(){
 						
-						g_ctrl.setConnIP(g_ctrl.getDeviceList().elementAt(0).getHost());
-						g_ctrl.setConnPort(g_ctrl.getDeviceList().elementAt(0).getPort());
+						@SuppressLint("NewApi")
+						@Override
+						public void onClick(DialogInterface dialog, final int index) {	                        
+							device_config(index);
+							dialog.cancel();
+							
+						}
 						
-						ctrlClient =  new TcpClient(g_ctrl);
-						ctrlClient.executeOnExecutor(TcpClient.THREAD_POOL_EXECUTOR);
-						
-						//TODO
-		                byte[] cmdGet_AllSetting = new byte[]{0x02, 0x1F};
-
-		                ByteBuffer tmp = ByteBuffer.allocate(cmdPrefix.length + cmdGet_AllSetting.length);
-
-		                tmp.put(cmdPrefix);
-		                tmp.put(cmdGet_AllSetting);
-		                byte[] test = tmp.array();
-
-		                g_ctrl.setTx(test);
-						g_ctrl.setCmd("Request");
-
-						pd = new ProgressDialog(MainActivity.this);
-						pd.setTitle("Serial port");
-						pd.setMessage("Please wait...");
-						pd.setIndeterminate(true);
-						pd.setCancelable(false);
-						pd.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
-
-							@Override
-							public void onClick(DialogInterface dialog, int which) {
-								dialog.dismiss();
-							}					
-						});
-						pd.show();
-						
-						//Thread
-						Thread gettingThread  = new Thread() {
-							@Override
-							public void run() {
-
-								int retry = 20;
-								do{
-									try {
-										Thread.sleep(500);
-									} catch (InterruptedException e) {
-										e.printStackTrace();
-									}
-								}while(retry-->0 && recvBuf.length()==0);
-								
-								Message m = new Message();
-								m.what = 0;
-								handler_pd.sendMessage(m);
-
-								//show serial port setting
-								runOnUiThread(new Runnable() {
-									@Override
-									public void run() {
-
-										Toast.makeText(MainActivity.this,
-												recvBuf,
-												Toast.LENGTH_SHORT).show();
-
-										String[] type = recvBuf.split(";");
-										String[] info = {};
-										if(type.length!=5)
-											return;
-
-										for(int index=0;index<type.length;index++){
-											info = type[index].split(",");
-											if(index==0 ){//rate
-												setting_rate = info[1];
-											}else if(index==1){//data
-												setting_data = info[1];
-											}else if(index==2){//parity
-												setting_parity = info[1];
-											}else if(index==3){//stopbit
-												setting_stopbit = info[1];
-											}else if(index==4){//flowcontrol
-												setting_flowc = info[1];
-											}
-										}
-										recvBuf = "";
-
-										LayoutInflater layoutInflater = (LayoutInflater) getBaseContext()
-												.getSystemService(LAYOUT_INFLATER_SERVICE);
-										View popupView = layoutInflater.inflate(R.layout.setting_serialport,null);
-										final PopupWindow popupWindow = new PopupWindow(
-												popupView,
-												LayoutParams.WRAP_CONTENT,
-												LayoutParams.WRAP_CONTENT);
-										
-										Button btnApply = (Button)popupView.findViewById(R.id.btn_setting_apply);
-										Button btnCancel = (Button)popupView.findViewById(R.id.btn_setting_cancel);
-										
-										//====== baud rate =======
-										final Spinner spinner_baudrate = (Spinner)popupView.findViewById(R.id.spinner_baudrate);
-										ArrayAdapter<String> adapter_baudrate = 
-											      new ArrayAdapter<String>(MainActivity.this, 
-											        android.R.layout.simple_spinner_item, Setting_baudrate);
-										adapter_baudrate.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);											    
-										spinner_baudrate.setAdapter(adapter_baudrate);
-										int spinnerPosition = adapter_baudrate.getPosition(setting_rate);
-										spinner_baudrate.setSelection(spinnerPosition);
-										
-										//====== data =======
-										final Spinner spinner_data = (Spinner)popupView.findViewById(R.id.spinner_data);
-										ArrayAdapter<String> adapter_data = 
-											      new ArrayAdapter<String>(MainActivity.this, 
-											        android.R.layout.simple_spinner_item, Setting_data);
-										adapter_data.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);											    
-										spinner_data.setAdapter(adapter_data);
-										spinnerPosition = adapter_data.getPosition(setting_data);
-										spinner_data.setSelection(spinnerPosition);
-										
-										//====== parity =======
-										final Spinner spinner_parity = (Spinner)popupView.findViewById(R.id.spinner_parity);
-										ArrayAdapter<String> adapter_parity = 
-											      new ArrayAdapter<String>(MainActivity.this, 
-											        android.R.layout.simple_spinner_item, Setting_parity);
-										adapter_parity.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);											    
-										spinner_parity.setAdapter(adapter_parity);
-										spinnerPosition = Integer.valueOf(setting_parity).intValue();//adapter_parity.getPosition(parity);
-										spinner_parity.setSelection(spinnerPosition);
-										
-										//====== stop bit =======
-										final Spinner spinner_stopbit = (Spinner)popupView.findViewById(R.id.spinner_stopbit);
-										ArrayAdapter<String> adapter_stopbit = 
-											      new ArrayAdapter<String>(MainActivity.this, 
-											        android.R.layout.simple_spinner_item, Setting_stopbit);
-										adapter_stopbit.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);											    
-										spinner_stopbit.setAdapter(adapter_stopbit);
-										spinnerPosition = Integer.valueOf(setting_stopbit).intValue();//adapter_stopbit.getPosition(stopbit);
-										spinner_stopbit.setSelection(spinnerPosition);
-										
-										//====== flow control=======
-										final Spinner spinner_flowc = (Spinner)popupView.findViewById(R.id.spinner_flowcontrol);
-										ArrayAdapter<String> adapter_flowc = 
-											      new ArrayAdapter<String>(MainActivity.this, 
-											        android.R.layout.simple_spinner_item, Setting_flowc);
-										adapter_flowc.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);											    
-											    spinner_flowc.setAdapter(adapter_flowc);
-										spinnerPosition = adapter_flowc.getPosition(setting_flowc);
-										spinner_flowc.setSelection(spinnerPosition);
-						                
-										btnApply.setOnClickListener(new Button.OnClickListener() {
-
-											@Override
-											public void onClick(View v) {
-												//TODO
-												setting_rate	= spinner_baudrate.getSelectedItem().toString();
-												setting_data 	= spinner_data.getSelectedItem().toString(); 
-												setting_parity 	= spinner_parity.getSelectedItem().toString();
-												setting_stopbit = spinner_stopbit.getSelectedItem().toString();
-												setting_flowc 	= spinner_flowc.getSelectedItem().toString();
-
-								                g_ctrl.setTx(combineReqCmd( setting_rate,
-                                                        setting_data,
-                                                        setting_parity,
-                                                        setting_stopbit,
-                                                        setting_flowc));
-
-												g_ctrl.setCmd("Request");
-												
-										//		Log.d(TAG,"requestCmd: " + requestCmd);
-												
-												pd = new ProgressDialog(MainActivity.this);
-												pd.setTitle("Serial port");
-												pd.setMessage("Please wait...");
-												pd.setIndeterminate(true);
-												pd.setCancelable(false);
-												pd.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
-
-													@Override
-													public void onClick(DialogInterface dialog, int which) {
-														dialog.dismiss();
-													}					
-												});
-												pd.show();
-												
-												//Thread
-												Thread settingThread  = new Thread() {
-													@Override
-													public void run() {
-														
-														int retry = 20;
-														do{
-															try {
-																Thread.sleep(500);
-															} catch (InterruptedException e) {
-																e.printStackTrace();
-															}
-														}while(retry-->0 && recvBuf.length()==0);
-														
-														Message m = new Message();
-														m.what = 0;
-														handler_pd.sendMessage(m);
-                                                        g_ctrl.setCmd("stop");
-														//show serial port setting
-														runOnUiThread(new Runnable() {
-															@Override
-															public void run() {
-																
-																Toast.makeText(MainActivity.this,
-																		recvBuf,
-																		Toast.LENGTH_SHORT).show();
-																recvBuf = "";
-															};
-														});
-												}};
-												settingThread.start();
-												
-												popupWindow.dismiss();
-											}
-
-											private byte[] combineReqCmd(String setting_rate, String setting_data, String setting_parity, String setting_stopbit, String setting_flowc) {
-												String result = "";
-												
-												//<20150412> So far, flow control no support.
-												byte[] cmdSet_rate 		= null;
-												byte[] cmdSet_data 		= null;
-												byte[] cmdSet_parity 	= null;
-												byte[] cmdSet_stopbit 	= null;
-												//byte[] cmdSet_flowc 	= new byte[3];
-												
-												if(setting_rate.equals("1200")){
-													cmdSet_rate = new byte[]{ (byte)0x01,(byte)0x04,(byte)0xB0,(byte)0x04,(byte)0x00,(byte)0x00};
-												}else if(setting_rate.equals("9600")){
-													cmdSet_rate = new byte[]{ (byte)0x01,(byte)0x04,(byte) 0x80,0x25,(byte)0x00,(byte)0x00};
-												}else if(setting_rate.equals("14400")){
-													cmdSet_rate = new byte[]{ (byte)0x01,(byte)0x04,(byte)0x40,(byte)0x38,(byte)0x00,(byte)0x00};	
-												}else if(setting_rate.equals("19200")){
-													cmdSet_rate = new byte[]{ (byte)0x01,(byte)0x04,(byte)0x00,(byte)0x4B,(byte)0x00,(byte)0x00};	
-												}else if(setting_rate.equals("28800")){
-													cmdSet_rate = new byte[]{ (byte)0x01,(byte)0x04,(byte)0x80,(byte)0x70,(byte)0x00,(byte)0x00};	
-												}else if(setting_rate.equals("38400")){
-													cmdSet_rate = new byte[]{ (byte)0x01,(byte)0x04,(byte)0x00,(byte)0x96,(byte)0x00,(byte)0x00};
-												}else if(setting_rate.equals("57600")){
-													cmdSet_rate = new byte[]{ (byte)0x01,(byte)0x04,(byte)0x00,(byte)0xE1,(byte)0x00,(byte)0x00};
-												}else if(setting_rate.equals("76800")){
-													cmdSet_rate = new byte[]{ (byte)0x01,(byte)0x04,(byte)0x00,(byte)0x2C,(byte)0x01,(byte)0x00};
-												}else if(setting_rate.equals("115200")){
-													cmdSet_rate = new byte[]{ (byte)0x01,(byte)0x04,(byte)0x00,(byte)0xC2,(byte)0x01,(byte)0x00};
-												}else if(setting_rate.equals("128000")){
-													cmdSet_rate = new byte[]{ (byte)0x01,(byte)0x04,(byte)0x00,(byte)0xF4,(byte)0x01,(byte)0x00};
-												}else if(setting_rate.equals("153600")){
-													cmdSet_rate = new byte[]{ (byte)0x01,(byte)0x04,(byte)0x00,(byte)0x58,(byte)0x02,(byte)0x00};
-												}else if(setting_rate.equals("230400")){
-													cmdSet_rate = new byte[]{ (byte)0x01,(byte)0x04,(byte)0x00,(byte)0x84,(byte)0x03,(byte)0x00};
-												}else if(setting_rate.equals("460800")){
-													cmdSet_rate = new byte[]{ (byte)0x01,(byte)0x04,(byte)0x00,(byte)0x08,(byte)0x07,(byte)0x00};
-												}else if(setting_rate.equals("500000")){
-													cmdSet_rate = new byte[]{ (byte)0x01,(byte)0x04,(byte)0x20,(byte)0xA1,(byte)0x07,(byte)0x00};
-												}else if(setting_rate.equals("921600")){
-													cmdSet_rate = new byte[]{ (byte)0x01,(byte)0x04,(byte)0x00,(byte)0x10,(byte)0x0E,(byte)0x00};
-												} 
-												
-												if(setting_data.equals("8")){
-													cmdSet_data = new byte[]{ 0x02,0x01, 0x08};
-												}else{
-													cmdSet_data = new byte[]{ 0x02,0x01, 0x07};
-												}
-												
-												if(setting_parity.equals("none")){
-													cmdSet_parity = new byte[]{ 0x04,0x01, 0x00};
-												}else if(setting_parity.equals("odd")){
-													cmdSet_parity = new byte[]{ 0x04,0x01, 0x01};
-												}else if(setting_parity.equals("even")){
-													cmdSet_parity = new byte[]{ 0x04,0x01, 0x02};
-												}
-												
-												if(setting_stopbit.equals("none")){
-													cmdSet_stopbit = new byte[]{ 0x08,0x01, 0x00};
-												}else if(setting_stopbit.equals("1 bit")){
-													cmdSet_stopbit = new byte[]{ 0x08,0x01, 0x01};
-												}
-
-												byte[] reqCmdByte = new byte[]{0x00};
-												
-												//combine req cmd
-								                ByteBuffer reqTmp = ByteBuffer.allocate(cmdPrefix.length +
-								                									reqCmdByte.length+
-								                									cmdSet_rate.length+
-								                									cmdSet_data.length+
-								                									cmdSet_parity.length+
-								                									cmdSet_stopbit.length);
-
-
-
-								                reqTmp.put(cmdPrefix);
-								                reqTmp.put(reqCmdByte);
-								                reqTmp.put(cmdSet_rate);
-								                reqTmp.put(cmdSet_data);
-								                reqTmp.put(cmdSet_parity);
-								                reqTmp.put(cmdSet_stopbit);
-								                byte[] test = reqTmp.array();
-
-												return reqTmp.array();
-											}
-
-										});
-										
-										btnCancel.setOnClickListener(new Button.OnClickListener() {
-
-											@Override
-											public void onClick(View v) {
-                                                g_ctrl.setCmd("stop");
-                                                popupWindow.dismiss();
-											}
-										});
-										popupWindow.showAtLocation(popupView, Gravity.CENTER, 0, 0);
-									}
-
-								});
-							}
-						};
-						gettingThread.start();
-						dialog.cancel();
-						
-					}
+					} );
+					setting_builder.setPositiveButton("Cancel",new DialogInterface.OnClickListener() {
+			            public void onClick(DialogInterface dialog, int whichButton) {
+			            	
+			            }
+			        });
 					
-				} );
-				setting_builder.setPositiveButton("Cancel",new DialogInterface.OnClickListener() {
-		            public void onClick(DialogInterface dialog, int whichButton) {
-		            	
-		            }
-		        });
-		    	
-				setting_builder.create().show();
+					setting_builder.create().show();
+				}
 			}			
 		});
 
@@ -682,17 +762,54 @@ public class MainActivity extends Activity {
 			@SuppressLint("NewApi")
 			@Override
 			public void onItemClick(AdapterView<?> arg0, View v, int position,
-					long id) {
-				//Log.d(TAG,infoDevices[position].getName());
-				Toast.makeText(MainActivity.this,"Connect to "+
-						infoDevices[position].getName(),
-						Toast.LENGTH_SHORT).show();
+					long id) {				
+
+				
+
+			
+		
+					pd = new ProgressDialog(MainActivity.this);
+					pd.setTitle("Connecting...");
+					pd.setMessage("Please wait...");
+					pd.setIndeterminate(true);
+					pd.setCancelable(false);
+					pd.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
+	
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							stopDiscover();
+							dialog.dismiss();
+						}					
+					});
+					pd.show();
+/*
+				try {
+					while(!g_d.isResolveFinish())
+					{												
+						Thread.sleep(500);						
+					}
+					
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				*/
 				//TODO
+				Toast.makeText(MainActivity.this,"Connect to "+
+								infoDevices[position].getName(),
+						Toast.LENGTH_SHORT).show();
+
+				for (int i = 0; i < infoDevices.length; i++) {
+					if(g_ctrl.getDeviceList().elementAt(position).getInetAddress().equals(g_d.getDeviceList().elementAt(i).getInet4Address()) ) {
+						position = i;
+						break;
+					}
+				}
+
 				g_d.resetInfo();
-				g_d.setConnIP(g_d.getDeviceList().elementAt(0).getHost());
-				g_d.setConnPort(g_d.getDeviceList().elementAt(0).getPort());
+				g_d.setConnIP(g_d.getDeviceList().elementAt(position).getInetAddress()); //need check
+				g_d.setConnPort(g_d.getDeviceList().elementAt(position).getPort());
                 g_d.setCmd("Hello");
-                
+
                 dataClient =  new TcpClient(g_d);
                 dataClient.executeOnExecutor(TcpClient.THREAD_POOL_EXECUTOR);
                 g_d.opStates().setOpState(g_d.opStates().stateConnectedServer());
@@ -716,10 +833,11 @@ public class MainActivity extends Activity {
     	
     	g_discoverEnable = true;
     	
-        if (mNSD==null){
-            mNSD = new NsdCore(this);
-            mNSD.initializeNsd();
+        if (mNSD!=null){
+        	stopDiscover();
         }
+        mNSD = new NsdCore(this);
+        mNSD.initializeNsd();
         
         mNSD.discoverServices(g_d.getServiceType());
         mNSD.discoverServices(g_ctrl.getServiceType());
@@ -738,27 +856,27 @@ public class MainActivity extends Activity {
     	g_discoverEnable = false;
     	
     	Log.d(TAG_DISCOVER,"canceling discovering clicked");
-    	
-        mNSD.stopDiscovery();
+    	if(mNSD != null)
+    		mNSD.stopDiscovery();
         //uiThread.interrupt();
-        
         g_d.opStates().setOpState(g_d.opStates().stateAppStart());
         g_ctrl.opStates().setOpState(g_d.opStates().stateAppStart());
     }
 
     private void reloadDeviceInfo() {
     	devInfoList.clear();
-    	
-    	for(int i=0;i<infoDevices.length;i++){
-    		if(infoDevices[i].getaliveFlag()==1){
-    			HashMap<String, Object> reloadItemHashMap = new HashMap<String, Object>();
-    			reloadItemHashMap.put("item_image",infoDevices[i].getimg());
-				reloadItemHashMap.put("item_text", infoDevices[i].getName());
-				reloadItemHashMap.put("item_text_info", infoDevices[i].getIP());
-				devInfoList.add(reloadItemHashMap);
-    		}
-    	}
-    	gridView.setAdapter(adapter_deviceInfo);
+    	if(infoDevices.length > 0) {
+            for (int i = 0; i < infoDevices.length; i++) {
+                if (infoDevices[i].getaliveFlag() == 1) {
+                    HashMap<String, Object> reloadItemHashMap = new HashMap<String, Object>();
+					reloadItemHashMap.put("item_image", infoDevices[i].getimg());
+					reloadItemHashMap.put("item_text", infoDevices[i].getName());
+					reloadItemHashMap.put("item_text_info", infoDevices[i].getIP());
+                    devInfoList.add(reloadItemHashMap);
+                }
+            }
+            gridView.setAdapter(adapter_deviceInfo);
+        }
 	}
 
     public class recvThread extends Thread{

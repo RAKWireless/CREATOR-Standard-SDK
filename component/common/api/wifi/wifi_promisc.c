@@ -11,52 +11,6 @@
 #if CONFIG_WLAN
 #include <platform/platform_stdlib.h>
 
-// Add extra interfaces to make release sdk able to determine promisc API linking
-void promisc_deinit(void *padapter)
-{
-#ifdef CONFIG_PROMISC
-	_promisc_deinit(padapter);
-#endif
-}
-
-int promisc_recv_func(void *padapter, void *rframe)
-{
-	// Never reach here if not define CONFIG_PROMISC
-#ifdef CONFIG_PROMISC
-	return _promisc_recv_func(padapter, rframe);
-#else
-	return 0;
-#endif
-}
-
-int promisc_set(rtw_rcr_level_t enabled, void (*callback)(unsigned char*, unsigned int, void*), unsigned char len_used)
-{
-#ifdef CONFIG_PROMISC
-	return _promisc_set(enabled, callback, len_used);
-#else
-	return -1;
-#endif
-}
-
-unsigned char is_promisc_enabled(void)
-{
-#ifdef CONFIG_PROMISC
-	return _is_promisc_enabled();
-#else
-	return 0;
-#endif
-}
-
-int promisc_get_fixed_channel(void *fixed_bssid, u8 *ssid, int *ssid_length)
-{
-#ifdef CONFIG_PROMISC
-	return _promisc_get_fixed_channel(fixed_bssid, ssid, ssid_length);
-#else
-	return 0;
-#endif
-}
-// End of Add extra interfaces
-
 struct eth_frame {
 	struct eth_frame *prev;
 	struct eth_frame *next;
@@ -68,7 +22,7 @@ struct eth_frame {
 };
 
 #if CONFIG_INIC_CMD_RSP
-#if defined(__IAR_SYSTEMS_ICC__)||defined (__GNUC__)
+#if defined(__IAR_SYSTEMS_ICC__)
 #pragma pack(1)
 #endif
 struct inic_eth_frame {
@@ -77,7 +31,7 @@ struct inic_eth_frame {
 	unsigned int len;
 	unsigned char type;
 };
-#if defined(__IAR_SYSTEMS_ICC__)||defined (__GNUC__)
+#if defined(__IAR_SYSTEMS_ICC__)
 #pragma pack()
 #endif
 
@@ -114,7 +68,7 @@ void promisc_init_packet_filter()
 	packet_filter_enable_num = 0;
 }
 
-int promisc_add_packet_filter(u8 filter_id, rtw_packet_filter_pattern_t *patt, rtw_packet_filter_rule_t rule)
+int promisc_add_packet_filter(u8 filter_id, rtw_packet_filter_pattern_t *patt, rtw_packet_filter_rule_e rule)
 {
 	int i = 0;
 	while(i < MAX_PACKET_FILTER_INFO){
@@ -336,12 +290,6 @@ static void promisc_callback_all(unsigned char *buf, unsigned int len, void* use
 		memcpy(frame->da, buf+4, 6);
 		memcpy(frame->sa, buf+10, 6);
 		frame->len = len;
-		/*  
-		* type is the first byte of Frame Control Field of 802.11 frame
-		* If the from/to ds information is needed, type could be reused as follows:
-		* frame->type = ((((ieee80211_frame_info_t *)userdata)->i_fc & 0x0100) == 0x0100) ? 2 : 1;
-		* 1: from ds; 2: to ds
-		*/		
 		frame->type = *buf;
 		frame->rssi = ((ieee80211_frame_info_t *)userdata)->rssi;
 

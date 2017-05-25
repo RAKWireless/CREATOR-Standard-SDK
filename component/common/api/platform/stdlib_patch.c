@@ -23,7 +23,6 @@
 		DiagStrtokPatch
 
  */
-#ifndef CONFIG_PLATFORM_8711B
 
 #include <stdarg.h>
 
@@ -915,4 +914,6 @@ u32  DiagSPrintfPatch(
 	(void)VSprintfPatch((char*)buf, fmt, ((const int *)&fmt)+1);
 	return 1;
 }
-#endif
+
+
+

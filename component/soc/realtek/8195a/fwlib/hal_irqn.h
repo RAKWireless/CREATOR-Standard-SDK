@@ -99,7 +99,7 @@ typedef enum _VECTOR_TABLE_TYPE_{
 }VECTOR_TABLE_TYPE, *PVECTOR_TABLE_TYPE;
 
 
-typedef void (*IRQ_FUN)(VOID *Data);
+typedef u32 (*IRQ_FUN)(VOID *Data);
 
 typedef struct _IRQ_HANDLE_ {
     IRQ_FUN     IrqFun;

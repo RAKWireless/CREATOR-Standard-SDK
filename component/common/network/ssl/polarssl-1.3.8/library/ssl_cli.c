@@ -1954,10 +1954,6 @@ static int ssl_parse_certificate_request( ssl_context *ssl )
         p++;
     }
 
-/* 
-	Note by Owen:
-	Test with Hostapd internal TLS, find that it didn't put the SignatureAndHashAlgorithm field
-*/
 #if defined(POLARSSL_SSL_PROTO_TLS1_2)
     if( ssl->minor_ver == SSL_MINOR_VERSION_3 )
     {

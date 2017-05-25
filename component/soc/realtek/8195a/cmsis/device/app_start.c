@@ -8,7 +8,7 @@
  */
 
 #include "rtl8195a.h"
-#include "build_info.h"
+//#include "build_info.h"
 #ifdef PLATFORM_FREERTOS
 #include "FreeRTOS.h"
 #include "task.h"
@@ -65,7 +65,7 @@ ReRegisterPlatformLogUart(
     UartIrqHandle.Data = (u32)NULL;//(u32)&UartAdapter;
     UartIrqHandle.IrqNum = UART_LOG_IRQ;
     UartIrqHandle.IrqFun = (IRQ_FUN) UartLogIrqHandleRam;
-    UartIrqHandle.Priority = 5;
+    UartIrqHandle.Priority = 0;
 
     
     //4 Register Isr handle
@@ -151,15 +151,6 @@ _WEAK int main(void)
 }
 #endif // end of #if CONFIG_APP_DEMO
 
-__weak void __low_level_init(void)   
-{
-	// weak function
-}
-
-#if defined ( __ICCARM__ )
-#pragma section="SDRBSS"
-#pragma section="SDRBSS"
-#endif
 // The Main App entry point
 void _AppStart(void)
 {
@@ -189,27 +180,7 @@ void _AppStart(void)
     vTaskStartScheduler();
 #endif
 #else
-	
-	__low_level_init();		
-#if defined ( __ICCARM__ )
-	// __iar_data_init3 replaced by __iar_cstart_call_ctors, just do c++ constructor,
-	__iar_cstart_call_ctors(NULL);
-	// clear SDRAM bss
-	u8* __sdram_bss_start__		= (u8*)__section_begin("SDRBSS");
-	u8* __sdram_bss_end__			= (u8*)__section_end("SDRBSS");
-	//DiagPrintf("clean sdram bss %8x to %8x\n\r", __sdram_bss_start__, __sdram_bss_end__);
-	if((int)__sdram_bss_end__-(int)__sdram_bss_start__ > 0)
-		memset(__sdram_bss_start__, 0, (int)__sdram_bss_end__-(int)__sdram_bss_start__);
-#elif defined ( __GNUC__ )
-	// clear SDRAM bss	
-	extern u8 __sdram_bss_start__[];
-	extern u8 __sdram_bss_end__[];
-	//DiagPrintf("clean sdram bss %8x to %8x\n\r", __sdram_bss_start__, __sdram_bss_end__);
-	if((int)__sdram_bss_end__-(int)__sdram_bss_start__ > 0)
-		_memset(__sdram_bss_start__, 0, (int)__sdram_bss_end__-(int)__sdram_bss_start__);
-#else
-	#error !!!!!!NOT Support this compiler!!!!!!
-#endif
+
 	// force SP align to 8 byte not 4 byte (initial SP is 4 byte align)
 	__asm( 
 		  "mov r0, sp\n"
@@ -218,10 +189,6 @@ void _AppStart(void)
 	);
 	
     main();
-#if defined ( __ICCARM__ )	
-	// for compile issue, If user never call this function, Liking fail 
-	__iar_data_init3();
-#endif
 #endif // end of #if CONFIG_APP_DEMO
     
 #endif  // end of else of "#ifdef CONFIG_MBED_ENABLED"

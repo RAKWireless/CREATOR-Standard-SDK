@@ -5,6 +5,7 @@ import java.util.Calendar;
 
 import android.os.Bundle;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.text.Html;
 import android.util.Log;
@@ -13,6 +14,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.View.OnClickListener;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -142,6 +144,8 @@ public class ChatActivity extends Activity {
 					text_chatDisplay.append("\n");
 					editTx_send.setText("");
 				}
+				InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+			    imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
 				
 			}
 		});
@@ -154,7 +158,7 @@ public class ChatActivity extends Activity {
             String lines[] = recvStr.split("\\r?\\n");
             for (int i = 0; i < lines.length; i++) {
                 SimpleDateFormat df = new SimpleDateFormat("HH:mm:ss");
-                String date = df.format(Calendar.getInstance().getTime());
+                //String date = df.format(Calendar.getInstance().getTime());
 
 
                 //text_chatDisplay.setTextColor(Color.parseColor("#8ebbeb"));

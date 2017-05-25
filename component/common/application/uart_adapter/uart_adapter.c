@@ -12,11 +12,10 @@
 #include "gpio_irq_api.h"   // mbed
 #include "osdep_service.h"
 #include "flash_api.h"
-#include "device_lock.h"
 #include <mDNS/mDNS.h>
 #include <example_wlan_fast_connect.h>
 #include <timer_api.h>
-#include "wifi_simple_config.h"
+
 
 /***********************************************************************
  *                                                            Macros                                                                    *
@@ -27,10 +26,8 @@
  ***********************************************************************/
 char ua_tcp_server_ip[16];
 
-_sema ua_exception_sema;
-_sema ua_print_sema;
+_Sema ua_exception_sema;
 
-int ua_started = 0;
 int ua_gpio_irq_happen = 0;
 int ua_debug_print_en = 0;
 int ua_wifi_connected = 0;
@@ -50,13 +47,11 @@ extern unsigned char psk_passphrase[NET_IF_NUM][IW_PASSPHRASE_MAX_SIZE + 1];
 extern unsigned char wpa_global_PSK[NET_IF_NUM][A_SHA_DIGEST_LEN * 2];
 
 extern wlan_init_done_ptr p_wlan_uart_adapter_callback;
-
-extern char simple_config_terminate;
 /************************************************************************
  *                                                  extern funtions                                                                       *
  ************************************************************************/
 #if CONFIG_INCLUDE_SIMPLE_CONFIG
-extern enum sc_result simple_config_test(rtw_network_info_t *);
+extern enum sc_result simple_config_test(void);
 extern int init_test_data(char *custom_pin_code);
 extern void deinit_test_data(void);
 extern void filter_add_enable();
@@ -74,7 +69,7 @@ static void uartadapter_uart_irq(uint32_t id, SerialIrq event)
 
 	if(event == RxIrq) {
 		ua_socket->uart.recv_buf[ua_socket->uart.pwrite++] = serial_getc(&ua_socket->uart.uart_sobj);
-		rtw_up_sema_from_isr(&ua_socket->uart.action_sema);	//up action semaphore 
+		RtlUpSemaFromISR(&ua_socket->uart.action_sema);	//up action semaphore 
 		
 		if(ua_socket->uart.pwrite > (UA_UART_RECV_BUFFER_LEN -1)){	//restart from  head if  reach tail
 			ua_socket->uart.pwrite = 0;
@@ -186,11 +181,11 @@ int uartadapter_uart_write(ua_socket_t *ua_socket, char *pbuf, size_t size)
 		return ret;
 	}	
 
-	while(rtw_down_sema(&ua_socket->uart.dma_tx) == pdTRUE){			
+	while(RtlDownSema(&ua_socket->uart.dma_tx) == pdTRUE){			
 	    	ret = serial_send_stream_dma(&ua_socket->uart.uart_sobj, pbuf, size);
 	    	if(ret != HAL_OK){
 			ua_printf(UA_ERROR, "uart dma tx error %d!!", ret);
-			rtw_up_sema(&ua_socket->uart.dma_tx);
+			RtlUpSema(&ua_socket->uart.dma_tx);
 			return -1;
 		}else{
 			return 0;
@@ -204,7 +199,7 @@ void uartadapter_uart_send_stream_done(uint32_t id)
 {
 	ua_socket_t *ua_socket = (ua_socket_t *)id;
 	
-	rtw_up_sema_from_isr(&ua_socket->uart.dma_tx);
+	RtlUpSemaFromISR(&ua_socket->uart.dma_tx);
 }
 
 static void uartadapter_uart_rx_thread(void* param)
@@ -224,7 +219,7 @@ static void uartadapter_uart_rx_thread(void* param)
 
 
 	while(1){
-		if(rtw_down_timeout_sema(&ua_socket->uart.action_sema, 1000) == pdTRUE){
+		if(RtlDownSemaWithTimeout(&ua_socket->uart.action_sema, 1000) == pdTRUE){
 			ret = uartadapter_uart_recv_data(ua_socket);		
 			if(ret == -1){
 				ua_printf(UA_ERROR, "uart recv data error!");
@@ -244,7 +239,7 @@ static void uartadapter_uart_rx_thread(void* param)
 				ua_socket->uart.uart_ps_cnt = 5;
 				ua_socket->uart.uart_ps = 1;
 				if(ua_socket->uart.uart_ps && ua_socket->tcp.tcp_ps){
-					pmu_release_wakelock(UA_WAKELOCK);		
+					release_wakelock(UA_WAKELOCK);		
 				}
 			}
 		}
@@ -254,7 +249,7 @@ static void uartadapter_uart_rx_thread(void* param)
 }
 
 void uartadapter_uart_gpio_wakeup_callback (uint32_t id, gpio_irq_event event) {
-	pmu_acquire_wakelock(UA_WAKELOCK);
+	acquire_wakelock(UA_WAKELOCK);
 	ua_socket_t *ua_socket = (ua_socket_t *)id;
 	ua_socket->uart.uart_ps = 0;
 	ua_socket->uart.uart_ps_cnt = 0;	
@@ -431,9 +426,9 @@ int uartadapter_flasherase(int flashadd, int erase_bytelen)
 {
 	int ret = 0;
     	flash_t flash;
-	device_mutex_lock(RT_DEV_LOCK_FLASH);
+	
 	flash_erase_sector(&flash, flashadd);
-	device_mutex_unlock(RT_DEV_LOCK_FLASH);
+
 	return ret;
 }
 
@@ -451,7 +446,7 @@ void uartadapter_gpio_irq (uint32_t id, gpio_irq_event event)
        ua_printf(UA_DEBUG, "GPIO push button!!");
 	
        ua_gpio_irq_happen = 1;
-	rtw_up_sema_from_isr(&ua_exception_sema);
+	RtlUpSemaFromISR(&ua_exception_sema);
 }
 
 void uartadapter_gtimer_timeout_handler(uint32_t id)
@@ -476,7 +471,7 @@ void uartadapter_gpio_init(ua_socket_t *ua_socket)
     	gpio_irq_enable(&ua_socket->gpio.gpio_btn_irq);
 
     	// Initial a periodical timer
-    	gtimer_init(&ua_socket->gpio.gpio_timer, UA_GPIO_TIMER);
+    	gtimer_init(&ua_socket->gpio.gpio_timer, TIMER0);
     	//gtimer_start_periodical(&ua_socket->gpio.gpio_timer, 100000, (void*)timer_timeout_handler, (uint32_t)&ua_socket->gpio.gpio_led);
 }
 
@@ -521,49 +516,6 @@ int uartadapter_strncmp(char *cs, char *ct, size_t count)
     
     	return 0;
 }
-
-int uartadapter_control_write_tcp_info_into_flash(ua_socket_t *ua_socket)
-{	
-	int ret;
-	UA_SOCKET_CHECK_2(ua_socket);	
-
-	ua_printf(UA_INFO, "\r\nWrite Uart Adapter tcp connection new profile to flash");
-
-	uartadapter_flasherase(UA_FAST_RECONNECT_TCP_DATA, 0x1000);
-	ret = uartadapter_flashwrite(UA_FAST_RECONNECT_TCP_DATA, (char *)&ua_socket->tcp, sizeof(ua_tcp_socket_t));
-	return ret;
-}
-
-int uartadapter_control_read_tcp_info_and_connect(ua_socket_t *ua_socket)
-{
-	int ret = 0;
-	ua_tcp_socket_t tcp = {0};
-	
-	UA_SOCKET_CHECK_2(ua_socket);	
-
-	ua_printf(UA_INFO, "\r\nRead Uart Adapter tcp connection profile from flash");
-
-	uartadapter_flashread(UA_FAST_RECONNECT_TCP_DATA, (u8*)&tcp, sizeof(ua_tcp_socket_t));
-	if(tcp.group_id != ~0x0){
-		if(tcp.group_id){
-			ua_socket->tcp.group_id = tcp.group_id;
-			ua_socket->tcp.server_port = tcp.server_port;
-			ua_socket->tcp.client_port = tcp.client_port;
-			memcpy(ua_socket->tcp.client_ip, tcp.client_ip, 16);		
-			
-			if(xTaskCreate(uartadapter_tcp_transmit_server_thread, ((const char*)"tserver"), 256, (void *)ua_socket->tcp.server_port, UA_UART_THREAD_PRIORITY, NULL) != pdPASS)
-				ua_printf(UA_ERROR, "%s xTaskCreate(tcp server) failed", __FUNCTION__);		
-
-			strncpy(ua_tcp_server_ip, ua_socket->tcp.client_ip, 16);
-			if(xTaskCreate(uartadapter_tcp_transmit_client_forever_thread, ((const char*)"tclient"), 256, (void *)ua_socket->tcp.client_port, UA_UART_THREAD_PRIORITY, NULL) != pdPASS)
-				ua_printf(UA_ERROR, "%s xTaskCreate(tcp client) failed", __FUNCTION__);				
-			}
-	}
-	else
-		ua_printf(UA_INFO, "%s : read tcp info nothing", __FUNCTION__);
-	return 0;
-}
-
 int uartadapter_control_set_req_handle(ua_socket_t *ua_socket, u8 *pbuf, u32 sz)
 {
 	u8 *p = pbuf;
@@ -629,9 +581,7 @@ int uartadapter_control_set_req_handle(ua_socket_t *ua_socket, u8 *pbuf, u32 sz)
 					close(ua_socket->tcp.transmit_server_listen_socket);
 				}				
 				if(xTaskCreate(uartadapter_tcp_transmit_server_thread, ((const char*)"tserver"), 256, (void *)port, UA_UART_THREAD_PRIORITY, NULL) != pdPASS)
-					ua_printf(UA_ERROR, "%s xTaskCreate(tcp server) failed", __FUNCTION__);		
-				ua_socket->tcp.server_port = port;
-				uartadapter_control_write_tcp_info_into_flash(ua_socket);
+					ua_printf(UA_ERROR, "%s xTaskCreate(tcp server) failed", __FUNCTION__);					
 				vTaskDelay(50);
 				ua_printf(UA_DEBUG, "CREATE TCP SERVER WITH PORT %d.\n", port);
 				//TODO
@@ -650,18 +600,7 @@ int uartadapter_control_set_req_handle(ua_socket_t *ua_socket, u8 *pbuf, u32 sz)
 							close(ua_socket->tcp.transmit_recv_socket);		
 							ua_socket->tcp.transmit_recv_socket = -1;
        					}	
-
-						if(ua_socket->tcp.transmit_send_socket != -1){
-							ua_printf(UA_INFO,"uart tcp transmit send socket %d closed by control socket!", ua_socket->tcp.transmit_send_socket);	
-							close(ua_socket->tcp.transmit_send_socket);		
-							ua_socket->tcp.transmit_send_socket = -1;	
-		       				ua_printf(UA_INFO, "DISCONNECT FROM TCP SERVER.\n");	
-							memset(ua_socket->tcp.client_ip, 0, 16);
-							ua_socket->tcp.client_port = 0;
-						}						
-						ua_printf(UA_INFO, "DELETE TCP SERVER \n");	
-						ua_socket->tcp.server_port = 0;
-						uartadapter_control_write_tcp_info_into_flash(ua_socket);
+						ua_printf(UA_INFO, "DELETE TCP SERVER \n");											
 					}else{
 						ua_printf(UA_INFO, "DELETE TCP SERVER FAILED: port not match\n");	
 						return -1;
@@ -684,9 +623,6 @@ int uartadapter_control_set_req_handle(ua_socket_t *ua_socket, u8 *pbuf, u32 sz)
 					ua_printf(UA_INFO, "CONNECT TO TCP SERVER, IP %s PORT %d Failed.\n", ua_tcp_server_ip, port);				
 					return -1;
 				}
-				memcpy(ua_socket->tcp.client_ip, ua_tcp_server_ip, 16);
-				ua_socket->tcp.client_port = port;	
-				uartadapter_control_write_tcp_info_into_flash(ua_socket);
 				break;
 			case UART_CTRL_TYPE_TCP_CLIENT_DISCONNECT:
 				server_ip = (*(p+3))<<24 | (*(p+2))<<16 | (*(p+1))<<8 | *p;
@@ -700,10 +636,7 @@ int uartadapter_control_set_req_handle(ua_socket_t *ua_socket, u8 *pbuf, u32 sz)
 						ua_printf(UA_INFO,"uart tcp transmit send socket %d closed by control socket!", ua_socket->tcp.transmit_send_socket);	
 						close(ua_socket->tcp.transmit_send_socket);		
 						ua_socket->tcp.transmit_send_socket = -1;	
-       					ua_printf(UA_INFO, "DISCONNECT FROM TCP SERVER.\n");	
-						memset(ua_socket->tcp.client_ip, 0, 16);
-						ua_socket->tcp.client_port = 0;
-						uartadapter_control_write_tcp_info_into_flash(ua_socket);
+       					ua_printf(UA_INFO, "DISCONNECT FROM TCP SERVER.\n");											
 					}else{
        					ua_printf(UA_INFO, "DISCONNECT FROM TCP SERVER FAILED: port or IP not match.\n");					
 						return -1;
@@ -716,13 +649,16 @@ int uartadapter_control_set_req_handle(ua_socket_t *ua_socket, u8 *pbuf, u32 sz)
 			case UART_CTRL_TYPE_TCP_GROUP_ID:
 				ua_socket->tcp.group_id = *p;
 				ua_printf(UA_INFO,"SET TCP GROUP ID to %d!", *p);	
-				sprintf(txt_buf2, "groupid:%d, tcpserver:%d", ua_socket->tcp.group_id, ua_socket->tcp.server_port);						
+				if(ua_socket->tcp.transmit_server_listen_socket >= 0){
+					getsockname (ua_socket->tcp.transmit_server_listen_socket, (struct sockaddr *)&server_addr, &server_addr_len);
+					sprintf(txt_buf2, "groupid:%d, tcpserver:%d", *p, ntohs(server_addr.sin_port));		
+				}else{
+					sprintf(txt_buf2, "groupid:%d, tcpserver:%d", *p, 0);						
+				}
 				TXTRecordCreate(&txtRecord, sizeof(txt_buf), txt_buf);
 				TXTRecordSetValue(&txtRecord, "groupid", strlen(txt_buf2), txt_buf2);
 				mDNSUpdateService(ua_socket->dnsServiceRef, &txtRecord, 0);
 				mDNSUpdateService(ua_socket->dnsServiceRef2, &txtRecord, 0);
-
-				uartadapter_control_write_tcp_info_into_flash(ua_socket);
 				
 				break;				
 			default:
@@ -825,8 +761,7 @@ int uartadapter_control_process(ua_socket_t *ua_socket, char *pbuf, size_t size)
 					*(rsp + sz) = UART_CTRL_MODE_SET_RSP;
 					sz ++;
 					sprintf(rsp + sz, "\n");
-					sz ++;	
-					vTaskDelay(100);
+					sz ++;				
 					uartadapter_tcp_send_control(ua_socket, rsp, sz);
 				}
 				break;
@@ -838,8 +773,7 @@ int uartadapter_control_process(ua_socket_t *ua_socket, char *pbuf, size_t size)
 				u16 type = (*p)<<8 | *(p+1);
 				uartadapter_control_get_req_handle(ua_socket, type, (u8*)rsp, &sz);
 				sprintf(rsp + sz, "\n");
-				sz ++;		
-				vTaskDelay(100);				
+				sz ++;				
 				uartadapter_tcp_send_control(ua_socket, rsp, sz);
 				break;
 			}
@@ -873,7 +807,7 @@ int uartadapter_tcpclient(ua_socket_t *ua_socket, const char *host_ip, unsigned 
 	iSockFD = socket(AF_INET, SOCK_STREAM, 0);
 	if( iSockFD < 0 ) {
 		ua_printf(UA_ERROR, "TCP ERROR: create tcp client socket fd error!");
-		return -1;
+		return 0;
 	}
 
 	ua_printf(UA_DEBUG, "TCP: ServerIP=%s port=%d.", host_ip, usPort);
@@ -881,26 +815,26 @@ int uartadapter_tcpclient(ua_socket_t *ua_socket, const char *host_ip, unsigned 
 	// connecting to TCP server
 	iStatus = connect(iSockFD, (struct sockaddr *)&sAddr, iAddrSize);
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp client connect server error %d!", iStatus);
+		ua_printf(UA_ERROR, "TCP ERROR: tcp client connect server error %d!", iStatus);
 		goto Exit;
 	}  
 
 	iStatus = setsockopt(iSockFD, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp client socket set TCP_NODELAY error! ");
+		printf("\n\rTCP ERROR: tcp client socket set TCP_NODELAY error! ");
 		goto Exit;
 	}
 
 	iStatus = setsockopt(iSockFD, SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(enable));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp client socket set SO_KEEPALIVE error! ");
+		printf("\n\rTCP ERROR: tcp client socket set SO_KEEPALIVE error! ");
 		goto Exit;
 	}		
 
 #if LWIP_SO_SNDTIMEO
 	iStatus = setsockopt(iSockFD, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(int));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp client socket set SO_SNDTIMEO error! ");
+		printf("\n\rTCP ERROR: tcp client socket set SO_SNDTIMEO error! ");
 		goto Exit;
 	}
 #endif	
@@ -908,7 +842,7 @@ int uartadapter_tcpclient(ua_socket_t *ua_socket, const char *host_ip, unsigned 
 #if LWIP_SO_RCVTIMEO
 	iStatus = setsockopt(iSockFD, SOL_SOCKET, SO_RCVTIMEO, &send_timeout, sizeof(int));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp client socket set SO_RCVTIMEO error! ");
+		printf("\n\rTCP ERROR: tcp client socket set SO_RCVTIMEO error! ");
 		goto Exit;
 	}	
 #endif	 
@@ -1066,32 +1000,6 @@ void uartadapter_tcp_transmit_client_thread(void *param)
 	vTaskDelete(NULL);
 }
 
-void uartadapter_tcp_transmit_client_forever_thread(void *param)
-{
-	ua_socket_t *ua_socket = ua_global_socket;
-	unsigned short port = (int)param;
-	int ret = 0;
-	UA_SOCKET_CHECK(ua_socket);		
-	
-	ua_printf(UA_DEBUG, "Uart Adapter: Start Tcp Transmit  Client forever thread!");
-
-	do{
-		ret = uartadapter_tcpclient(ua_socket, ua_tcp_server_ip, port);
-		if(ret != 0){
-			ua_printf(UA_INFO, "Uart Adapter: Try to connect to TCP server again");	
-			vTaskDelay(3000);
-		}
-	}while(ret != 0);
-
-	uartadapter_gpio_led_mode(ua_socket, UART_ADAPTER_LED_SLOW_TWINKLE);		
-	
-#if defined(INCLUDE_uxTaskGetStackHighWaterMark) && (INCLUDE_uxTaskGetStackHighWaterMark == 1)
-	ua_printf(UA_DEBUG, "Min available stack size of %s = %d * %d bytes\n\r", __FUNCTION__, uxTaskGetStackHighWaterMark(NULL), sizeof(portBASE_TYPE));
-#endif
-	ua_printf(UA_DEBUG, "TCP: Tcp transmit client thread delete!");
-	vTaskDelete(NULL);
-}
-
 void uartadapter_tcp_send_data(ua_socket_t *ua_socket, char *buffer, int size)
 {    
 	int                 iStatus;
@@ -1099,10 +1007,8 @@ void uartadapter_tcp_send_data(ua_socket_t *ua_socket, char *buffer, int size)
 	UA_SOCKET_CHECK(ua_socket);		
 	
 	if(ua_socket->tcp.chat_socket != -1){	
-		ua_socket->tcp.send_flag = 1;
-		rtw_down_sema(&ua_socket->uart.tcp_tx_rx_sema);			
-		iStatus = send(ua_socket->tcp.chat_socket, buffer, size, 0 );
-		rtw_up_sema(&ua_socket->uart.tcp_tx_rx_sema);	
+		ua_socket->tcp.send_flag = 1;			
+		iStatus = send(ua_socket->tcp.chat_socket, buffer, size, 0 );	
 		ua_socket->tcp.send_flag = 0;				
 		if( iStatus <= 0 ){
 			ua_printf(UA_ERROR, "tcp chat socket send data error!  iStatus:%d!", iStatus);
@@ -1166,46 +1072,37 @@ void uartadapter_tcp_except_handler(ua_socket_t *ua_socket, fd_set *exceptfds)
 		close(ua_socket->tcp.transmit_recv_socket);		
 		ua_socket->tcp.transmit_recv_socket = -1;
 		uartadapter_gpio_led_mode(ua_socket, UART_ADAPTER_LED_FAST_TWINKLE);		
-#if 0
 		if(ua_socket->tcp.transmit_server_listen_socket != -1){
 			ua_printf(UA_INFO,"uart tcp transmit server socket %d exception happen, need to close!", ua_socket->tcp.transmit_server_listen_socket);	
 			close(ua_socket->tcp.transmit_server_listen_socket);		
 			ua_socket->tcp.transmit_server_listen_socket = -1;	
 		}
-#endif		
 	}		
 
        if(ua_socket->tcp.transmit_send_socket != -1 && FD_ISSET(ua_socket->tcp.transmit_send_socket, exceptfds)){
 		ua_printf(UA_INFO,"uart tcp transmit send socket %d exception happen, need to close!", ua_socket->tcp.transmit_send_socket);	
 		close(ua_socket->tcp.transmit_send_socket);		
 		ua_socket->tcp.transmit_send_socket = -1;
-		uartadapter_gpio_led_mode(ua_socket, UART_ADAPTER_LED_FAST_TWINKLE);
-
-		strncpy(ua_tcp_server_ip, ua_socket->tcp.client_ip, 16);
-		if(xTaskCreate(uartadapter_tcp_transmit_client_forever_thread, ((const char*)"tclient"), 256, (void *)ua_socket->tcp.client_port, UA_UART_THREAD_PRIORITY, NULL) != pdPASS)
-			ua_printf(UA_ERROR, "%s xTaskCreate(tcp client) failed", __FUNCTION__);				
+		uartadapter_gpio_led_mode(ua_socket, UART_ADAPTER_LED_FAST_TWINKLE);				
 	}		   
 
        if(ua_socket->tcp.chat_server_listen_socket != -1 && FD_ISSET(ua_socket->tcp.chat_server_listen_socket, exceptfds)){ 
 		ua_printf(UA_INFO,"uart tcp chat server socket %d exception happen, need to restart!", ua_socket->tcp.chat_server_listen_socket);	
 		close(ua_socket->tcp.chat_server_listen_socket);		
-		ua_socket->tcp.chat_server_listen_socket = -1;   
-		uartadapter_tcpserver(ua_socket, UA_CHAT_SOCKET_PORT, 0);				
+		ua_socket->tcp.chat_server_listen_socket = -1;    
 	}
 
        if(ua_socket->tcp.control_server_listen_socket != -1 && FD_ISSET(ua_socket->tcp.control_server_listen_socket, exceptfds)){ 
 		ua_printf(UA_INFO,"uart tcp control server socket %d exception happen, need to restart!", ua_socket->tcp.control_server_listen_socket);	
 		close(ua_socket->tcp.control_server_listen_socket);		
 		ua_socket->tcp.control_server_listen_socket = -1;   
-		uartadapter_tcpserver(ua_socket, UA_CONTROL_SOCKET_PORT, 1);				
 	}     
 
        if(ua_socket->tcp.transmit_server_listen_socket != -1 && FD_ISSET(ua_socket->tcp.transmit_server_listen_socket, exceptfds)){ 
 		ua_printf(UA_INFO,"uart tcp transmit server socket %d exception happen, need to close!", ua_socket->tcp.transmit_server_listen_socket);	
 		close(ua_socket->tcp.transmit_server_listen_socket);		
 		ua_socket->tcp.transmit_server_listen_socket = -1;
-		//uartadapter_gpio_led_mode(ua_socket, UART_ADAPTER_LED_FAST_TWINKLE);
-		uartadapter_tcpserver(ua_socket, ua_socket->tcp.server_port, 2);				
+		uartadapter_gpio_led_mode(ua_socket, UART_ADAPTER_LED_FAST_TWINKLE);				
 	}    
 
 }
@@ -1216,10 +1113,8 @@ void uartadapter_tcp_chat_socket_handler(ua_socket_t *ua_socket, char *tcp_rxbuf
 		
 	UA_SOCKET_CHECK(ua_socket);	
 
-	ua_socket->tcp.recv_flag = 1; 
-	rtw_down_sema(&ua_socket->uart.tcp_tx_rx_sema);
+	ua_socket->tcp.recv_flag = 1;   	
 	recv_len = recv(ua_socket->tcp.chat_socket, tcp_rxbuf, UA_UART_FRAME_LEN, MSG_DONTWAIT);
-	rtw_up_sema(&ua_socket->uart.tcp_tx_rx_sema);
        ua_socket->tcp.recv_flag = 0;	
 	if(recv_len < 0){
 		ua_printf(UA_ERROR, "Tcp Chat Socket %d Recv Error, ret = %d", ua_socket->tcp.chat_socket, recv_len);
@@ -1273,13 +1168,11 @@ void uartadapter_tcp_transmit_socket_handler(ua_socket_t *ua_socket, char *tcp_r
 		ua_printf(UA_INFO, "Tcp Transmit Recv Socket %d closed", ua_socket->tcp.transmit_recv_socket);
 		close(ua_socket->tcp.transmit_recv_socket);
 		ua_socket->tcp.transmit_recv_socket = -1;	
-#if 0		
 		if(ua_socket->tcp.transmit_server_listen_socket != -1){
 			ua_printf(UA_INFO, "Tcp Transmit Server Socket %d closed", ua_socket->tcp.transmit_server_listen_socket);
 			close(ua_socket->tcp.transmit_server_listen_socket);
 			ua_socket->tcp.transmit_server_listen_socket = -1;	
 		}
-#endif		
 	}else{	
 		uartadapter_uart_write(ua_socket, tcp_rxbuf, recv_len);
 		ua_socket->tcp.rx_cnt += recv_len;
@@ -1309,20 +1202,20 @@ void uartadapter_tcp_chat_listen_socket_handler(ua_socket_t *ua_socket)
 
 	iStatus = setsockopt(ua_socket->tcp.chat_socket, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp chat socket set opt TCP_NODELAY error! ");
+		printf("\n\rTCP ERROR: tcp chat socket set opt TCP_NODELAY error! ");
 		goto EXIT;
 	}
 
 	iStatus = setsockopt(ua_socket->tcp.chat_socket, SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(enable));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp chat socket set opt SO_KEEPALIVE error! ");
+		printf("\n\rTCP ERROR: tcp chat socket set opt SO_KEEPALIVE error! ");
 		goto EXIT;
 	}	
 
 #if LWIP_SO_SNDTIMEO
 	iStatus = setsockopt(ua_socket->tcp.chat_socket, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(send_timeout));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp client socket set opt error! ");
+		printf("\n\rTCP ERROR: tcp client socket set opt error! ");
 		goto EXIT;
 	}
 #endif
@@ -1330,12 +1223,12 @@ void uartadapter_tcp_chat_listen_socket_handler(ua_socket_t *ua_socket)
 #if LWIP_SO_RCVTIMEO
 	iStatus = setsockopt(ua_socket->tcp.chat_socket, SOL_SOCKET, SO_RCVTIMEO, &send_timeout, sizeof(send_timeout));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp client socket set opt error! ");
+		printf("\n\rTCP ERROR: tcp client socket set opt error! ");
 		goto EXIT;
 	}	
 #endif
 
-	ua_printf(UA_INFO, "Accept new chat socket %d on port %d successfully.", ua_socket->tcp.chat_socket, htons(sAddr.sin_port));				       			
+	ua_printf(UA_INFO, "Accept new chat socket %d on port %d successfully.", ua_socket->tcp.chat_socket, sAddr.sin_port);				       			
 	if(old_chat_socket != -1)
 	{
 		close(old_chat_socket);
@@ -1372,20 +1265,20 @@ void uartadapter_tcp_control_listen_socket_handler(ua_socket_t *ua_socket)
 
 	iStatus = setsockopt(ua_socket->tcp.control_socket, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp chat socket set opt TCP_NODELAY error! ");
+		printf("\n\rTCP ERROR: tcp chat socket set opt TCP_NODELAY error! ");
 		goto EXIT;
 	}
 
 	iStatus = setsockopt(ua_socket->tcp.control_socket, SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(enable));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp chat socket set opt SO_KEEPALIVE error! ");
+		printf("\n\rTCP ERROR: tcp chat socket set opt SO_KEEPALIVE error! ");
 		goto EXIT;
 	}	
 
 #if LWIP_SO_SNDTIMEO
 	iStatus = setsockopt(ua_socket->tcp.control_socket, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(send_timeout));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp client socket set opt error! ");
+		printf("\n\rTCP ERROR: tcp client socket set opt error! ");
 		goto EXIT;
 	}
 #endif
@@ -1393,12 +1286,12 @@ void uartadapter_tcp_control_listen_socket_handler(ua_socket_t *ua_socket)
 #if LWIP_SO_RCVTIMEO
 	iStatus = setsockopt(ua_socket->tcp.control_socket, SOL_SOCKET, SO_RCVTIMEO, &send_timeout, sizeof(send_timeout));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp client socket set opt error! ");
+		printf("\n\rTCP ERROR: tcp client socket set opt error! ");
 		goto EXIT;
 	}	
 #endif
 
-	ua_printf(UA_INFO, "Accept new control socket %d on port %d successfully.", ua_socket->tcp.control_socket, htons(sAddr.sin_port));				       			       			
+	ua_printf(UA_INFO, "Accept new control socket %d on port %d successfully.", ua_socket->tcp.control_socket, sAddr.sin_port);				       			       			
 	if(old_control_socket != -1)
 	{
 		close(old_control_socket);
@@ -1435,20 +1328,20 @@ void uartadapter_tcp_transmit_listen_socket_handler(ua_socket_t *ua_socket)
 
 	iStatus = setsockopt(ua_socket->tcp.transmit_recv_socket, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp transmit recv socket set opt TCP_NODELAY error! ");
+		printf("\n\rTCP ERROR: tcp transmit recv socket set opt TCP_NODELAY error! ");
 		goto EXIT;
 	}
 
 	iStatus = setsockopt(ua_socket->tcp.transmit_recv_socket, SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(enable));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp transmit recv socket set opt SO_KEEPALIVE error! ");
+		printf("\n\rTCP ERROR: tcp transmit recv socket set opt SO_KEEPALIVE error! ");
 		goto EXIT;
 	}		
 
 #if LWIP_SO_SNDTIMEO
 	iStatus = setsockopt(ua_socket->tcp.transmit_recv_socket, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(send_timeout));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp client socket set opt error! ");
+		printf("\n\rTCP ERROR: tcp client socket set opt error! ");
 		goto EXIT;
 	}
 #endif	
@@ -1456,12 +1349,12 @@ void uartadapter_tcp_transmit_listen_socket_handler(ua_socket_t *ua_socket)
 #if LWIP_SO_RCVTIMEO
 	iStatus = setsockopt(ua_socket->tcp.transmit_recv_socket, SOL_SOCKET, SO_RCVTIMEO, &send_timeout, sizeof(send_timeout));
 	if (iStatus < 0) {
-		ua_printf(UA_ERROR, "tcp client socket set opt error! ");
+		printf("\n\rTCP ERROR: tcp client socket set opt error! ");
 		goto EXIT;
 	}	
 #endif	 
 
-	ua_printf(UA_INFO, "Accept new transmit recv socket %d on port %d successfully.", ua_socket->tcp.transmit_recv_socket, htons(sAddr.sin_port));				       			       			
+	ua_printf(UA_INFO, "Accept new transmit recv socket %d on port %d successfully.", ua_socket->tcp.transmit_recv_socket, sAddr.sin_port);				       			       			
 	if(old_transmit_recv_socket != -1)
 	{
 		close(old_transmit_recv_socket);
@@ -1525,7 +1418,6 @@ void uartadapter_tcp_select_restart_handler(ua_socket_t *ua_socket)
 		ua_socket->tcp.transmit_server_listen_socket = -1;
 		uartadapter_gpio_led_mode(ua_socket, UART_ADAPTER_LED_FAST_TWINKLE);									
 	}    	
-	   
 }
 
 void uartadapter_tcp_select_thread(void *param)
@@ -1542,7 +1434,7 @@ void uartadapter_tcp_select_thread(void *param)
 
 	tcp_rxbuf = pvPortMalloc(UA_UART_FRAME_LEN);
 	if(NULL == tcp_rxbuf){
-		ua_printf(UA_ERROR, "Allocate select buffer failed.\n");
+		printf("\n\rTCP: Allocate client buffer failed.\n");
 		return;
 	}	
 	
@@ -1615,7 +1507,7 @@ void uartadapter_tcp_select_thread(void *param)
         	if(ret > 0){
 #if UA_PS_ENABLE	
 			//printf("select get lock \r\n");
-			pmu_acquire_wakelock(UA_WAKELOCK);	
+			acquire_wakelock(UA_WAKELOCK);	
 			ua_socket->tcp.tcp_ps = 0;
 			ua_socket->tcp.tcp_ps_cnt = 0;
 #endif
@@ -1655,7 +1547,7 @@ void uartadapter_tcp_select_thread(void *param)
 				ua_socket->tcp.tcp_ps_cnt = 5;				
 				ua_socket->tcp.tcp_ps = 1;		
 				if(ua_socket->uart.uart_ps && ua_socket->tcp.tcp_ps){
-					pmu_release_wakelock(UA_WAKELOCK);	
+					release_wakelock(UA_WAKELOCK);	
 				}
 			}
 		}
@@ -1674,7 +1566,7 @@ int uartadapter_connect_wifi(rtw_network_info_t *p_wifi, uint32_t channel, uint8
 	int ret;
 	while (1) {
 		if(wifi_set_pscan_chan((uint8_t *)&channel, &pscan_config, 1) < 0){
-			ua_printf(UA_ERROR, "wifi set partial scan channel fail");
+			printf("\n\rERROR: wifi set partial scan channel fail");
 			ret = SC_TARGET_CHANNEL_SCAN_FAIL;
 			return ret;
 		}
@@ -1720,9 +1612,7 @@ static int uartadapter_load_wifi_config()
 	
 
 	data = (struct wlan_fast_reconnect *)rtw_zmalloc(sizeof(struct wlan_fast_reconnect));
-	device_mutex_lock(RT_DEV_LOCK_FLASH);
 	flash_stream_read(&flash, FAST_RECONNECT_DATA, sizeof(struct wlan_fast_reconnect), (uint8_t *)data);
-	device_mutex_unlock(RT_DEV_LOCK_FLASH);
 	if(*((uint32_t *) data) != ~0x0){
 	    memcpy(psk_essid, data->psk_essid, sizeof(data->psk_essid));
 	    memcpy(psk_passphrase, data->psk_passphrase, sizeof(data->psk_passphrase));
@@ -1777,38 +1667,24 @@ static int uartadapter_load_wifi_config()
 	}
 }
 
-#if CONFIG_INCLUDE_SIMPLE_CONFIG
 int uartadapter_simple_config(char *pin_code){
-	char *custom_pin_code = NULL;
+#if CONFIG_INCLUDE_SIMPLE_CONFIG
 	enum sc_result ret = SC_ERROR;
-
-	simple_config_terminate = 0;
-	
-#if !UA_SC_SOFTAP_EN
-    wifi_enter_promisc_mode();
-#endif
-
-	if(init_test_data(custom_pin_code) == 0){
-	
-#if !UA_SC_SOFTAP_EN	
-	    filter_add_enable(); 
-#endif	    
-		ret = simple_config_test(NULL);
-		deinit_test_data();
-		
-#if !UA_SC_SOFTAP_EN		
+	wifi_enter_promisc_mode();
+	if(init_test_data(pin_code) == 0){
+		filter_add_enable();
+		ret = simple_config_test();
+		//print_simple_config_result(ret);
 		remove_filter();
-#endif		
-		print_simple_config_result(ret);
-	}
-	if(ret == SC_SUCCESS){
-		return RTW_SUCCESS;
-	}
-	else{
+		if(ret == SC_SUCCESS)
+			return RTW_SUCCESS;
+		else
+			return RTW_ERROR;
+	}else{
 		return RTW_ERROR;
 	}
-}
 #endif	
+}
 
 #define _________MDNS__RELATED________________________
 static void uartadapter_mdns_start(ua_socket_t *ua_socket, int is_restart)
@@ -1816,8 +1692,6 @@ static void uartadapter_mdns_start(ua_socket_t *ua_socket, int is_restart)
 	TXTRecordRef txtRecord;
 	unsigned char txt_buf[100] = {0};	// use fixed buffer for text record to prevent malloc/free
 	unsigned char txt_buf2[100] = {0};	// use fixed buffer for text record to prevent malloc/free
-	struct sockaddr_in server_addr;
-	int server_addr_len = sizeof(server_addr);
 	
 	struct netif * pnetif = &xnetif[0];	
 
@@ -1838,9 +1712,9 @@ static void uartadapter_mdns_start(ua_socket_t *ua_socket, int is_restart)
 				pnetif->hwaddr[0], pnetif->hwaddr[1], pnetif->hwaddr[2],
 				pnetif->hwaddr[3], pnetif->hwaddr[4], pnetif->hwaddr[5]);
 
-		sprintf(txt_buf2, "groupid:%d, tcpserver:%d", ua_socket->tcp.group_id, ua_socket->tcp.server_port);						
 		TXTRecordCreate(&txtRecord, sizeof(txt_buf), txt_buf);
-		TXTRecordSetValue(&txtRecord, "groupid", strlen(txt_buf2), txt_buf2);		
+		sprintf(txt_buf2, "groupid:0, tcpserver:0");		
+		TXTRecordSetValue(&txtRecord, "groupid", strlen(txt_buf2), txt_buf2);
 				
 		ua_socket->dnsServiceRef = mDNSRegisterService(hostname, "_uart_data._tcp", "local", 5001, &txtRecord);
 		if(ua_socket->dnsServiceRef == NULL)
@@ -1904,13 +1778,6 @@ static void uartadapter_auto_reconnect(void* param)
 		ua_printf(UA_INFO, "reconnect IP address changed from %d.%d.%d.%d to %d.%d.%d.%d", iptab[3], iptab[2], iptab[1], iptab[0], iptab2[3], iptab2[2], iptab2[1], iptab2[0]);		
 		memcpy(&ua_socket->ip, &xnetif[0].ip_addr, sizeof(ip_addr_t));
 		ua_reconnect_ip_change = 1;	
-
- 		ua_printf(UA_INFO,"IP changed, remove TCP information in FLASH!");	
-		ua_socket->tcp.group_id = 0;
-		ua_socket->tcp.client_port = 0;	
-		ua_socket->tcp.server_port = 0;	
-		memset(ua_socket->tcp.client_ip, 0, 16);
-		
 		uartadapter_mdns_start(ua_socket, 1);
 	}
 	
@@ -1937,13 +1804,11 @@ RETRY:
 		ret = uartadapter_load_wifi_config();
 		if(ret != RTW_SUCCESS){
 			vTaskDelay(2000);			
-#if CONFIG_INCLUDE_SIMPLE_CONFIG
        		ret = uartadapter_simple_config(NULL);
        		if(ret != RTW_SUCCESS){
 				ua_printf(UA_INFO, "Simple configure connect failed, try again!");                     		
        			goto RETRY;
        		}
-#endif
 		}		
 #if CONFIG_AUTO_RECONNECT
 	    	wifi_set_autoreconnect(1);
@@ -1969,10 +1834,6 @@ RETRY:
 
 	vTaskDelay(50);
 
-      	uartadapter_control_read_tcp_info_and_connect(ua_socket);
-
-	vTaskDelay(50);	
-
       	uartadapter_mdns_start(ua_socket, 0);
 
 	vTaskDelay(50);
@@ -1993,7 +1854,7 @@ void uartadapter_exception_thread(void *param)
 
 	ua_socket_t *ua_socket = (ua_socket_t *)param;
 	
-	while(rtw_down_sema(&ua_exception_sema) == pdTRUE){	
+	while(RtlDownSema(&ua_exception_sema) == pdTRUE){	
 		if(ua_gpio_irq_happen){
 			pin_high = 0;
 			tick_start = xTaskGetTickCount();
@@ -2014,11 +1875,6 @@ void uartadapter_exception_thread(void *param)
 				if(ret < 0){
 					ua_printf(UA_ERROR, "flash erase error!");
 				}
-
-				ret = uartadapter_flasherase(UA_FAST_RECONNECT_TCP_DATA, sizeof(ua_tcp_socket_t));
-				if(ret < 0){
-					ua_printf(UA_ERROR, "flash erase error!");
-				}				
 		
 				uartadapter_systemreload();			
 			}			
@@ -2050,9 +1906,8 @@ ua_socket_t* uartadapter_socket_init()
 	ua_socket->uart.rx_cnt = 0;
 	ua_socket->uart.miss_cnt = 0;
 	ua_socket->uart.tx_busy = 0;	
-	rtw_init_sema(&ua_socket->uart.action_sema, 0);
-	rtw_init_sema(&ua_socket->uart.tcp_tx_rx_sema, 1);
-	rtw_init_sema(&ua_socket->uart.dma_tx, 1);		
+	RtlInitSema(&ua_socket->uart.action_sema, 0);	
+	RtlInitSema(&ua_socket->uart.dma_tx, 1);		
 
 	ua_socket->tcp.chat_socket= -1;
 	ua_socket->tcp.control_socket= -1;
@@ -2064,9 +1919,6 @@ ua_socket_t* uartadapter_socket_init()
 	ua_socket->tcp.transmit_server_listen_socket = -1;
 
 	ua_socket->tcp.group_id = 0;
-	ua_socket->tcp.server_port = 0;
-	ua_socket->tcp.client_port = 0;
-	memset(ua_socket->tcp.client_ip, 0, 16);	
 	
 	ua_socket->tcp.send_flag = 0;
 	ua_socket->tcp.recv_flag = 0;
@@ -2096,7 +1948,7 @@ void uartadapter_disconnect_handler(char *buf, int buf_len, int flags, void *use
 	ua_printf(UA_DEBUG, "start uart adapter reconnect thread\r\n");
 	//uartadapter_gpio_led_mode(ua_global_socket, UART_ADAPTER_LED_FAST_TWINKLE);			
 	
-	if(xTaskCreate(uartadapter_auto_reconnect, ((const char*)"reconnect"), 1024, (void *)ua_global_socket, UA_UART_THREAD_PRIORITY, NULL) != pdPASS)
+	if(xTaskCreate(uartadapter_auto_reconnect, ((const char*)"reconnect"), 512, (void *)ua_global_socket, UA_UART_THREAD_PRIORITY, NULL) != pdPASS)
 		ua_printf(UA_ERROR, "%s xTaskCreate(uart_rx) failed", __FUNCTION__);
 
 }
@@ -2104,12 +1956,6 @@ void uartadapter_disconnect_handler(char *buf, int buf_len, int flags, void *use
 int uartadapter_init()
 {
 	int ret = 0;
-	if(ua_started)
-		return 0;
-	
-	ua_started = 1;
-	
-	rtw_init_sema(&ua_print_sema, 1);
 
 	ua_printf(UA_INFO, "==============>%s()\n", __func__);
 
@@ -2121,10 +1967,10 @@ int uartadapter_init()
 	}
 
 #if !UA_PS_ENABLE
-      pmu_acquire_wakelock(UA_WAKELOCK);
+      acquire_wakelock(UA_WAKELOCK);
 #endif
 
-	rtw_init_sema(&ua_exception_sema, 0);	
+	RtlInitSema(&ua_exception_sema, 0);		
 	
 	uartadapter_uart_init(ua_global_socket);
 

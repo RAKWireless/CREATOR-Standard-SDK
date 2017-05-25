@@ -23,6 +23,7 @@
 		        android:layout_height="0dp"
 		        android:layout_weight="1"
 		        android:layout_margin="1dp"
+                android:layout_gravity="center"
 		        android:background="@android:color/darker_gray"
 		        android:orientation="horizontal">
 		        <!-- ImageView
@@ -39,44 +40,124 @@
 	                android:text="Serial Port Setup" />
 		            
 		    </LinearLayout>
-            
 
-            <Spinner
-                android:id="@+id/spinner_baudrate"
-                android:spinnerMode="dialog"
-                android:layout_width="fill_parent"
-                android:layout_height="0dp" 
-                android:layout_weight="2"/>
-            <Spinner
-                android:id="@+id/spinner_data"
-                android:spinnerMode="dialog"
-                android:layout_width="fill_parent"
-                android:layout_height="0dp" 
-                android:layout_weight="2"/>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:layout_weight="2"
+                android:layout_margin="1dp"
+                android:background="@android:color/darker_gray"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="100dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical|center"
+                    android:layout_weight="3"
+                    android:text="Baud Rate" />
+                <Spinner
+                    android:id="@+id/spinner_baudrate"
+                    android:spinnerMode="dialog"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="2"/>
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:layout_weight="2"
+                android:layout_margin="1dp"
+                android:background="@android:color/darker_gray"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="100dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical|center"
+                    android:layout_weight="3"
+                    android:text="Data Bit" />
+                <Spinner
+                    android:id="@+id/spinner_data"
+                    android:spinnerMode="dialog"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="2"/>
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:layout_weight="2"
+                android:layout_margin="1dp"
+                android:background="@android:color/darker_gray"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="100dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical|center"
+                    android:text="Parity Bit" />
             <Spinner
                 android:id="@+id/spinner_parity"
                 android:spinnerMode="dialog"
-                android:layout_width="fill_parent"
-                android:layout_height="0dp" 
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_weight="2"/>
-            <Spinner
-                android:id="@+id/spinner_stopbit"
-                android:spinnerMode="dialog"
-                android:layout_width="fill_parent"
-                android:layout_height="0dp" 
-                android:layout_weight="2"/>
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:layout_weight="2"
+                android:layout_margin="1dp"
+                android:background="@android:color/darker_gray"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="100dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical|center"
+                    android:layout_weight="3"
+                    android:text="Stop Bit" />
+                <Spinner
+                    android:id="@+id/spinner_stopbit"
+                    android:spinnerMode="dialog"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="2"/>
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:layout_weight="2"
+                android:layout_margin="1dp"
+                android:background="@android:color/darker_gray"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="100dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical|center"
+                    android:text="Flow Control" />
             <Spinner
                 android:id="@+id/spinner_flowcontrol"
                 android:spinnerMode="dialog"
-                android:layout_width="fill_parent"
-                android:layout_height="0dp" 
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_weight="2"/>
+            </LinearLayout>
 
             <LinearLayout
 		        android:layout_width="wrap_content"
 		        android:layout_height="0dp"
 		        android:layout_weight="2"
 		        android:layout_margin="1dp"
+                android:layout_gravity="center"
 		        android:background="@android:color/darker_gray"
 		        android:orientation="horizontal">
 		        <Button

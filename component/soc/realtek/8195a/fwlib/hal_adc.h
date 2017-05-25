@@ -189,10 +189,14 @@ typedef struct _SAL_ADC_USERCB_ADPT_ {
 
 // ADC user callback structure
 typedef struct _SAL_ADC_USER_CB_ {
+    PSAL_ADC_USERCB_ADPT    pTXCB;          //ADC Transmit Callback
+    PSAL_ADC_USERCB_ADPT    pTXCCB;         //ADC Transmit Complete Callback
     PSAL_ADC_USERCB_ADPT    pRXCB;          //ADC Receive Callback
     PSAL_ADC_USERCB_ADPT    pRXCCB;         //ADC Receive Complete Callback
+    PSAL_ADC_USERCB_ADPT    pRDREQCB;       //ADC Read Request Callback
     PSAL_ADC_USERCB_ADPT    pERRCB;         //ADC Error Callback
-    PSAL_ADC_USERCB_ADPT    pIDMARXCCB;      //ADC Error Callback
+    PSAL_ADC_USERCB_ADPT    pDMATXCB;       //ADC DMA Transmit Callback
+    PSAL_ADC_USERCB_ADPT    pDMATXCCB;      //ADC DMA Transmit Complete Callback
     PSAL_ADC_USERCB_ADPT    pDMARXCB;       //ADC DMA Receive Callback
     PSAL_ADC_USERCB_ADPT    pDMARXCCB;      //ADC DMA Receive Complete Callback
 }SAL_ADC_USER_CB, *PSAL_ADC_USER_CB;
@@ -201,7 +205,7 @@ typedef struct _SAL_ADC_USER_CB_ {
 typedef struct _SAL_ADC_TRANSFER_BUF_ {
     u32     DataLen;                        //ADC Transmfer Length
     u32     *pDataBuf;                      //ADC Transfer Buffer Pointer
-    u16     *pUserDataBuf;                           //
+    u32     RSVD;                           //
 }SAL_ADC_TRANSFER_BUF,*PSAL_ADC_TRANSFER_BUF;
 
 typedef struct _SAL_ADC_DMA_USER_DEF_ {
@@ -291,7 +295,7 @@ RtkADCIdxChk(
         if (ADCIdx == ADC3_SEL)
             return _EXIT_FAILURE;
 #endif
-	ADCIdx++; //for compile warning.
+
     return _EXIT_SUCCESS;
 }
 
@@ -304,7 +308,6 @@ RTK_STATUS RtkADCDeInit(IN  VOID *Data);
 //RTK_STATUS RtkADCReceive(IN  VOID *Data);
 u32 RtkADCReceive(IN  VOID *Data);
 u32 RtkADCReceiveBuf(IN  VOID *Data,IN  u32  *pBuf);
-u32 RtkADCRxManualRotate(IN  VOID *Data,IN  u32  *pBuf);
 
 PSAL_ADC_MNGT_ADPT RtkADCGetMngtAdpt(IN  u8  ADCIdx);
 RTK_STATUS RtkADCFreeMngtAdpt(IN  PSAL_ADC_MNGT_ADPT  pSalADCMngtAdpt);
@@ -312,5 +315,5 @@ VOID ADCISRHandle(IN  VOID *Data);
 VOID ADCGDMAISRHandle(IN  VOID *Data);
 HAL_Status RtkADCDisablePS(IN  VOID *Data);
 HAL_Status RtkADCEnablePS(IN  VOID *Data);
-extern VOID QueryRegPwrState(IN  u8  FuncIdx,OUT u8* RegState,OUT u8* HwState);
+
 #endif

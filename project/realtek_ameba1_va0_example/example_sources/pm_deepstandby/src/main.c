@@ -87,12 +87,11 @@ void main(void)
         if (old_btn_state == 1 && new_btn_state == 0) {
             gpio_write(&gpio_led, 0);
 
-            DiagPrintf("Sleep 8s... (Or wakeup by pushing button)\r\n");
-            //turn off log uart to avoid warning in gpio_pull_control()
-            sys_log_uart_off();
             // Please note that the pull control is different in different board
             // This example is a sample code for RTL Ameba Dev Board
             gpio_pull_control();
+
+            DiagPrintf("Sleep 8s... (Or wakeup by pushing button)\r\n");
             standby_wakeup_event_add(STANDBY_WAKEUP_BY_STIMER, 8000, 0);
             standby_wakeup_event_add(STANDBY_WAKEUP_BY_PA5, 0, 1);
             deepstandby_ex();

@@ -13,12 +13,11 @@
 
 #include "main.h"
 #include "main_test.h"
-#if CONFIG_WLAN
 #include "wifi_conf.h"
 #include "wlan_intf.h"
-#include "wifi_constants.h"
-#endif
 #include "lwip_netconf.h"
+#include "wifi_constants.h"
+
 #include <platform/platform_stdlib.h>
 
 #ifndef CONFIG_INIT_NET
@@ -41,9 +40,7 @@ void init_thread(void *param)
 	LwIP_Init();
 #endif
 #endif
-#if CONFIG_WIFI_IND_USE_THREAD
-	wifi_manager_init();
-#endif
+
 #if CONFIG_WLAN
 	wifi_on(RTW_MODE_STA);
 #if CONFIG_AUTO_RECONNECT

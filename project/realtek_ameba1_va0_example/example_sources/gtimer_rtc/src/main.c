@@ -13,7 +13,7 @@
 #include "main.h"
 
 
-#define SW_RTC_TIMER_ID        TIMER4
+#define SW_RTC_TIMER_ID        TIMER5
 
 static gtimer_t sw_rtc;
 static volatile struct tm rtc_timeinfo;

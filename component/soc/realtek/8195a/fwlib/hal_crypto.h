@@ -31,18 +31,17 @@ typedef enum _SHA2_TYPE_ {
 } SHA2_TYPE;
 
 
-#define _ERRNO_CRYPTO_DESC_NUM_SET_OutRange 		-2
-#define _ERRNO_CRYPTO_BURST_NUM_SET_OutRange		-3
-#define _ERRNO_CRYPTO_NULL_POINTER					-4
-#define _ERRNO_CRYPTO_ENGINE_NOT_INIT				-5
-#define _ERRNO_CRYPTO_ADDR_NOT_4Byte_Aligned		-6
-#define _ERRNO_CRYPTO_KEY_OutRange					-7
-#define _ERRNO_CRYPTO_MSG_OutRange					-8
-#define _ERRNO_CRYPTO_IV_OutRange					-9
-#define _ERRNO_CRYPTO_AUTH_TYPE_NOT_MATCH			-10
-#define _ERRNO_CRYPTO_CIPHER_TYPE_NOT_MATCH 		-11
-#define _ERRNO_CRYPTO_KEY_IV_LEN_DIFF				-12
-#define _ERRNO_CRYPTO_AES_MSGLEN_NOT_16Byte_Aligned	-13
+#define _ERRNO_CRYPTO_DESC_NUM_SET_OutRange 	-2
+#define _ERRNO_CRYPTO_BURST_NUM_SET_OutRange	-3
+#define _ERRNO_CRYPTO_NULL_POINTER				-4
+#define _ERRNO_CRYPTO_ENGINE_NOT_INIT			-5
+#define _ERRNO_CRYPTO_ADDR_NOT_4Byte_Aligned	-6
+#define _ERRNO_CRYPTO_KEY_OutRange				-7
+#define _ERRNO_CRYPTO_MSG_OutRange				-8
+#define _ERRNO_CRYPTO_IV_OutRange				-9
+#define _ERRNO_CRYPTO_AUTH_TYPE_NOT_MATCH		-10
+#define _ERRNO_CRYPTO_CIPHER_TYPE_NOT_MATCH 	-11
+#define _ERRNO_CRYPTO_KEY_IV_LEN_DIFF			-12
 
 
 

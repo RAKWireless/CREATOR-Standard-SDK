@@ -2,64 +2,50 @@
 #include "wifi/wifi_ind.h"
 #include "wifi/wifi_conf.h"
 #include "osdep_service.h"
-#include "platform_stdlib.h"
 
 /******************************************************
  *                    Constants
  ******************************************************/
 
 #define WIFI_INDICATE_MSG	0
-#define WIFI_MANAGER_STACKSIZE	1300
-#define WIFI_MANAGER_PRIORITY		(0) //Actual priority is 4 since calling rtw_create_task
-#define WIFI_MANAGER_Q_SZ	8
+#define WIFI_MANAGER_STACKSIZE	128
+#define WIFI_MANAGER_PRIORITY		(5)
+#define WIFI_MANAGER_PRIO	2
 
+#define INDICATE_USE_THREAD	0
 #define WIFI_EVENT_MAX_ROW	3
 /******************************************************
  *                    Globals
  ******************************************************/
 
 static event_list_elem_t     event_callback_list[WIFI_EVENT_MAX][WIFI_EVENT_MAX_ROW];
-#if CONFIG_WIFI_IND_USE_THREAD
+#if INDICATE_USE_THREAD
 static rtw_worker_thread_t          wifi_worker_thread;
 #endif
 
 //----------------------------------------------------------------------------//
-#if CONFIG_WIFI_IND_USE_THREAD
+#if INDICATE_USE_THREAD
 static rtw_result_t rtw_send_event_to_worker(int event_cmd, char *buf, int buf_len, int flags)
 {
 	rtw_event_message_t message;
 	int i;
 	rtw_result_t ret = RTW_SUCCESS;
-	char *local_buf = NULL;
 	
 	if(event_cmd >= WIFI_EVENT_MAX)
 		return RTW_BADARG;
-	
 	for(i = 0; i < WIFI_EVENT_MAX_ROW; i++){
 		if(event_callback_list[event_cmd][i].handler == NULL)
 			continue;
 
 		message.function = (event_handler_t)event_callback_list[event_cmd][i].handler;
+		message.buf = buf;
 		message.buf_len = buf_len;
-		if(buf_len){
-			local_buf = (char*)pvPortMalloc(buf_len);
-			if(local_buf == NULL)
-				return RTW_NOMEM;
-			memcpy(local_buf, buf, buf_len);
-			//printf("\n!!!!!Allocate %p(%d) for evcmd %d\n", local_buf, buf_len, event_cmd);
-		}
-		message.buf = local_buf;
 		message.flags = flags;
 		message.user_data = event_callback_list[event_cmd][i].handler_user_data;
 
-		ret = rtw_push_to_xqueue(&wifi_worker_thread.event_queue, &message, 0);
-		if(ret != RTW_SUCCESS){
-			if(local_buf){
-				printf("\r\nrtw_send_event_to_worker: enqueue cmd %d failed and free %p(%d)\n", event_cmd, local_buf, buf_len);
-				vPortFree(local_buf);
-			}
+		ret = rtw_push_to_xqueue(&wifi_worker_thread->event_queue, &message, 0);
+		if(ret != RTW_SUCCESS)
 			break;
-		}
 	}
 	return ret;
 }
@@ -83,7 +69,7 @@ static rtw_result_t rtw_indicate_event_handle(int event_cmd, char *buf, int buf_
 }
 #endif
 
-void wifi_indication( rtw_event_indicate_t event, char *buf, int buf_len, int flags)
+void wifi_indication( WIFI_EVENT_INDICATE event, char *buf, int buf_len, int flags)
 {
 	//
 	// If upper layer application triggers additional operations on receiving of wext_wlan_indicate,
@@ -144,18 +130,17 @@ void wifi_indication( rtw_event_indicate_t event, char *buf, int buf_len, int fl
 			printf("\n\r%s(): WIFI_EVENT_NO_NETWORK\n", __func__);
 #endif
 			break;
-		case WIFI_EVENT_RX_MGNT:
-#if(WIFI_INDICATE_MSG==1)			
-			printf("\n\r%s(): WIFI_EVENT_RX_MGNT\n", __func__);
-#endif
-			break;
-#if CONFIG_ENABLE_P2P
+#ifdef CONFIG_P2P_NEW
 		case WIFI_EVENT_SEND_ACTION_DONE:
 #if(WIFI_INDICATE_MSG==1)			
 			printf("\n\r%s(): WIFI_EVENT_SEND_ACTION_DONE\n", __func__);
 #endif
 			break;
-#endif //CONFIG_ENABLE_P2P
+		case WIFI_EVENT_RX_MGNT:
+#if(WIFI_INDICATE_MSG==1)			
+			printf("\n\r%s(): WIFI_EVENT_RX_MGNT\n", __func__);
+#endif
+			break;
 		case WIFI_EVENT_STA_ASSOC:
 #if(WIFI_INDICATE_MSG==1)			
 			printf("\n\r%s(): WIFI_EVENT_STA_ASSOC\n", __func__);
@@ -166,12 +151,8 @@ void wifi_indication( rtw_event_indicate_t event, char *buf, int buf_len, int fl
 			printf("\n\r%s(): WIFI_EVENT_STA_DISASSOC\n", __func__);
 #endif
 			break;
+#endif //CONFIG_P2P_NEW
 #ifdef CONFIG_WPS
-		case WIFI_EVENT_STA_WPS_START:
-#if(WIFI_INDICATE_MSG==1)
-			printf("\n\r%s(): WIFI_EVENT_STA_WPS_START\n", __func__);
-#endif
-			break;
 		case WIFI_EVENT_WPS_FINISH:
 #if(WIFI_INDICATE_MSG==1)
 			printf("\n\r%s(): WIFI_EVENT_WPS_FINISH\n", __func__);
@@ -194,7 +175,7 @@ void wifi_indication( rtw_event_indicate_t event, char *buf, int buf_len, int fl
 	inic_indicate_event(event, buf, buf_len, flags);
 #endif//CONFIG_INIC_EN
 
-#if CONFIG_WIFI_IND_USE_THREAD
+#if INDICATE_USE_THREAD
 	rtw_send_event_to_worker(event, buf, buf_len, flags);
 #else
 	rtw_indicate_event_handle(event, buf, buf_len, flags);
@@ -240,18 +221,18 @@ void init_event_callback_list(){
 
 int wifi_manager_init()
 {
-#if CONFIG_WIFI_IND_USE_THREAD
+#if INDICATE_USE_THREAD
 	rtw_create_worker_thread(&wifi_worker_thread, 
 							WIFI_MANAGER_PRIORITY, 
 							WIFI_MANAGER_STACKSIZE, 
-							WIFI_MANAGER_Q_SZ);
+							WIFI_MANAGER_PRIO);
 #endif
 	return 0;
 }
 
 void rtw_wifi_manager_deinit()
 {
-#if CONFIG_WIFI_IND_USE_THREAD
+#if INDICATE_USE_THREAD
 	rtw_delete_worker_thread(&wifi_worker_thread);
 #endif
 }

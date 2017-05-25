@@ -1,5 +1,5 @@
 #include "rom_ssl_ram_map.h"
-#include <diag.h>
+#include <platform_stdlib.h>
 
 extern struct _rom_ssl_ram_map rom_ssl_ram_map;
 
@@ -49,7 +49,7 @@ int platform_set_malloc_free( void * (*malloc_func)( size_t ),
 	/* OS interface */
 	rom_ssl_ram_map.ssl_malloc = malloc_func;
 	rom_ssl_ram_map.ssl_free = free_func;
-	rom_ssl_ram_map.ssl_printf = (int (*)(char const *, ...))DiagPrintf;
+	rom_ssl_ram_map.ssl_printf = printf;
 
 	//AES HW CRYPTO
 	rom_ssl_ram_map.hw_crypto_aes_ecb_init = rtl_crypto_aes_ecb_init;

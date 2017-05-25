@@ -130,9 +130,8 @@
  *
  * Enable this layer to allow use of alternative memory allocators.
  */
-#ifdef CONFIG_HARDWARE_8188F
-#define POLARSSL_PLATFORM_MEMORY
-#endif
+//#define POLARSSL_PLATFORM_MEMORY
+
 /**
  * \def POLARSSL_PLATFORM_NO_STD_FUNCTIONS
  *
@@ -1184,7 +1183,7 @@
  *      TLS_RSA_PSK_WITH_RC4_128_SHA
  *      TLS_PSK_WITH_RC4_128_SHA
  */
-#define POLARSSL_ARC4_C
+//#define POLARSSL_ARC4_C
 
 /**
  * \def POLARSSL_ASN1_PARSE_C
@@ -2153,11 +2152,13 @@
 //#define SSL_CACHE_DEFAULT_MAX_ENTRIES      50 /**< Maximum entries in cache */
 
 /* SSL options */
-#define SSL_MAX_CONTENT_LEN                5120 /**< Size of the input / output buffer */
+#define SSL_MAX_CONTENT_LEN                4096 /**< Size of the input / output buffer */
 //#define SSL_DEFAULT_TICKET_LIFETIME     86400 /**< Lifetime of session tickets (if enabled) */
 //#define POLARSSL_PSK_MAX_LEN               32 /**< Max size of TLS pre-shared keys, in bytes (default 256 bits) */
 
-
+/* Realteck Ameba HW Crypto */
+#define RTL_HW_CRYPTO
+//#define SUPPORT_HW_SW_CRYPTO
 #define RTL_CRYPTO_FRAGMENT               15360 /* 15*1024 < 16000 */
 
 /**

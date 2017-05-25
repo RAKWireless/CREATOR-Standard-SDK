@@ -169,7 +169,7 @@ RtkDACGetMngtAdpt(
 ){
     PSAL_DAC_MNGT_ADPT      pSalDACMngtAdpt     = NULL;
     PSAL_DAC_USERCB_ADPT    pSalDACUserCBAdpt   = NULL;
-	DACIdx = DACIdx;
+
     /* If the kernel is available, Memory-allocation is used. */
 #if !DAC_STATIC_ALLOC
 
@@ -550,59 +550,6 @@ RtkDACPinMuxInit(
     return _EXIT_SUCCESS;
 }
 
-/** \brief HalDACPinMuxInit:\n
- *		  to set DAC clock control and enable control
- *  
- *   This function is mainly to set DAC clock control and enable control.
- *   \para VOID *: Data, It's a pointer to HAL_DAC_INIT_DAT
- */
-void
-HalDACPinMuxInit(
-    IN  VOID *Data
-){
-    u32 DACLocalTemp;
-    PHAL_DAC_INIT_DAT   pHalInitPara = (PHAL_DAC_INIT_DAT)Data;
-    
-    /* Check the I2C index first */
-    if (RtkDACIdxChk(pHalInitPara->DACIdx))
-        return;
-
-    DACLocalTemp = HAL_READ32(SYSTEM_CTRL_BASE, REG_SYS_SYSPLL_CTRL2);
-    DACLocalTemp |= BIT26;
-
-    /* To release DAC delta sigma clock gating */
-    HAL_WRITE32(SYSTEM_CTRL_BASE,REG_SYS_SYSPLL_CTRL2,DACLocalTemp);
-    
-    switch (pHalInitPara->DACIdx){
-#if DAC0_USED
-        case DAC0_SEL:
-        {
-            /* Turn on DAC active clock */
-            ACTCK_DAC_CCTRL(ON);
-
-            /* Enable DAC0 module */
-            DAC0_FCTRL(ON);            
-            break;
-        }
-#endif
-#if DAC1_USED
-        case DAC1_SEL:
-        {
-            /* Turn on DAC active clock */
-            ACTCK_DAC_CCTRL(ON);
-
-            /* Enable DAC1 module */
-            DAC1_FCTRL(ON);            
-            break;
-        }
-#endif
-        default:
-            return;
-    }
-    
-}
-
-
 static RTK_STATUS
 RtkDACPinMuxDeInit(
     IN  PSAL_DAC_HND    pSalDACHND
@@ -649,61 +596,6 @@ RtkDACPinMuxDeInit(
     HAL_WRITE32(SYSTEM_CTRL_BASE,REG_SYS_SYSPLL_CTRL2,DACLocalTemp);
     
     return _EXIT_SUCCESS;
-}
-
-/** \brief HalDACPinMuxDeInit:\n
- *		  to disable DAC clock control and enable control
- *  
- *   This function is mainly to disable DAC clock control and enable control.
- *   \para VOID *: Data, a pointer to HAL_DAC_INIT_DAT.
- */
-void
-HalDACPinMuxDeInit(
-    IN  VOID *Data
-){
-
-    u32 DACLocalTemp;
-    PHAL_DAC_INIT_DAT   pHalInitPara = (PHAL_DAC_INIT_DAT)Data;
-    
-    /* Check the I2C index first */
-    if (RtkDACIdxChk(pHalInitPara->DACIdx))
-        return;
-
-    switch (pHalInitPara->DACIdx){
-#if DAC0_USED
-        case DAC0_SEL:
-        {
-            /* Turn on DAC active clock */
-            ACTCK_DAC_CCTRL(OFF);
-
-            /* Enable DAC0 module */
-            DAC0_FCTRL(OFF);            
-            break;
-        }
-#endif
-#if DAC1_USED
-        case DAC1_SEL:
-        {
-            /* Turn on DAC active clock */
-            ACTCK_DAC_CCTRL(OFF);
-
-            /* Enable DAC1 module */
-            DAC1_FCTRL(OFF);            
-            break;
-        }
-#endif
-        default:
-            return;
-    }
-
-
-    DACLocalTemp = HAL_READ32(SYSTEM_CTRL_BASE, REG_SYS_SYSPLL_CTRL2);
-    DACLocalTemp &= (~BIT26);
-
-    /* To release DAC delta sigma clock gating */
-    HAL_WRITE32(SYSTEM_CTRL_BASE,REG_SYS_SYSPLL_CTRL2,DACLocalTemp);
-    
-    return;
 }
 
 
@@ -995,7 +887,7 @@ RtkDACDMAInit(
     pIrqHandleDACGdma->IrqNum   = GDMA0_CHANNEL0_IRQ + pHALDACGdmaAdpt->ChNum + 
                                              ((pHALDACGdmaAdpt->GdmaIndex)*6);
     pIrqHandleDACGdma->IrqFun   = (IRQ_FUN) pSalDACMngtAdpt->pSalDMAIrqFunc;
-    pIrqHandleDACGdma->Priority = 6;
+    pIrqHandleDACGdma->Priority = 2;
     InterruptRegister(pIrqHandleDACGdma);
     InterruptEn(pIrqHandleDACGdma);
 

@@ -4,25 +4,19 @@
 /*-Specials-*/
 //define symbol __ICFEDIT_intvec_start__ = 0x00000000;
 
-include "main.icf";
-
 /*-Memory Regions-*/
-define symbol __ICFEDIT_region_ROM_start__                  = 0x00000000;
-define symbol __ICFEDIT_region_ROM_end__                    = 0x000FFFFF;
-define symbol __ICFEDIT_region_TCM_start__                  = 0x1FFF0000;
-define symbol __ICFEDIT_region_TCM_end__                    = 0x1FFFFFFF;
-define symbol __ICFEDIT_region_ROM_USED_RAM_start__         = 0x10000000;
-define symbol __ICFEDIT_region_ROM_USED_RAM_end__           = 0x10005FFF;
-//define symbol __ICFEDIT_region_RECY_RAM_start__           = 0x10002090;
-//define symbol __ICFEDIT_region_RECY_RAM_end__             = 0x100037FF;
-if( !isdefinedsymbol( __ICFEDIT_region_BD_RAM_start__ ) ) {
-    define symbol __ICFEDIT_region_BD_RAM_start__           = 0x10006000;
-}
-if( !isdefinedsymbol( __ICFEDIT_region_BD_RAM_end__ ) ) {
-    define symbol __ICFEDIT_region_BD_RAM_end__             = 0x1006FFFF;
-}
-define symbol __ICFEDIT_region_SDRAM_RAM_start__            = 0x30000000;
-define symbol __ICFEDIT_region_SDRAM_RAM_end__              = 0x301FFFFF;
+define symbol __ICFEDIT_region_ROM_start__   		= 0x00000000;
+define symbol __ICFEDIT_region_ROM_end__    		= 0x000FFFFF;
+define symbol __ICFEDIT_region_TCM_start__   		= 0x1FFF0000;
+define symbol __ICFEDIT_region_TCM_end__     		= 0x1FFFFFFF;
+define symbol __ICFEDIT_region_ROM_USED_RAM_start__ = 0x10000000;
+define symbol __ICFEDIT_region_ROM_USED_RAM_end__   = 0x10005FFF;
+//define symbol __ICFEDIT_region_RECY_RAM_start__   	= 0x10002090;
+//define symbol __ICFEDIT_region_RECY_RAM_end__     	= 0x100037FF;
+define symbol __ICFEDIT_region_BD_RAM_start__   	= 0x10006000;
+define symbol __ICFEDIT_region_BD_RAM_end__     	= 0x1006FFFF;
+define symbol __ICFEDIT_region_SDRAM_RAM_start__   	= 0x30000000;
+define symbol __ICFEDIT_region_SDRAM_RAM_end__     	= 0x301FFFFF;
 
 /*-Sizes-*/
 /*define symbol __ICFEDIT_size_cstack__   = 0x400;*/
@@ -50,13 +44,13 @@ define region SDRAM_RAM_region   	= mem:[from __ICFEDIT_region_SDRAM_RAM_start__
 
 
 /*place in RAM_region   { readwrite, block CSTACK, block HEAP };*/
-//place in TCM_region   { readwrite };
+place in TCM_region   { readwrite };
 
 /****************************************
  * ROM Section config                   *
  ****************************************/
 keep { section .rom };
-place at start of ROM_region   { section .rom };
+place at start of ROM_region   { readonly, section .rom };
 
 /****************************************
  * BD RAM Section config                *
@@ -112,7 +106,7 @@ define block .ram_image1.text with fixed order{ section .hal.ram.text*,
 define block IMAGE1 with fixed order { section LOADER };
 define block IMAGE1_DBG with fixed order { block .ram.start.table, block .ram_image1.data, block .ram_image1.bss, block .ram_image1.text };
 
-place at start of ROM_USED_RAM_region   {  
+place at start of ROM_USED_RAM_region   { readwrite, 
                                     	  block .vector_table, 
                                     	  block .user_vector_table,
                                     	  block .user_data_table, 
@@ -128,13 +122,9 @@ define block .image2.start.table2 with fixed order{ section .image2.validate.rod
 
 define block SHT$$PREINIT_ARRAY { preinit_array };
 define block SHT$$INIT_ARRAY { init_array };
-define block CPP_INIT with alignment = 8, fixed order {        
-                                                block SHT$$PREINIT_ARRAY,
-                                                block SHT$$INIT_ARRAY 
-                                                };
-define block FPB_REMAP with alignment = 256,fixed order {
-												section .fpb.remap*
-												};
+define block CPP_INIT with fixed order {        block SHT$$PREINIT_ARRAY,
+                                                block SHT$$INIT_ARRAY };
+
 define block .ram_image2.text with fixed order{ section .infra.ram.start*,
                                                 section .rodata*,
                                                 block CPP_INIT,
@@ -143,20 +133,14 @@ define block .ram_image2.text with fixed order{ section .infra.ram.start*,
                                                 section .hal.gpio.text*,
                                                 section .text* object main.o,
                                                 section .text*,
-                                                section .wlan.text,
-                                                section .wps.text,
                                                 section CODE,
                                                 section .otg.rom.text,
                                                 section Veneer object startup.o,
                                                 section __DLIB_PERTHREAD,
-                                                section .iar.dynexit*,
                                                 //section .mdns.text
                                               };
 
-define block .ram.data with fixed order{ readwrite, readonly,
-                                         section .data*, 
-                                         section .wlan.data,
-                                         section .wps.data,
+define block .ram.data with fixed order{ section .data*, 
                                          section DATA, 
                                          section .ram.otg.data.a, 
                                          section .iar.init_table,
@@ -176,7 +160,7 @@ define block .ram.bss with fixed order{ section .bss*,
 define block .bf_data with fixed order{ section .bfsram.data* };
 define block .heap with fixed order{ section .heap* };
 define block .stack_dummy with fixed order { section .stack };
-place at start of BD_RAM_region   {  
+place at start of BD_RAM_region   { readwrite, 
                                     block IMAGE2,
                                     //block IMAGE1_DBG,
                                     block .ram.bss,
@@ -184,30 +168,23 @@ place at start of BD_RAM_region   {
                                   };
 
 //place at address mem:0x10052b00  { readwrite,
-place at end of BD_RAM_region   { 
-                                     block .bf_data,
+place at end of BD_RAM_region   { readwrite, 
+								  block .bf_data,
                                   };
 								  
 define block SDRAM with fixed order{ section .sdram.text*, 
                                      section .sdram.data*, 
                                      section .mdns.text*, 
-                                     section .mdns.data*,
-                                     block FPB_REMAP
+                                     section .mdns.data*
                                    };
-define block SDRBSS with fixed order{ 
-                                     section .sdram.bss*								
-                                   };
-
-place at start of SDRAM_RAM_region {  
+place at start of SDRAM_RAM_region { readwrite, 
                                      block SDRAM, 
-                                     block SDRBSS,
                                      //block IMAGE1_DBG
                                     };
 
 
 /* TCM placement */
-define overlay TCM_overlay { 
-									section .tcm.heap,
+define overlay TCM_overlay { section .tcm.heap,
                                     section .bss object mem.o,
                                     section .bss object memp.o,
                                     block .heap,
@@ -215,13 +192,12 @@ define overlay TCM_overlay {
 							};
 /* dummy code placement */
 define overlay TCM_overlay { block IMAGE1_DBG };
-place at start of TCM_region { 	overlay TCM_overlay }; 
+place at start of TCM_region { 	readwrite,
+                                    overlay TCM_overlay
+                                    }; 
 
 define exported symbol __rom_bss_start__ = 0x10000300; 	// use in rom
 define exported symbol __rom_bss_end__ = 0x10000bc8;	// use in rom
 define exported symbol __ram_start_table_start__= 0x10000bc8;	// use in rom
 define exported symbol __image1_validate_code__= 0x10000bdc;	// needed by ram code
 define exported symbol _rtl_impure_ptr = 0x10001c60;		// for standard library
-
-define exported symbol __sdio_rom_bss_start__ = 0x1006D000;
-define exported symbol __sdio_rom_bss_end__ = 0x1006fa10;

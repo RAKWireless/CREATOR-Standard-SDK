@@ -7,8 +7,7 @@ extern "C" {
 
 #include <wireless.h>
 #include <skbuff.h>
-#include "ethernetif.h"
-#if 0 // moved to ethernetif.h by jimmy 12/2/2015
+
 //----- ------------------------------------------------------------------
 // Ethernet Buffer
 //----- ------------------------------------------------------------------
@@ -19,7 +18,7 @@ struct eth_drv_sg {
 
 #define MAX_ETH_DRV_SG	32
 #define MAX_ETH_MSG	1540
-#endif
+
 //----- ------------------------------------------------------------------
 // Wlan Interface Provided
 //----- ------------------------------------------------------------------
@@ -49,10 +48,6 @@ extern void ethernetif_recv(struct netif *netif, int total_len);
 extern void lwip_PRE_SLEEP_PROCESSING(void);
 extern void lwip_POST_SLEEP_PROCESSING(void);
 #endif //CONFIG_LWIP_LAYER == 1
-
-#ifdef CONFIG_WOWLAN
-extern unsigned char *rltk_wlan_get_ip(int idx);
-#endif
 
 #ifdef	__cplusplus
 }

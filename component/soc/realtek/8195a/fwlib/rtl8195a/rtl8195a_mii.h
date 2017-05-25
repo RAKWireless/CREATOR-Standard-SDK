@@ -7,6 +7,7 @@
  *  possession or use of this module requires written permission of RealTek.
  */
 
+
 #ifndef _RTL8195A_MII_H_
 #define _RTL8195A_MII_H_
 
@@ -14,222 +15,9 @@
 #include "hal_api.h"
 
 
-
-#define MII_TX_DESC_NO					8
-#define MII_RX_DESC_NO					8
-#define MII_BUF_SIZE					1600
-#define MAX_FRAME_SIZE					1514
-
-
-#define HAL_MII_READ32(addr)				HAL_READ32(MII_REG_BASE, addr)
-#define HAL_MII_WRITE32(addr, value)		HAL_WRITE32(MII_REG_BASE, addr, value)
-#define HAL_MII_READ16(addr)				HAL_READ16(MII_REG_BASE, addr)
-#define HAL_MII_WRITE16(addr, value)		HAL_WRITE16(MII_REG_BASE, addr, value)
-#define HAL_MII_READ8(addr)					HAL_READ8(MII_REG_BASE, addr)
-#define HAL_MII_WRITE8(addr, value)			HAL_WRITE8(MII_REG_BASE, addr, value)
-
-/* =============== MAC Register Offset Definition =============== */
-#define REG_MII_IDR0					0x0000
-#define REG_MII_IDR4					0x0004
-#define REG_MII_COM						0x0038
-#define REG_MII_ISRIMR					0x003C
-#define REG_MII_TC						0x0040
-#define REG_MII_RC						0x0044
-#define REG_MII_MS						0x0058
-#define REG_MII_MIIA					0x005C
-
-#define REG_MII_TXFDP1					0x1300
-#define REG_MII_RXFDP1					0x13F0
-#define REG_MII_ETNRXCPU1				0x1430
-#define REG_MII_IOCMD					0x1434
-#define REG_MII_IOCMD1					0x1438
-
-/* =============== MAC Register BIT Definition =============== */
-/* Command Register (0x38) */
-#define COM_RST							BIT0
-#define COM_RXCHKSUM					BIT1
-#define COM_RXJUMBO						BIT3
-
-/* Interrupt Status & Interrupt Mask Register (0x3C & 0x3E) */
-#define ISR_RXOK						BIT0
-#define ISR_RER_RUNT					BIT2
-#define ISR_RER_OVF						BIT4
-#define ISR_RDU							BIT5
-#define ISR_TXOK						BIT6
-#define ISR_TER							BIT7
-#define ISR_LINKCHG						BIT8
-#define ISR_TDU							BIT9
-#define ISR_CLR_ALL						0x0000FFFF
-#define IMR_RXOK						BIT16
-#define IMR_RER_RUNT					BIT18
-#define IMR_RER_OVF						BIT20
-#define IMR_RDU							BIT21
-#define IMR_TXOK						BIT22
-#define IMR_TER							BIT23
-#define IMR_LINKCHG						BIT24
-#define IMR_TDU							BIT25
-
-/* Transmit Configuration Register (0x40) */
-#define TC_TX_NOPADDING					BIT0
-#define TC_NORMAL_MODE					0
-#define TC_LBK_R2T						1
-#define TC_LBK_T2R						3
-#define TC_LBK_MASK						0x00000300	// bit[9:8]
-#define TC_IFG_TIME						3			// 9.6 us for 10Mbps, 960 ns for 100Mbps
-#define TC_IFG_MASK						0x00001C00	// bit[12:10]
-
-/* Receive Configuration Register (0x44) */
-#define RC_AAP							BIT0
-#define RC_APM							BIT1
-#define RC_AM							BIT2
-#define RC_AB							BIT3
-#define RC_AR							BIT4
-#define RC_AER							BIT5
-
-/* Media Status Register (0x58) */
-#define MS_LINKB						BIT26
-
-/* MII Access Register (0x5C) */
-#define MIIA_FLAG						BIT31  // 1: Write, 0: Read
-#define MIIA_PHY_ADDR_MASK				0x7C000000  // bit[30:26]
-#define MIIA_PHY_REG_ADDR_MASK			0x001F0000  // bit[20:16]
-
-/* IO Command Register (0x1434) */
-#define IOCMD_TXFN1ST					BIT0
-#define IOCMD_TE						BIT4
-#define IOCMD_RE						BIT5
-#define IOCMD_RXFTH_1024				0
-#define IOCMD_RXFTH_128					1
-#define IOCMD_RXFTH_256					2
-#define IOCMD_RXFTH_512					3
-#define IOCMD_RXFTH_MASK				0x00001800  // bit[12:11]
-#define IOCMD_TXFTH_128					0
-#define IOCMD_TXFTH_256					1
-#define IOCMD_TXFTH_512					2
-#define IOCMD_TXFTH_1024				3
-#define IOCMD_TXFTH_MASK				0x00180000  // bit[20:19]
-#define IOCMD_SHORT_DES_FMT				BIT30
-
-/* IO Command1 Register (0x1438) */
-#define IOCMD1_RXRING1					BIT16
-#define IOCMD1_EN_1GB					BIT24
-#define IOCMD1_DSC_FMT_EXTRA			0x3  // 011
-#define IOCMD1_DSCFMTEXTRA_MASK			0x70000000  // bit[30:28]
-
-/* =============== PHY (RTL8201F) Register Bit Definition =============== */
-#define PHY_ADDRESS						0x1  // 5 bits
-#define PHY_REG0_ADDR					0x0  // 5 bits
-#define PHY_REG1_ADDR					0x1  // 5 bits
-
-/* Register 0 */
-#define PHY_SPEED_MSB					BIT6
-#define PHY_DUPLEX_MODE					BIT8
-#define PHY_RESTART_NWAY				BIT9
-#define PHY_NWAY_EN						BIT12
-#define PHY_SPEED_LSB					BIT13
-#define PHY_SW_RESET					BIT15
-
-/* Register 1 */
-#define PHY_LINK_STATUS					BIT2
-#define PHY_NWAY_COMPLETE				BIT5
-
-/* =============== Tx/Rx Descriptor Bit Definition =============== */
-#define TX_DESC_OWN						BIT31
-#define TX_DESC_EOR						BIT30
-#define TX_DESC_FS						BIT29
-#define TX_DESC_LS						BIT28
-#define TX_DESC_CRC						BIT23
-#define TX_DESC_DATA_LEN_MASK			0x1FFFF  // bit[16:0]
-#define TX_DESC_VLAN_INTACT				0
-#define TX_DESC_VLAN_INSERT				1
-#define TX_DESC_VLAN_REMOVE				2
-#define TX_DESC_VLAN_REMARKING			3
-#define TX_DESC_VLAN_ACT_MASK			0x06000000
-#define C_VLAN_HDR						0x8100279F
-#define S_VLAN_HDR						0x88A8279F
-#define TX_DESC_VLAN_TAG_MASK			0x0000FFFF
-
-#define RX_DESC_OWN						BIT31
-#define RX_DESC_EOR						BIT30
-#define RX_DESC_PKT_TYPE_MASK			0x001E0000  // bit[20:17]
-#define RX_DESC_DATA_LEN_MASK			0xFFF  // bit[11:0]
-
-
-typedef struct _TX_DESC_FMT_
-{
-	u32 dw1;	// offset 0
-	u32 addr;	// offset 4
-	u32 dw2;	// offset 8
-	u32 dw3;	// offset 12
-	u32 dw4;	// offset 16
-}TX_DESC_FMT, *PTX_DESC_FMT;
-
-typedef struct _RX_DESC_FMT_
-{
-	u32 dw1;	// offset 0
-	u32 addr;	// offset 4
-	u32 dw2;	// offset 8
-	u32 dw3;	// offset 12
-}RX_DESC_FMT, *PRX_DESC_FMT;
-
-
-
-VOID
-HalMiiInitIrqRtl8195a(
-	IN VOID *Data
-);
-
-s32
-HalMiiInitRtl8195a(
-	IN VOID
-);
-
-VOID
-HalMiiDeInitRtl8195a(
-	IN VOID
-);
-
-s32
-HalMiiWriteDataRtl8195a(
-	IN const char *Data,
-	IN u32 Size
-);
-
-u32
-HalMiiSendPacketRtl8195a(
-	IN VOID
-);
-
-u32
-HalMiiReceivePacketRtl8195a(
-	IN VOID
-);
-
-u32
-HalMiiReadDataRtl8195a(
-	IN u8 *Data,
-	IN u32 Size
-);
-
-VOID
-HalMiiGetMacAddressRtl8195a(
-	IN u8 *Addr
-);
-
-u32
-HalMiiGetLinkStatusRtl8195a(
-	IN VOID
-);
-
-VOID
-HalMiiForceLinkRtl8195a(
-	IN s32 Speed,
-	IN s32 Duplex
-);
-
-
-
-#ifdef CONFIG_MII_VERIFY
+#define ETHERNET_REG_BASE     0x40050000
+#define ETHERNET_MODULE_BASE  ETHERNET_REG_BASE + 0x0000
+#define CPU_INTERFACE_BASE    ETHERNET_REG_BASE + 0x1300
 
 /* Ethernet Module registers */
 #define REG_RTL_MII_IDR0    0x0000  // Table 2 IDR0 (Offset 0000h-0003h, R/W)
@@ -243,7 +31,7 @@ HalMiiForceLinkRtl8195a(
 #define REG_RTL_MII_CTCR    0x0048  // Table 26 CPU Tag Control Register  (CPUTAG_REG, Offset 0048h-004bh, R/W)
 #define REG_RTL_MII_CONFIG  0x004C  // Table 27 Configuration Register (CONFIG_REG, Offset 004ch-004fh, R/W)
 #define REG_RTL_MII_CTCR1   0x0050  // Table 28 CPUTAG1 Register          (CPUTAG1_REG, Offset 0050h-0053h, R/W)
-#define REG_RTL_MII_MSR     0x0058  // Table 29 Media Status Register     (MS_reg: Offset 0058h ??005bh, R/W)
+#define REG_RTL_MII_MSR     0x0058  // Table 29 Media Status Register     (MS_reg: Offset 0058h – 005bh, R/W)
 #define REG_RTL_MII_MIIAR   0x005C  // Table 30 MII Access Register (MIIA_REG, Offset 005c-005fh, R/W)
 #define REG_RTL_MII_VR      0x0064  // Table 32 VLAN Register (VLAN_REG, Offset 0064-0067h, R/W)
 #define REG_RTL_MII_IMR0    0x00D0  // Table 50 IMR0_REG (IMR0_REG, Offset D0h-D3h)
@@ -272,6 +60,19 @@ HalMiiForceLinkRtl8195a(
 #define REG_RTL_MII_IOCMD     0x1434  // Table 80 Ethernet_IO_CMD (ETN_IO_CMD_REG, Offset 1434h-1437h)
 #define REG_RTL_MII_IOCMD1    0x1438  // Table 81 Ethernet_IO_CMD1 (IO_CMD1_REG: Offset 1438h-143bh)
 
+
+#define HAL_MII_READ32(addr)         \
+    HAL_READ32(ETHERNET_REG_BASE, addr)
+#define HAL_MII_WRITE32(addr, value) \
+    HAL_WRITE32(ETHERNET_REG_BASE, addr, value)
+#define HAL_MII_READ16(addr)         \
+    HAL_READ16(ETHERNET_REG_BASE, addr)
+#define HAL_MII_WRITE16(addr, value) \
+    HAL_WRITE16(ETHERNET_REG_BASE, addr, value)
+#define HAL_MII_READ8(addr)          \
+    HAL_READ8(ETHERNET_REG_BASE, addr)
+#define HAL_MII_WRITE8(addr, value)  \
+    HAL_WRITE8(ETHERNET_REG_BASE, addr, value)
 
 #define  CMD_CONFIG  0x00081000
 
@@ -520,6 +321,111 @@ typedef struct _RX_INFO_ {
 #define BIT_INVC_GMAC_CPUTAG_PSEL (~(BIT_MASK_GMAC_CPUTAG_PSEL << BIT_SHIFT_GMAC_CPUTAG_PSEL))
 
 
+#if 0
+enum RE8670_STATUS_REGS
+{
+    /*TX/RX share */
+    DescOwn     = (1 << 31), /* Descriptor is owned by NIC */
+    RingEnd     = (1 << 30), /* End of descriptor ring */
+    FirstFrag       = (1 << 29), /* First segment of a packet */
+    LastFrag        = (1 << 28), /* Final segment of a packet */
+
+    /*Tx descriptor opt1*/
+    IPCS        = (1 << 27),
+    L4CS        = (1 << 26),
+    KEEP        = (1 << 25),
+    BLU         = (1 << 24),
+    TxCRC       = (1 << 23),
+    VSEL        = (1 << 22),
+    DisLrn      = (1 << 21),
+    CPUTag_ipcs     = (1 << 20),
+    CPUTag_l4cs = (1 << 19),
+
+    /*Tx descriptor opt2*/
+    CPUTag      = (1 << 31),
+    aspri       = (1 << 30),
+    CPRI        = (1 << 27),
+    TxVLAN_int  = (0 << 25),  //intact
+    TxVLAN_ins  = (1 << 25),  //insert
+    TxVLAN_rm   = (2 << 25),  //remove
+    TxVLAN_re   = (3 << 25),  //remark
+    //TxPPPoEAct    = (1 << 23),
+    TxPPPoEAct  = 23,
+    //TxPPPoEIdx    = (1 << 20),
+    TxPPPoEIdx  = 20,
+    Efid            = (1 << 19),
+    //Enhan_Fid = (1 << 16),
+    Enhan_Fid   = 16,
+    /*Tx descriptor opt3*/
+    SrcExtPort  = 29,
+    TxDesPortM  = 23,
+    TxDesStrID  = 16,
+    TxDesVCM    = 0,
+    /*Tx descriptor opt4*/
+    /*Rx descriptor  opt1*/
+    CRCErr  = (1 << 27),
+    IPV4CSF     = (1 << 26),
+    L4CSF       = (1 << 25),
+    RCDF        = (1 << 24),
+    IP_FRAG     = (1 << 23),
+    PPPoE_tag   = (1 << 22),
+    RWT         = (1 << 21),
+    PktType     = (1 << 17),
+    RxProtoIP   = 1,
+    RxProtoPPTP = 2,
+    RxProtoICMP = 3,
+    RxProtoIGMP = 4,
+    RxProtoTCP  = 5,   
+    RxProtoUDP  = 6,
+    RxProtoIPv6 = 7,
+    RxProtoICMPv6   = 8,
+    RxProtoTCPv6    = 9,
+    RxProtoUDPv6    = 10,
+    L3route     = (1 << 16),
+    OrigFormat  = (1 << 15),
+    PCTRL       = (1 << 14),
+    /*Rx descriptor opt2*/
+    PTPinCPU    = (1 << 30),
+    SVlanTag        = (1 << 29),
+    /*Rx descriptor opt3*/
+    SrcPort     = (1 << 27),
+    DesPortM    = (1 << 21),
+    Reason      = (1 << 13),
+    IntPriority = (1 << 10),
+    ExtPortTTL  = (1 << 5),
+};
+
+enum _DescStatusBit {
+    DescOwn     = (1 << 31), /* Descriptor is owned by NIC */
+    RingEnd     = (1 << 30), /* End of descriptor ring */
+    FirstFrag   = (1 << 29), /* First segment of a packet */
+    LastFrag    = (1 << 28), /* Final segment of a packet */
+
+    /* Tx private */
+    LargeSend   = (1 << 27), /* TCP Large Send Offload (TSO) */
+    MSSShift    = 16,        /* MSS value position */
+    MSSMask     = 0xfff,     /* MSS value + LargeSend bit: 12 bits */
+    IPCS        = (1 << 18), /* Calculate IP checksum */
+    UDPCS       = (1 << 17), /* Calculate UDP/IP checksum */
+    TCPCS       = (1 << 16), /* Calculate TCP/IP checksum */
+    TxVlanTag   = (1 << 17), /* Add VLAN tag */
+
+    /* Rx private */
+    PID1        = (1 << 18), /* Protocol ID bit 1/2 */
+    PID0        = (1 << 17), /* Protocol ID bit 2/2 */
+
+#define RxProtoUDP  (PID1)
+#define RxProtoTCP  (PID0)
+#define RxProtoIP   (PID1 | PID0)
+#define RxProtoMask RxProtoIP
+
+    IPFail      = (1 << 16), /* IP checksum failed */
+    UDPFail     = (1 << 15), /* UDP/IP checksum failed */
+    TCPFail     = (1 << 14), /* TCP/IP checksum failed */
+    RxVlanTag   = (1 << 16), /* VLAN tag available */
+};
+#endif
+
 typedef struct _PHY_MODE_INFO_ {
     u8 PhyAddress;
     u8 PhyMode;
@@ -542,6 +448,25 @@ typedef enum _GMAC_MSR_FORCE_SPEED_ {
     FORCE_SPD_GIGA = 2,
     NO_FORCE_SPD   = 3
 }GMAC_MSR_FORCE_SPEED, *PGMAC_MSR_FORCE_SPEED;
+
+// typedef enum _GMAC_INTERRUPT_MASK_ {
+//     GMAC_IMR_ROK      = BIT0,
+//     GMAC_IMR_CNT_WRAP = BIT1,
+//     GMAC_IMR_RER_RUNT = BIT2,
+//     // BIT3 Reserved
+//     GMAC_IMR_RER_OVF  = BIT4,
+//     GMAC_IMR_RDU      = BIT5,
+//     GMAC_IMR_TOK_TI   = BIT6,
+//     GMAC_IMR_TER      = BIT7,
+//     GMAC_IMR_LINKCHG  = BIT8,
+//     GMAC_IMR_TDU      = BIT9,
+//     GMAC_IMR_SWINT    = BIT10,
+//     GMAC_IMR_RDU2     = BIT11,
+//     GMAC_IMR_RDU3     = BIT12,
+//     GMAC_IMR_RDU4     = BIT13,
+//     GMAC_IMR_RDU5     = BIT14,
+//     GMAC_IMR_RDU6     = BIT15,
+// } GMAC_INTERRUPT_MASK, *PGMAC_INTERRUPT_MASK;
 
 typedef enum _GMAC_INTERRUPT_MASK_ {
     GMAC_IMR_ROK      = BIT16,
@@ -603,9 +528,85 @@ typedef enum _GMAC_RX_PACKET_TYPE_ {
 }GMAC_RX_PACKET_TYPE, *PGMAC_RX_PACKET_TYPE;
 
 
+/*
+
+// Memory Map of DW_apb_ssi
+#define REG_DW_SSI_CTRLR0          0x00  // 16 bits
+#define REG_DW_SSI_CTRLR1          0x04  // 16 bits
+#define REG_DW_SSI_SSIENR          0x08  //  1 bit
+#define REG_DW_SSI_RX_SAMPLE_DLY   0xF0  //  8 bits
+#define REG_DW_SSI_RSVD_0          0xF4  // 32 bits
+#define REG_DW_SSI_RSVD_1          0xF8  // 32 bits
+#define REG_DW_SSI_RSVD_2          0xFC  // 32 bits
+
+// CTRLR0          0x00  // 16 bits, 6.2.1
+// DFS Reset Value: 0x7
+#define BIT_SHIFT_CTRLR0_DFS       0
+#define BIT_MASK_CTRLR0_DFS        0xF
+#define BIT_CTRLR0_DFS(x)(((x) & BIT_MASK_CTRLR0_DFS) << BIT_SHIFT_CTRLR0_DFS)
+#define BIT_INVC_CTRLR0_DFS (~(BIT_MASK_CTRLR0_DFS << BIT_SHIFT_CTRLR0_DFS))
+
+#define BIT_SHIFT_CTRLR0_FRF       4
+#define BIT_MASK_CTRLR0_FRF        0x3
+#define BIT_CTRLR0_FRF(x)(((x) & BIT_MASK_CTRLR0_FRF) << BIT_SHIFT_CTRLR0_FRF)
+#define BIT_INVC_CTRLR0_FRF (~(BIT_MASK_CTRLR0_FRF << BIT_SHIFT_CTRLR0_FRF))
+
+#define BIT_SHIFT_CTRLR0_SCPH      6
+#define BIT_MASK_CTRLR0_SCPH       0x1
+#define BIT_CTRLR0_SCPH(x)(((x) & BIT_MASK_CTRLR0_SCPH) << BIT_SHIFT_CTRLR0_SCPH)
+#define BIT_INVC_CTRLR0_SCPH (~(BIT_MASK_CTRLR0_SCPH << BIT_SHIFT_CTRLR0_SCPH))
+
+// CTRLR1          0x04  // 16 bits
+#define BIT_SHIFT_CTRLR1_NDF    0
+#define BIT_MASK_CTRLR1_NDF     0xFFFF
+#define BIT_CTRLR1_NDF(x)(((x) & BIT_MASK_CTRLR1_NDF) << BIT_SHIFT_CTRLR1_NDF)
+#define BIT_INVC_CTRLR1_NDF (~(BIT_MASK_CTRLR1_NDF << BIT_SHIFT_CTRLR1_NDF))
+
+// TXFLTR          0x18        // Variable Length
+#define BIT_SHIFT_TXFTLR_TFT    0
+#define BIT_MASK_TXFTLR_TFT     0x3F  // (TX_ABW-1):0
+#define BIT_TXFTLR_TFT(x)(((x) & BIT_MASK_TXFTLR_TFT) << BIT_SHIFT_TXFTLR_TFT)
+#define BIT_INVC_TXFTLR_TFT (~(BIT_MASK_TXFTLR_TFT << BIT_SHIFT_TXFTLR_TFT))
+
+// TXFLR           0x20  // see     [READ ONLY]
+#define BIT_MASK_TXFLR_TXTFL    0x7F  // (TX_ABW):0
+
+// RXFLR           0x24  // see     [READ ONLY]
+#define BIT_MASK_RXFLR_RXTFL    0x7F  // (RX_ABW):0
+
+// SR              0x28  //  7 bits [READ ONLY]
+#define BIT_SR_BUSY  BIT0
+#define BIT_SR_TFNF  BIT1
+#define BIT_SR_TFE   BIT2
+#define BIT_SR_RFNE  BIT3
+#define BIT_SR_RFF   BIT4
+#define BIT_SR_TXE   BIT5
+#define BIT_SR_DCOL  BIT6
+
+#define BIT_IMR_TXEIM  BIT0
+#define BIT_IMR_TXOIM  BIT1
+#define BIT_IMR_RXUIM  BIT2
+#define BIT_IMR_RXOIM  BIT3
+#define BIT_IMR_RXFIM  BIT4
+#define BIT_IMR_MSTIM  BIT5
+
+// ISR             0x30  //  6 bits [READ ONLY]
+#define BIT_ISR_TXEIS  BIT0
+#define BIT_ISR_TXOIS  BIT1
+#define BIT_ISR_RXUIS  BIT2
+#define BIT_ISR_RXOIS  BIT3
+#define BIT_ISR_RXFIS  BIT4
+#define BIT_ISR_MSTIS  BIT5
+
+*/
 
 BOOL
 HalMiiGmacInitRtl8195a(
+        IN VOID *Data
+        );
+
+BOOL
+HalMiiInitRtl8195a(
         IN VOID *Data
         );
 
@@ -668,8 +669,6 @@ VOID
 HalMiiGmacClearInterruptStatusRtl8195a(
         u32 IsrStatus
         );
-#endif  // #ifdef CONFIG_MII_VERIFY
 
-#endif  // #ifndef _RTL8195A_MII_H_
-
+#endif
 

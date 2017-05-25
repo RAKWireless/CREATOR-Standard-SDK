@@ -2,7 +2,7 @@
 #include <section_config.h>
 
 #ifndef SSL_RAM_MAP_SECTION
-#define SSL_RAM_MAP_SECTION
+#define SSL_RAM_MAP_SECTION		//SECTION(".ssl_ram_map") //will define in section_config.h
 #endif
 
 /* RAM table referred by SSL ROM */

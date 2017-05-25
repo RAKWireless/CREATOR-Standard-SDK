@@ -44,11 +44,6 @@ typedef struct _HAL_TIMER_OP_ {
     VOID (*HalTimerDumpReg)(u32 TimerId);
 }HAL_TIMER_OP, *PHAL_TIMER_OP;
 
-#ifdef CONFIG_TIMER_MODULE
-// This variable declared in ROM code
-extern HAL_TIMER_OP HalTimerOp;
-#endif
-
 VOID HalTimerOpInit_Patch(
     IN  VOID *Data
 );
@@ -58,39 +53,6 @@ VOID HalTimerOpInit_Patch(
 // ROM Function prototype
 _LONG_CALL_ VOID HalTimerOpInitV02(IN  VOID *Data);
 
-#ifndef CONFIG_RELEASE_BUILD_LIBRARIES
 #define HalTimerOpInit      HalTimerOpInit_Patch
-#endif
 
-#ifdef CONFIG_RELEASE_BUILD_LIBRARIES
-void HalTimerOpInit(
-    void *Data
-);
-
-HAL_Status
-HalTimerInit(
-    void *Data
-);
-
-void
-HalTimerEnable(
-    uint32_t TimerId
-);
-
-void
-HalTimerDisable(
-    uint32_t TimerId
-);
-
-void
-HalTimerReLoad(
-    uint32_t TimerId,
-    uint32_t LoadUs
-);
-
-void
-HalTimerDeInit(
-    void *Data
-);
-#endif  // #ifdef CONFIG_RELEASE_BUILD_LIBRARIES
 #endif

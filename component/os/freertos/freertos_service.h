@@ -10,11 +10,9 @@
 // --------------------------------------------
 //	Platform dependent include file
 // --------------------------------------------
-#if defined(CONFIG_PLATFORM_8195A)
+#if defined(CONFIG_PLATFORM_8195A) || defined(CONFIG_PLATFORM_8711B)
 #include "platform/platform_stdlib.h"
 extern VOID RtlUdelayOS(u32 us);
-#elif defined(CONFIG_PLATFORM_8711B)
-#include "platform/platform_stdlib.h"
 #else
 // other MCU may use standard library 
 #include <string.h>
@@ -142,13 +140,6 @@ void save_and_cli(void);
 void restore_flags(void);
 void cli(void);
 
-#ifndef mdelay
-#define mdelay(t)					((t/portTICK_RATE_MS)>0)?(vTaskDelay(t/portTICK_RATE_MS)):(vTaskDelay(1))
-#endif
-
-#ifndef udelay
-#define udelay(t)					((t/(portTICK_RATE_MS*1000))>0)?vTaskDelay(t/(portTICK_RATE_MS*1000)):(vTaskDelay(1))
-#endif
 //----- ------------------------------------------------------------------
 // Common Definition
 //----- ------------------------------------------------------------------
@@ -162,7 +153,6 @@ void cli(void);
 #define KERN_INFO
 #define KERN_NOTICE
 
-#undef GFP_KERNEL
 #define GFP_KERNEL			1
 #define GFP_ATOMIC			1
 
@@ -174,7 +164,7 @@ void cli(void);
 #define netif_wake_queue(dev)		do { } while (0)
 #define printk				printf
 
-#define DBG_ERR(fmt, args...)		printf("\n\r[%s] " fmt, __FUNCTION__, ## args)
+#define DBG_ERR(...)		do { printf("\n\r[%s] ", __FUNCTION__); printf(__VA_ARGS__); } while(0)
 #if WLAN_INTF_DBG
 #define DBG_TRACE(fmt, args...)		printf("\n\r[%s] " fmt, __FUNCTION__, ## args)
 #define DBG_INFO(fmt, args...)		printf("\n\r[%s] " fmt, __FUNCTION__, ## args)
@@ -183,7 +173,6 @@ void cli(void);
 #define DBG_INFO(fmt, args...)
 #endif
 #define HALT()				do { cli(); for(;;);} while(0)
-#undef ASSERT
 #define ASSERT(x)			do { \
 						if((x) == 0) \
 							printf("\n\rAssert(" #x ") failed on line %d in file %s", __LINE__, __FILE__); \
@@ -211,7 +200,6 @@ typedef struct { volatile int counter; } atomic_t;
  * Atomically reads the value of @v.  Note that the guaranteed
  * useful range of an atomic_t is only 24 bits.
  */
-#undef atomic_read
 #define atomic_read(v)  ((v)->counter)
 
 /*
@@ -222,7 +210,6 @@ typedef struct { volatile int counter; } atomic_t;
  * Atomically sets the value of @v to @i.  Note that the guaranteed
  * useful range of an atomic_t is only 24 bits.
  */
-#undef atomic_set
 #define atomic_set(v,i) ((v)->counter = (i))
 
  /*
@@ -250,9 +237,5 @@ extern u32	rtw_is_list_empty(_list *phead);
 extern void	rtw_list_insert_head(_list *plist, _list *phead);
 extern void	rtw_list_insert_tail(_list *plist, _list *phead);
 extern void	rtw_list_delete(_list *plist);
-
-#if CONFIG_PLATFORM_8711B
-extern u32 random_seed;
-#endif
 
 #endif /* _FREERTOS_SERVICE_H_ */

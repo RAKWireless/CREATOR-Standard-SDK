@@ -65,8 +65,6 @@
 #define REG_GDMA_CH_SGR                 0x048
 #define REG_GDMA_CH_DSR                 0x050
 
-#define MAX_DMA_BLOCK_SIZE 4092
-
 //3 Interrupt Registers
 #define REG_GDMA_RAW_INT_BASE           0x2C0
 #define REG_GDMA_RAW_INT_TFR            0x2C0
@@ -452,10 +450,6 @@ HalGdmaChBlockSetingRtl8195a(
     IN  VOID     *Data
 );
 
-BOOL
-HalGdmaChBlockSetingRtl8195a_Patch(
-    IN  VOID     *Data
-);
 
 VOID
 HalGdmaChDisRtl8195a (

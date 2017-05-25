@@ -62,7 +62,7 @@ VOID HalGdmaOpInit(
     pHalGdmaOp->HalGdmaChEn = HalGdmaChEnRtl8195a;
     pHalGdmaOp->HalGdmaChSeting = HalGdmaChSetingRtl8195a;
 #ifndef CONFIG_CHIP_E_CUT
-    pHalGdmaOp->HalGdmaChBlockSeting = HalGdmaChBlockSetingRtl8195a_Patch;
+    pHalGdmaOp->HalGdmaChBlockSeting = HalGdmaChBlockSetingRtl8195a;
 #else
     pHalGdmaOp->HalGdmaChBlockSeting = HalGdmaChBlockSetingRtl8195a_V04;
 #endif
@@ -107,7 +107,7 @@ BOOL HalGdmaChSeting(PHAL_GDMA_ADAPTER pHalGdmaAdapter)
 BOOL HalGdmaChBlockSeting(PHAL_GDMA_ADAPTER pHalGdmaAdapter)
 {
 #ifndef CONFIG_CHIP_E_CUT
-    return (HalGdmaChBlockSetingRtl8195a_Patch((VOID*)pHalGdmaAdapter));
+    return (HalGdmaChBlockSetingRtl8195a((VOID*)pHalGdmaAdapter));
 #else
     return (HalGdmaChBlockSetingRtl8195a_V04((VOID*)pHalGdmaAdapter));
 #endif
@@ -292,7 +292,7 @@ BOOL HalGdmaMemCpyAggrInit(PHAL_GDMA_OBJ pHalGdmaObj)
     pHalGdmaAdapter->Rsvd4to7 = 1;
     pHalGdmaAdapter->Llpctrl = 1;
     pGdmaIrqHandle->IrqNum = pgdma_chnl->IrqNum;
-    pGdmaIrqHandle->Priority = 10;
+    pGdmaIrqHandle->Priority = 0x10;
 
     IrqHandle.IrqFun = (IRQ_FUN) HalGdmaMemIrqHandler;
     IrqHandle.Data = (u32) pHalGdmaObj;

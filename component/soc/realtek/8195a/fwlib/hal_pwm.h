@@ -31,24 +31,23 @@ typedef struct _HAL_PWM_ADAPTER_ {
 
 extern HAL_Status 
 HAL_Pwm_Init(
-    HAL_PWM_ADAPTER *pPwmAdapt,
     u32 pwm_id,
     u32 sel
 );
 
 extern void 
 HAL_Pwm_Enable(
-    HAL_PWM_ADAPTER *pPwmAdapt
+    u32 pwm_id
 );
 
 extern void 
 HAL_Pwm_Disable(
-    HAL_PWM_ADAPTER *pPwmAdapt
+    u32 pwm_id
 );
 
 extern void
 HAL_Pwm_SetDuty(
-    HAL_PWM_ADAPTER *pPwmAdapt,
+    u32 pwm_id,
     u32 period,
     u32 pulse_width
 );

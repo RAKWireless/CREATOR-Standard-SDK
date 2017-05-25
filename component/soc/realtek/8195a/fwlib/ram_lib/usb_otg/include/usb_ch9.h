@@ -20,7 +20,6 @@
 #ifndef _USB_CH9_H_
 #define _USB_CH9_H_
 
-#include "basic_types.h"
 //#include <linux/types.h>	/* __u8 etc */
 //#include "../otg/osk/sys-support.h"
 

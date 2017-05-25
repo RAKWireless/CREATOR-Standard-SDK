@@ -21,21 +21,15 @@
 #endif
 
 #if defined(__IAR_SYSTEMS_ICC__) //for IAR SDK
-#include "platform_opts.h"
+#include "autoconf.h"
 #endif
 
 #ifndef CONFIG_INIC_EN
 #define CONFIG_INIC_EN 0
 #endif
 #if CONFIG_INIC_EN
-#define CONFIG_INIC_SKB_TX 1 //use SKB for trx to improve the throughput
-#define CONFIG_INIC_SKB_RX 1
-#endif
-
-#if defined(__IAR_SYSTEMS_ICC__) && (CONFIG_INIC_EN == 0)//for IAR SDK
-    #define SDIO_API_DEFINED	 1
-#else
-    #define SDIO_API_DEFINED	 0
+#define CONFIG_INIC_SKB_TX 0 //use SKB for trx to improve the throughput
+#define CONFIG_INIC_SKB_RX 0
 #endif
 
 #ifndef PRIORITIE_OFFSET //PRIORITIE_OFFSET in FreeRTOSConfig.h
@@ -346,7 +340,7 @@ typedef struct _SPDIO_AHB_DMA_CTRL {
 #else
 #if CONFIG_INIC_EN
 //TX BD setting
-#define SDIO_TX_BD_NUM								20	// Number of TX BD
+#define SDIO_TX_BD_NUM								34	// Number of TX BD
 #define SDIO_TX_BD_BUF_SIZE							1540    //1514+24
 //#define SDIO_TX_PKT_NUM								1	// not used
 
@@ -354,7 +348,7 @@ typedef struct _SPDIO_AHB_DMA_CTRL {
 #define RX_BD_FREE_TH								5   // trigger the interrupt when free RX BD over this threshold
 #define SDIO_RX_BD_BUF_SIZE							1540 //1514+24
 #define MAX_RX_BD_BUF_SIZE			                16380	// the Maximum size for a RX_BD point to, make it 4-bytes aligned
-#define SDIO_RX_BD_NUM								32	// Number of RX BD, to make 32K of bus aggregation, it needs 22 RX_BD at least
+#define SDIO_RX_BD_NUM								34	// Number of RX BD, to make 32K of bus aggregation, it needs 22 RX_BD at least
 #define SDIO_RX_PKT_NUM								128	// Number of RX packet handler
 #define MIN_RX_BD_SEND_PKT							2	/* the minum needed RX_BD to send a Packet to Host, we need 2: 
 											one for RX_Desc, the other for payload */
@@ -821,13 +815,9 @@ typedef struct _SDIO_TX_PACKET_ {
 /* the data structer to bind a TX_BD with a TX Packet */
 typedef struct _SDIO_TX_BD_HANDLE_ {
 	SDIO_TX_BD *pTXBD;		// Point to the TX_BD buffer
-#if SDIO_API_DEFINED
-	VOID *priv;
-#else
 #if CONFIG_INIC_EN
 #if CONFIG_INIC_SKB_TX
        struct sk_buff *skb;
-#endif
 #endif
 #endif
 	SDIO_TX_PACKET *pPkt;	// point to the Tx Packet
@@ -849,13 +839,9 @@ typedef struct _SDIO_RX_PACKET_ {
 #else
 typedef struct _SDIO_RX_PACKET_ {
 	SDIO_RX_DESC RxDesc;	// The RX Descriptor for this packet, to be send to Host ahead this packet
-#if SDIO_API_DEFINED
-	VOID *priv;
-#else
 #if CONFIG_INIC_EN
 #if CONFIG_INIC_SKB_RX
 	struct sk_buff *skb;
-#endif
 #endif
 #endif
 	u8 *pData;				// point to the head of payload of this packet

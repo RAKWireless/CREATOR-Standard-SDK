@@ -844,19 +844,8 @@ _LONG_CALL_ROM_ HAL_Status HalI2CSetCLKRtl8195aV02(IN  VOID *Data);
 #endif
 //Rtl8195a I2C V02 function prototype  END
 
-//Rtl8195a I2C V04 function prototype
-_LONG_CALL_ HAL_Status HalI2CSendRtl8195a_V04(IN  VOID    *Data);
-_LONG_CALL_ HAL_Status HalI2CMassSendRtl8195a_V04(IN  VOID    *Data);
-_LONG_CALL_ HAL_Status HalI2CInit8195a_V04(IN  VOID    *Data);
-_LONG_CALL_ HAL_Status HalI2CSetCLKRtl8195a_V04(IN  VOID    *Data);
-//Rtl8195a I2C V04 function prototype  END
-
 HAL_Status HalI2CInit8195a_Patch(IN VOID *Data);
 HAL_Status HalI2CSendRtl8195a_Patch(IN VOID *Data);
 HAL_Status HalI2CSetCLKRtl8195a_Patch(IN VOID *Data);
-HAL_Status HalI2CMassSendRtl8195a_Patch(IN  VOID    *Data);
-HAL_Status HalI2CEnableRtl8195a_Patch(IN  VOID    *Data);
-HAL_Status HalI2CSetTarRtl8195a(IN  VOID    *Data);
-HAL_Status HalI2CSetSarRtl8195a(IN  VOID    *Data);
 
 #endif

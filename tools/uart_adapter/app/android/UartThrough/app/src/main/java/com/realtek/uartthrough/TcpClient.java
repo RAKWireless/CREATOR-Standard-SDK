@@ -49,7 +49,7 @@ public class TcpClient extends AsyncTask<Void, Void, Void> {
 
     @Override
     protected Void doInBackground(Void...params) {
-        //g_d.addInfo("TcpClient start");
+//        g_d.addInfo("TcpClient start");
 
         try {
             do{
@@ -95,7 +95,16 @@ public class TcpClient extends AsyncTask<Void, Void, Void> {
                                     g_ctrl.clearCmd();
                                 }
                             }while ( !cmd_ctrl_req.equals("stop") );
-                             tx.close();
+                            if(!s.isClosed()) {
+                                tx.close();
+                                try {
+                                    s.close();
+                                } catch (IOException e) {
+                                    Log.v(TAG_CTRL,"TX socket close  error");
+                                }
+
+                            }
+
 
                         }
                     }).start();
@@ -131,6 +140,7 @@ public class TcpClient extends AsyncTask<Void, Void, Void> {
                             do {
 
                                 try {
+                                    //Log.v(TAG_DATA,"DATA TX thread");
                                     Thread.sleep(500);
                                 } catch (InterruptedException e) {
                                     Log.v(TAG_DATA,"TX thread error");
@@ -138,13 +148,23 @@ public class TcpClient extends AsyncTask<Void, Void, Void> {
                                 }
                                 cmd = g_d.getCmd();
                                 if(cmd.equals("send")) {
+                                    Log.v(TAG_DATA,"DATA TX thread: " +g_d.getTx()+ " port: " +s.getLocalPort());
                                     tx.println(g_d.getTx());
                                     g_d.clearTx();
                                     g_d.clearCmd();
                                 }
 
                             }while ( !cmd.equals("stop") );
-                            tx.close();
+                            if(!s.isClosed()) {
+                                tx.close();
+                                Log.v(TAG_DATA, "DATA TX SOCKET CLOSE " );
+                                try {
+                                    s.close();
+                                } catch (IOException e) {
+                                    Log.v(TAG_CTRL,"TX socket close  error");
+                                }
+
+                            }
 
                         }
                     }).start();
@@ -157,10 +177,12 @@ public class TcpClient extends AsyncTask<Void, Void, Void> {
                     cmd = g_d.getCmd();
                     while (!cmd.equals("stop")) {
                         cmd = g_d.getCmd();
-                        
+                        //Log.v(TAG_DATA,"DATA RX thread");
+
                         if( rx.available() > 0 ) {
                             while(rx.available() > 0) {
                                 b = rx.read();
+                                Log.v(TAG_DATA,"DATA RX thread: " + b + " port: " +s.getLocalPort());
                                 cbuf.put((char) b);
                                 cbuf.flip();
                                 g_d.addInfo(cbuf.toString());

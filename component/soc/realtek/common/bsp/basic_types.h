@@ -81,10 +81,8 @@ typedef unsigned int            BOOL;
 #ifndef BOOL
 typedef unsigned char           BOOL;
 #endif
-#ifndef __cplusplus
 #ifndef bool
 typedef unsigned char           bool;
-#endif
 #endif
 #endif
 
@@ -187,26 +185,16 @@ typedef	    __kernel_ssize_t	SSIZE_T;
 #if defined (__ICCARM__)
 #define STRINGIFY(s) #s
 #define SECTION(_name) _Pragma( STRINGIFY(location=_name))
-#define ALIGNMTO(_bound) _Pragma( STRINGIFY(data_alignment=_bound))
+#define ALIGNMTO(_bound) _Pragma( STRINGIFY(data_alignment=##_bound##))
 #define _PACKED_       __packed
 #define _LONG_CALL_
-#define _LONG_CALL_ROM_  
+#define _LONG_CALL_ROM_
 #define _WEAK          __weak
 #else
 #define SECTION(_name) __attribute__ ((__section__(_name)))
 #define ALIGNMTO(_bound) __attribute__ ((aligned (_bound)))
 #define _PACKED_       __attribute__ ((packed))
-#ifdef CONFIG_RELEASE_BUILD_LIBRARIES
-#define _LONG_CALL_
-#define _LONG_CALL_ROM_     __attribute__ ((long_call))
-#ifdef E_CUT_ROM_DOMAIN
-#undef _LONG_CALL_ROM_
-#define _LONG_CALL_ROM_
-#endif
-#else
 #define _LONG_CALL_     __attribute__ ((long_call))
-#define _LONG_CALL_ROM_     _LONG_CALL_
-#endif
 #define _WEAK           __attribute__ ((weak))
 #endif
 
@@ -423,7 +411,7 @@ typedef	    __kernel_ssize_t	SSIZE_T;
 // Get the N-bytes aligment offset from the current length
 #define N_BYTE_ALIGMENT(__Value, __Aligment) ((__Aligment == 1) ? (__Value) : (((__Value + __Aligment - 1) / __Aligment) * __Aligment))
 
-typedef unsigned char	BOOLEAN,*PBOOLEAN,boolean;
+typedef unsigned char	BOOLEAN,*PBOOLEAN;
 
 #define TEST_FLAG(__Flag,__testFlag)		(((__Flag) & (__testFlag)) != 0)
 #define SET_FLAG(__Flag, __setFlag)			((__Flag) |= __setFlag)
@@ -464,9 +452,9 @@ typedef unsigned char	BOOLEAN,*PBOOLEAN,boolean;
 
 #if defined (__ICCARM__)
 
-#define RTW_PACK_STRUCT_BEGIN _Pragma( STRINGIFY(pack(1)))
+#define RTW_PACK_STRUCT_BEGIN 	_Pragma( STRINGIFY(pack(1)))
 #define RTW_PACK_STRUCT_STRUCT 
-#define RTW_PACK_STRUCT_END _Pragma( STRINGIFY(pack()))
+#define RTW_PACK_STRUCT_END 	_Pragma( STRINGIFY(pack()))
 //#define RTW_PACK_STRUCT_USE_INCLUDES
 
 #elif defined (__CC_ARM)

@@ -22,4 +22,3 @@ We connect wires as below:
 This example shows master sends data to slave.
 We bootup slave first, and then bootup master.
 Then log will presents that master sending data to slave.
-To ensure the order is correct, we use a GPIO pin to notify the master that the slave device is ready to write or read data.

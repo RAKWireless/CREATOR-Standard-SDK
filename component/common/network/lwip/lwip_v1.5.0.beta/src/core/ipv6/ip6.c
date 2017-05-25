@@ -657,6 +657,13 @@ options_done:
   ip6_debug_print(p);
   LWIP_DEBUGF(IP6_DEBUG, ("ip6_input: p->len %"U16_F" p->tot_len %"U16_F"\n", p->len, p->tot_len));
 
+  //Evan add for debug
+  //printf("\n\r[Evan] header len = %"U16_F", total len = %"U16_F"\n", hlen, p->tot_len);
+  //char temp[1000] = {"\0"};
+  //memcpy(temp, p->payload, p->tot_len);
+  //printf("\n\rReceive ipv6 socket = %s\n", &temp[48]);
+  //Evan add end
+
 #if LWIP_RAW
   /* raw input did not eat the packet? */
   if (raw_input(p, inp) == 0)

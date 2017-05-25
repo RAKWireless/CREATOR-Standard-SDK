@@ -12,7 +12,6 @@
 #include "PinNames.h"
 #include "hal_adc.h"
 #include "analogin_api.h"
-#include "analogin_ex_api.h"
 
 
 
@@ -23,47 +22,7 @@
 
 extern u32 ConfigDebugErr;
 extern u32 ConfigDebuginfo;
-static SAL_ADC_TRANSFER_BUF    adcrxtranbuf;
 
-void analogin_internal_dma_callback(void *data) {
-    analogin_t *obj = (analogin_t *)data;
-    PSAL_ADC_MNGT_ADPT      pSalADCMngtAdpt     = NULL;
-    PSAL_ADC_HND            pSalADCHND          = NULL;
-    uint8_t  AnaloginIdx         = 0;
-    uint8_t  AnaloginSec;
-    uint32_t AnaloginCnt;
-    uint32_t AnaloginUsserDatCnt;
-    uint32_t AnaloginDatTmp;
-    
-    pSalADCMngtAdpt         = &(obj->SalADCMngtAdpt);
-    pSalADCHND              = &(pSalADCMngtAdpt->pSalHndPriv->SalADCHndPriv);
-
-    AnaloginIdx = pSalADCHND->DevNum;
-    AnaloginSec = pSalADCHND->DevNum>>1;
-    
-    DBG_ADC_INFO("%s\n", __func__);
-   
-    for (AnaloginCnt = 0; AnaloginCnt < 16; AnaloginCnt+=2) {
-        DBG_ADC_INFO("[%04x]: %08x  %08x  \n", AnaloginCnt, *(pSalADCHND->pRXBuf->pDataBuf + AnaloginCnt),
-            *(pSalADCHND->pRXBuf->pDataBuf+AnaloginCnt+1));
-    }
-
-    for(AnaloginCnt = 0, AnaloginUsserDatCnt = 0; AnaloginCnt < pSalADCHND->pRXBuf->DataLen; AnaloginCnt++) {
-        if ((AnaloginCnt & BIT0) == AnaloginSec) {
-            AnaloginDatTmp = *(pSalADCHND->pRXBuf->pDataBuf + AnaloginCnt);
-            AnaloginDatTmp = AnaloginDatTmp & (0xFFFF << ((AnaloginIdx & BIT0)*16));
-            AnaloginDatTmp = AnaloginDatTmp >> ((AnaloginIdx & BIT0)*16);
-            *(pSalADCHND->pRXBuf->pUserDataBuf + AnaloginUsserDatCnt) = (u16)AnaloginDatTmp;            
-            AnaloginUsserDatCnt++;
-        } 
-    }
-    
-    RtlMfree(pSalADCHND->pRXBuf->pDataBuf, pSalADCHND->pRXBuf->DataLen*sizeof(uint32_t));
-    
-    if (pSalADCHND->pUserCB->pDMARXCCB->USERCB != NULL) {
-        pSalADCHND->pUserCB->pDMARXCCB->USERCB((VOID*) pSalADCHND->pUserCB->pDMARXCCB->USERData);
-    }
-}
 
 void analogin_init (analogin_t *obj, PinName pin){
 
@@ -72,14 +31,6 @@ void analogin_init (analogin_t *obj, PinName pin){
     PSAL_ADC_USERCB_ADPT    pSalADCUserCBAdpt   = NULL;
     PSAL_ADC_HND            pSalADCHND          = NULL;
 
-    HAL_ADC_INIT_DAT        HalADCInitDataTmp;
-    PHAL_ADC_INIT_DAT       pHalADCInitDataTmp = &HalADCInitDataTmp;
-    
-	/* To backup user config first */
-    _memcpy(pHalADCInitDataTmp, &(obj->HalADCInitData), sizeof(HAL_ADC_INIT_DAT));
-	
-	_memset(obj, 0x00, sizeof(analogin_t));
-	
     ConfigDebugErr &= (~(_DBG_ADC_|_DBG_GDMA_));
     ConfigDebugInfo&= (~(_DBG_ADC_|_DBG_GDMA_));
 
@@ -105,10 +56,6 @@ void analogin_init (analogin_t *obj, PinName pin){
     /* To assign the default (ROM) SAL DMA TX interrupt function */
     pSalADCMngtAdpt->pSalDMAIrqFunc     = &ADCGDMAISRHandle;
 
-    /* To backup user config first */
-    //_memcpy(pHalADCInitDataTmp, &(obj->HalADCInitData), sizeof(HAL_ADC_INIT_DAT));
-
-    
     pSalADCMngtAdpt->pHalInitDat        = &(obj->HalADCInitData);
     pSalADCMngtAdpt->pHalOp             = &(obj->HalADCOp);
     pSalADCMngtAdpt->pIrqHnd            = &(obj->ADCIrqHandleDat);
@@ -127,13 +74,6 @@ void analogin_init (analogin_t *obj, PinName pin){
     pSalADCHND->pUserCB     = pSalADCMngtAdpt->pUserCB;
 
     /*To assign user callback pointers*/
-    pSalADCMngtAdpt->pUserCB->pRXCB     = pSalADCUserCBAdpt;
-    pSalADCMngtAdpt->pUserCB->pRXCCB    = (pSalADCUserCBAdpt+1);
-    pSalADCMngtAdpt->pUserCB->pERRCB    = (pSalADCUserCBAdpt+2);
-    pSalADCMngtAdpt->pUserCB->pIDMARXCCB= (pSalADCUserCBAdpt+3);
-    pSalADCMngtAdpt->pUserCB->pDMARXCB  = (pSalADCUserCBAdpt+4);
-    pSalADCMngtAdpt->pUserCB->pDMARXCCB = (pSalADCUserCBAdpt+5);
-/*
     pSalADCMngtAdpt->pUserCB->pTXCB     = pSalADCUserCBAdpt;
     pSalADCMngtAdpt->pUserCB->pTXCCB    = (pSalADCUserCBAdpt+1);
     pSalADCMngtAdpt->pUserCB->pRXCB     = (pSalADCUserCBAdpt+2);
@@ -144,7 +84,7 @@ void analogin_init (analogin_t *obj, PinName pin){
     pSalADCMngtAdpt->pUserCB->pDMATXCCB = (pSalADCUserCBAdpt+7);
     pSalADCMngtAdpt->pUserCB->pDMARXCB  = (pSalADCUserCBAdpt+8);
     pSalADCMngtAdpt->pUserCB->pDMARXCCB = (pSalADCUserCBAdpt+9);
-*/        
+        
     /* Set ADC Device Number */
     pSalADCHND->DevNum = adc_idx;
 
@@ -154,15 +94,6 @@ void analogin_init (analogin_t *obj, PinName pin){
     /* Assign ADC Pin Mux */
     pSalADCHND->PinMux        = 0;
     pSalADCHND->OpType        = ADC_RDREG_TYPE;
-
-    /* Load user setting */
-    if ((pHalADCInitDataTmp->ADCEndian == ADC_DATA_ENDIAN_LITTLE) || (pHalADCInitDataTmp->ADCEndian == ADC_DATA_ENDIAN_BIG)) {
-        pSalADCHND->pInitDat->ADCEndian = pHalADCInitDataTmp->ADCEndian;
-    }
-    
-    if ((pHalADCInitDataTmp->ADCAudioEn != ADC_FEATURE_DISABLED) && (pHalADCInitDataTmp->ADCAudioEn < 2)) {
-        pSalADCHND->pInitDat->ADCAudioEn = pHalADCInitDataTmp->ADCAudioEn;
-    }
     
     /* Init ADC now */
     pSalADCHND->pInitDat->ADCBurstSz       =   8;
@@ -211,7 +142,7 @@ uint16_t analogin_read_u16(analogin_t *obj){
     pSalADCMngtAdpt         = &(obj->SalADCMngtAdpt);
     pSalADCHND              = &(pSalADCMngtAdpt->pSalHndPriv->SalADCHndPriv);
     AnaloginIdx             = pSalADCHND->DevNum;
-    RtkADCRxManualRotate(pSalADCHND,&AnaloginTmp[0]);
+    RtkADCReceiveBuf(pSalADCHND,&AnaloginTmp[0]);
     
 
     //DBG_8195A("[0]:%08x, %08x\n", AnaloginTmp[0], AnaloginTmp[1]  );
@@ -235,69 +166,4 @@ void  analogin_deinit(analogin_t *obj){
     /* To deinit analogin */
     RtkADCDeInit(pSalADCHND);    
 }
-
-void analogin_set_user_callback (analogin_t * obj, AnalogInCallback analogin_cb, void(* analogin_callback)(void *)){
-    
-    PSAL_ADC_MNGT_ADPT      pSalADCMngtAdpt     = NULL;
-    PSAL_ADC_HND            pSalADCHND          = NULL;
-    pSalADCMngtAdpt         = &(obj->SalADCMngtAdpt);
-    pSalADCHND              = &(pSalADCMngtAdpt->pSalHndPriv->SalADCHndPriv);
-    
-    switch (analogin_cb) {
-        case ANALOGIN_RX_DMA_COMPLETE:
-            pSalADCHND->pUserCB->pDMARXCCB->USERCB = analogin_callback;
-            break;
-        default:
-            break;
-    }
-
-}
-
-void analogin_clear_user_callback (analogin_t * obj, AnalogInCallback analogin_cb){
-
-    PSAL_ADC_MNGT_ADPT      pSalADCMngtAdpt     = NULL;
-    PSAL_ADC_HND            pSalADCHND          = NULL;
-    pSalADCMngtAdpt         = &(obj->SalADCMngtAdpt);
-    pSalADCHND              = &(pSalADCMngtAdpt->pSalHndPriv->SalADCHndPriv);
-    
-    switch (analogin_cb) {
-        case ANALOGIN_RX_DMA_COMPLETE:
-            pSalADCHND->pUserCB->pDMARXCB = NULL;
-            break;
-        default:
-            break;
-    }
-
-}
-
-uint8_t analogin_read_u16_dma (analogin_t * obj, uint16_t *buf, uint16_t length) {
-    PSAL_ADC_MNGT_ADPT      pSalADCMngtAdpt     = NULL;
-    PSAL_ADC_HND            pSalADCHND          = NULL;
-    uint8_t  AnaloginIdx         = 0;
-
-    pSalADCMngtAdpt         = &(obj->SalADCMngtAdpt);
-    pSalADCHND              = &(pSalADCMngtAdpt->pSalHndPriv->SalADCHndPriv);
-    
-    if (length > (uint16_t)(MAX_DMA_BLOCK_SIZE/2)) {
-        DBG_ADC_ERR("Data length is more than supported size.\n");
-        return 1;
-    }
-    
-    _memset(&adcrxtranbuf, 0x0000, sizeof(adcrxtranbuf));
-    AnaloginIdx             = pSalADCHND->DevNum;
-    pSalADCHND->pRXBuf      = &adcrxtranbuf;
-    pSalADCHND->OpType = ADC_DMA_TYPE;
-    DBG_ADC_INFO("ch%d, DMA len: %d, ptr: %x\n", AnaloginIdx, length, buf);
-
-    pSalADCHND->pUserCB->pIDMARXCCB->USERCB = analogin_internal_dma_callback;
-    pSalADCHND->pUserCB->pIDMARXCCB->USERData = (u32)obj;
-    pSalADCHND->pRXBuf->pDataBuf = (u32 *)RtlZmalloc(sizeof(uint32_t)*length*2); 
-    pSalADCHND->pRXBuf->pUserDataBuf = (u16 *)buf;
-    pSalADCHND->pRXBuf->DataLen = length*2;
-    
-    RtkADCReceiveDMA(pSalADCHND, 0);
-
-    return 0;
-}
 #endif
-

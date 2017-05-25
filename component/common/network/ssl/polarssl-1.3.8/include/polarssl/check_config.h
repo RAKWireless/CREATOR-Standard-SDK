@@ -322,13 +322,13 @@
 #if defined(POLARSSL_X509_CSR_WRITE_C) && ( !defined(POLARSSL_X509_CREATE_C) )
 #error "POLARSSL_X509_CSR_WRITE_C defined, but not all prerequisites"
 #endif
-/*
-#if defined(POLARSSL_AES_C) || defined(POLARSSL_DES_C)
+
+#if defined(POLARSSL_AES_C) || defined(POLARSSL_AES_C)
 #if !defined(RTL_HW_CRYPTO)
-#error "POLARSSL_AES_C or POLARSSL_DES_C defined, RTL_HW_CRYPTO required"
+#error "POLARSSL_AES_C or POLARSSL_AES_C defined, RTL_HW_CRYPTO required"
 #endif
 #endif
-*/
+
 #if defined(SUPPORT_HW_SW_CRYPTO) && !defined(RTL_HW_CRYPTO)
 #error "SUPPORT_HW_SW_CRYPTO defined, RTL_HW_CRYPTO required"
 #endif

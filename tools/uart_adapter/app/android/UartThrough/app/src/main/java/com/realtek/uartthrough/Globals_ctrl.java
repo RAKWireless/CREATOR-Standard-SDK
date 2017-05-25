@@ -1,6 +1,7 @@
 package com.realtek.uartthrough;
 
-import android.net.nsd.NsdServiceInfo;
+
+
 import android.util.Log;
 
 import java.net.InetAddress;
@@ -10,6 +11,7 @@ import java.util.Objects;
 import java.util.Vector;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import javax.jmdns.ServiceInfo;
 
 public class Globals_ctrl {
 
@@ -19,15 +21,15 @@ public class Globals_ctrl {
 
     private static final String mServiceName = "AMEBA";
     private static final String TAG 		 = "Globals_ctrl";
-    private static final String mServiceType = "_uart_control._tcp";
+    private static final String mServiceType = "_uart_control._tcp.local.";
 
-
+    private static boolean isResolveDone = false;
 
     private static String successRec = "";
 
     private static String sensorReadings = "";
 
-    private static Vector<NsdServiceInfo> deviceList = new Vector<NsdServiceInfo>();
+    private static Vector<ServiceInfo> deviceList = new Vector<ServiceInfo>();
 
     private static InetAddress connIP = null;
 
@@ -36,7 +38,7 @@ public class Globals_ctrl {
     private static String cmd="continue";
 
 
-    private static ByteBuffer tx = ByteBuffer.allocate(32);
+    private static ByteBuffer tx = ByteBuffer.allocate(128);
 
     private static byte[] recvBuffer = new byte[64];
     private final Lock _mutex_recvBuf = new ReentrantLock(true);
@@ -45,6 +47,19 @@ public class Globals_ctrl {
 
     public Globals_ctrl(){}
 
+
+    public boolean isResolveFinish(){
+        return isResolveDone;
+    }
+    
+    public void  setResolveFinish(){
+        isResolveDone = true;
+    }
+    
+    public void  ResolveStatusReset(){
+        isResolveDone = false;
+    }
+    
     public void resetRecvBuffer(){
     	Arrays.fill( recvBuffer, (byte) 0 );
     }
@@ -134,12 +149,12 @@ public class Globals_ctrl {
         				str_len = Integer.toHexString(convertirOctetEnEntier(res[readbit])) + ",";
         				readbit++;
         				result = result + Integer.toHexString(convertirOctetEnEntier(res[readbit])) + ";";readbit++;
-        			}else if( type==16 ){//flowcontrol
+        			}/*else if( type==16 ){//flowcontrol
         				result += "flowcontrol,";readbit++;
         				str_len = Integer.toHexString(convertirOctetEnEntier(res[readbit])) + ",";
         				readbit++;
         				result = result + Integer.toHexString(convertirOctetEnEntier(res[readbit])) + ";";readbit++;
-        			}else
+        			}*/else
         				readbit++;
         			
         		}while(readbit<recvBuffer.length );
@@ -255,7 +270,12 @@ public class Globals_ctrl {
         return tx.array();
     }
 
-    public void clearTx(){ tx.clear();}
+    public void clearTx(){
+    	tx.clear();
+    	tx.put(new byte[128]);
+    	tx.clear();
+    	
+    }
 
     public void clearCmd(){
         cmd="";
@@ -273,7 +293,7 @@ public class Globals_ctrl {
     	deviceList.clear();
     }
     
-    public Vector<NsdServiceInfo> getDeviceList(){
+    public Vector<ServiceInfo> getDeviceList(){
         return deviceList;
     }
 

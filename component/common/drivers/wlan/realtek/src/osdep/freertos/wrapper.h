@@ -169,9 +169,9 @@ extern void restore_flags(void);
 			#ifdef CONFIG_DONT_CARE_TP
 				#define MAX_RX_PKT_SIZE			WLAN_MAX_PROTOCOL_OVERHEAD + WLAN_MAX_RX_ETHFRM_LEN
 			#else
-				#define MAX_RX_PKT_SIZE			WLAN_MAX_PROTOCOL_OVERHEAD + WLAN_MAX_ETHFRM_LEN	// MAX_RX_PKT_SIZE = 64+1514 = 1578
+				#define MAX_RX_PKT_SIZE			WLAN_MAX_PROTOCOL_OVERHEAD + WLAN_MAX_ETHFRM_LEN
 			#endif
-			#define MAX_RX_PKT_LIMIT			((MAX_RX_PKT_SIZE + 511) / 512)			// ((1578 + 512)  / 512) = 4
+			#define MAX_RX_PKT_LIMIT			((MAX_RX_PKT_SIZE + 511) / 512)			// MAX_RX_PKT_SIZE = 64+1514 = 1578
 		#endif
 	#else
 		#ifdef CONFIG_DONT_CARE_TP
@@ -194,7 +194,7 @@ extern void restore_flags(void);
 		#define MAX_SKB_BUF_SIZE				(HAL_INTERFACE_OVERHEAD_SKB_DATA+RX_DRIVER_INFO+\
 												((TXDESC_SIZE>RXDESC_SIZE)? TXDESC_SIZE:RXDESC_SIZE) +\
 												MAX_RX_PKT_SIZE +\
-												SKB_RESERVED_FOR_SAFETY)	// 0+32+40+1578+0 = 1650
+												SKB_RESERVED_FOR_SAFETY)
 	#endif
 #else
 #define MAX_SKB_BUF_SIZE	2048
@@ -428,11 +428,6 @@ void  cancel_timer_ex(struct timer_list * timer);
 void del_timer_sync(struct timer_list * timer);
 void init_timer_wrapper(void);
 void deinit_timer_wrapper(void);
-
-void	rtw_init_timer(_timer *ptimer, void *adapter, TIMER_FUN pfunc,void* cntx, const char *name);
-void	rtw_set_timer(_timer *ptimer,u32 delay_time);
-u8		rtw_cancel_timer(_timer *ptimer);
-void	rtw_del_timer(_timer *ptimer);
 
 #endif //__WRAPPER_H__
 

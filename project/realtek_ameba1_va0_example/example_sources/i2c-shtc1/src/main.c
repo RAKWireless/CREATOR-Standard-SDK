@@ -15,8 +15,8 @@
 #define CHECKSUM_ERROR  0x02
 #define NULL_ERROR      0x03
 
-#define MBED_I2C_MTR_SDA    PD_4
-#define MBED_I2C_MTR_SCL    PD_5
+#define MBED_I2C_MTR_SDA    PB_3
+#define MBED_I2C_MTR_SCL    PB_2
 
 #define MBED_I2C_SLAVE_ADDR0    0x70
 #define POLYNOMIAL 0x131 // P(x) = x^8 + x^5 + x^4 + 1 = 100110001
@@ -181,7 +181,7 @@ void main(void)
 
 
     DBG_8195A("sleep 10 sec. to wait for UART console\n");
-	RtlMsleepOS(10000);
+	Mdelay(10000);
 	
 
     DBG_8195A("start i2c example - SHTC1\n");
@@ -202,7 +202,7 @@ void main(void)
 		rtl_printf("temp=%f, humidity=%f, error=%d\n", 
 				  temperature, humidity, error);
 		
-		RtlMsleepOS(1000);
+		Mdelay(1000);
 
 	}
 }

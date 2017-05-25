@@ -30,12 +30,3 @@ all: CORE_TARGETS COPY_RAM_OBJS
 CORE_TARGETS:	$(OBJS)
 
 -include $(DEPS)
-
-#*****************************************************************************#
-#                        RULES TO CLEAN TARGETS                               #
-#*****************************************************************************#
-clean: 
-	$(REMOVE) *.o
-	$(REMOVE) *.i
-	$(REMOVE) *.s
-	$(REMOVE) *.d

@@ -14,7 +14,7 @@
 
 #ifndef CONFIG_CHIP_E_CUT
 BOOL
-HalGdmaChBlockSetingRtl8195a_Patch(
+HalGdmaChBlockSetingRtl8195a(
     IN  VOID     *Data
 )
 {

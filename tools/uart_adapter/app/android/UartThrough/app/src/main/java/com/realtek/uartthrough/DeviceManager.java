@@ -17,7 +17,7 @@ public class DeviceManager {
 	
 	public static class DeviceInfo //implements Serializable
 	{
-		private static final long serialVersionUID = 1L;
+		//private static final long serialVersionUID = 1L;
 		private int aliveFlag;
 		private String name;
 		private String name_small;

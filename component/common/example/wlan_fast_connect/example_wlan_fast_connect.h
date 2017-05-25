@@ -10,10 +10,9 @@
  ******************************************************************************/
 #include "FreeRTOS.h"
 #include <autoconf.h>
-#include "main.h"
 
 #define IW_PASSPHRASE_MAX_SIZE 64
-//#define FAST_RECONNECT_DATA (0x80000 - 0x1000)
+#define FAST_RECONNECT_DATA (0x80000 - 0x1000)
 #define NDIS_802_11_LENGTH_SSID         32
 #define A_SHA_DIGEST_LEN		20
 
@@ -24,9 +23,6 @@ struct wlan_fast_reconnect {
 	unsigned char wpa_global_PSK[A_SHA_DIGEST_LEN * 2];
 	uint32_t	channel;
 	uint32_t    security_type;
-#if ATCMD_VER == ATVER_2
-	uint32_t    enable;
-#endif
 };
 
 

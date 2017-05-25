@@ -223,7 +223,7 @@ ip_reass_remove_oldest_datagram(struct ip_hdr *fraghdr, int pbufs_needed)
   /* @todo Can't we simply remove the last datagram in the
    *       linked list behind reassdatagrams?
    */
-  struct ip_reassdata *r, *oldest, *prev, *oldest_prev;
+  struct ip_reassdata *r, *oldest, *prev;
   int pbufs_freed = 0, pbufs_freed_current;
   int other_datagrams;
 
@@ -232,7 +232,6 @@ ip_reass_remove_oldest_datagram(struct ip_hdr *fraghdr, int pbufs_needed)
   do {
     oldest = NULL;
     prev = NULL;
-    oldest_prev = NULL;
     other_datagrams = 0;
     r = reassdatagrams;
     while (r != NULL) {
@@ -241,11 +240,9 @@ ip_reass_remove_oldest_datagram(struct ip_hdr *fraghdr, int pbufs_needed)
         other_datagrams++;
         if (oldest == NULL) {
           oldest = r;
-          oldest_prev = prev;
         } else if (r->timer <= oldest->timer) {
           /* older than the previous oldest */
           oldest = r;
-          oldest_prev = prev;
         }
       }
       if (r->next != NULL) {
@@ -254,7 +251,7 @@ ip_reass_remove_oldest_datagram(struct ip_hdr *fraghdr, int pbufs_needed)
       r = r->next;
     }
     if (oldest != NULL) {
-      pbufs_freed_current = ip_reass_free_complete_datagram(oldest, oldest_prev);
+      pbufs_freed_current = ip_reass_free_complete_datagram(oldest, prev);
       pbufs_freed += pbufs_freed_current;
     }
   } while ((pbufs_freed < pbufs_needed) && (other_datagrams > 1));

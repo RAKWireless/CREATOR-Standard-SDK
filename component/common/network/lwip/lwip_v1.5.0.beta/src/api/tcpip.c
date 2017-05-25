@@ -335,12 +335,6 @@ tcpip_apimsg(struct api_msg *apimsg)
 #endif
   
   if (sys_mbox_valid(&mbox)) {
-/* raise priority temporary if not support LWIP_NETCONN_SEM_PER_THREAD */
-#if !LWIP_NETCONN_SEM_PER_THREAD
-    UBaseType_t prio = uxTaskPriorityGet(NULL);       // add to prevent switch to tcpip thread between mbox post and sem wait
-    if((TCPIP_THREAD_PRIO + 1) > prio)
-      vTaskPrioritySet(NULL, TCPIP_THREAD_PRIO + 1);  // set priority higher than tcpip thread
-#endif
     TCPIP_MSG_VAR_ALLOC(msg);
     TCPIP_MSG_VAR_REF(msg).type = TCPIP_MSG_API;
     TCPIP_MSG_VAR_REF(msg).msg.apimsg = apimsg;
@@ -352,9 +346,6 @@ tcpip_apimsg(struct api_msg *apimsg)
     sys_mbox_post(&mbox, &TCPIP_MSG_VAR_REF(msg));
     sys_arch_sem_wait(LWIP_API_MSG_SEM(&apimsg->msg), 0);
     TCPIP_MSG_VAR_FREE(msg);
-#if !LWIP_NETCONN_SEM_PER_THREAD
-    vTaskPrioritySet(NULL, prio);                     // restore to original priority
-#endif
     return apimsg->msg.err;
   }
   return ERR_VAL;
@@ -536,7 +527,7 @@ tcpip_init(tcpip_init_done_fn initfunc, void *arg)
   }
 #endif /* LWIP_TCPIP_CORE_LOCKING */
 
-  sys_thread_new_tcm(TCPIP_THREAD_NAME, tcpip_thread, NULL, TCPIP_THREAD_STACKSIZE, TCPIP_THREAD_PRIO);
+  sys_thread_new(TCPIP_THREAD_NAME, tcpip_thread, NULL, TCPIP_THREAD_STACKSIZE, TCPIP_THREAD_PRIO);
 }
 
 /**

@@ -24,7 +24,7 @@ endif
 #all: CORE_TARGETS COPY_RAM_OBJS
 all: CORE_TARGETS COPY_RAM_OBJS
 	make -C portable/MemMang all
-	make -C portable/GCC/ARM_CM4F all
+	make -C portable/GCC/ARM_CM3 all
 	
 
 	
@@ -38,8 +38,14 @@ CORE_TARGETS:	$(OBJS)
 #                        RULES TO CLEAN TARGETS                               #
 #*****************************************************************************#
 clean:
-	make -C portable/MemMang clean
-	make -C portable/GCC/ARM_CM4F clean
+	$(REMOVE) portable/MemMang/*.o
+	$(REMOVE) portable/MemMang/*.i
+	$(REMOVE) portable/MemMang/*.s
+	$(REMOVE) portable/MemMang/*.d
+	$(REMOVE) portable/GCC/ARM_CM3/*.o
+	$(REMOVE) portable/GCC/ARM_CM3/*.i
+	$(REMOVE) portable/GCC/ARM_CM3/*.s
+	$(REMOVE) portable/GCC/ARM_CM3/*.d
 	$(REMOVE) *.o
 	$(REMOVE) *.i
 	$(REMOVE) *.s

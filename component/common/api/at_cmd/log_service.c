@@ -9,11 +9,7 @@
 #include "task.h"
 #include "semphr.h"
 #include "main.h"
-//#include "wifi_util.h"
-#include "atcmd_wifi.h"
-#if CONFIG_EXAMPLE_UART_ATCMD || CONFIG_EXAMPLE_SPI_ATCMD 
-#include "atcmd_lwip.h"
-#endif
+#include "wifi_util.h"
 
 #if SUPPORT_LOG_SERVICE
 //======================================================
@@ -22,61 +18,33 @@ struct list_head log_hash[ATC_INDEX_NUM];
 extern void at_wifi_init(void);
 extern void at_fs_init(void);
 extern void at_sys_init(void);
-extern void at_ethernet_init(void);
-extern void at_google_init(void);
-extern void at_transport_init(void);
 //extern void at_app_init(void);
-extern void at_mp_init(void);
-
-void at_log_init(void);
-
 char log_buf[LOG_SERVICE_BUFLEN];
 #if CONFIG_LOG_HISTORY
 char log_history[LOG_HISTORY_LEN][LOG_SERVICE_BUFLEN];
 static unsigned int log_history_count = 0;
 #endif
 xSemaphoreHandle log_rx_interrupt_sema = NULL;
-#if CONFIG_LOG_SERVICE_LOCK
-xSemaphoreHandle log_service_sema = NULL; 
-#endif
 extern xSemaphoreHandle	uart_rx_interrupt_sema;
 
 #if CONFIG_INIC_EN
 extern unsigned char inic_cmd_ioctl;
 #endif
 
-//#if defined (__ICCARM__)
-//#pragma section=".data.log_init"
-//
-//unsigned int __log_init_begin__;
-//unsigned int __log_init_end__;
-//#elif defined ( __CC_ARM   ) || defined(__GNUC__)
-#if defined (__ICCARM__) || defined ( __CC_ARM   ) || defined(__GNUC__)
+#if defined (__ICCARM__)
+#pragma section=".data.log_init"
+
+unsigned int __log_init_begin__;
+unsigned int __log_init_end__;
+#elif defined ( __CC_ARM   ) || defined(__GNUC__)
 //#pragma section=".data.log_init"
 log_init_t* __log_init_begin__;
 log_init_t* __log_init_end__;
 log_init_t log_init_table[] = {
 	at_wifi_init,
-	//	at_fs_init,
-
-	at_sys_init,
-	at_log_init,
-	//	at_app_init,
-#if CONFIG_ETHERNET  
-	at_ethernet_init,
-#endif  
-
-#if CONFIG_GOOGLE_NEST  
-	at_google_init,
-#endif 
-
-#if CONFIG_TRANSPORT  
-	at_transport_init,
-#endif
-
-#if CONFIG_ATCMD_MP
-	at_mp_init,
-#endif
+//	at_fs_init,
+	at_sys_init
+//	at_app_init
 };
 #else
 #error "not implement, add to linker script"
@@ -113,15 +81,14 @@ void log_service_init(void)
 {
 	int i;
 	
-//#if defined (__ICCARM__)
-//	log_init_t *log_init_table;
-//	__log_init_begin__ = (unsigned int)__section_begin(".data.log_init");
-//	__log_init_end__ = (unsigned int)__section_end(".data.log_init");
-//	log_init_table = (log_init_t *)__log_init_begin__;
-//#elif defined(__CC_ARM) || defined(__GNUC__)
-#if defined (__ICCARM__) || defined(__CC_ARM) || defined(__GNUC__)
+#if defined (__ICCARM__)
+	log_init_t *log_init_table;
+	__log_init_begin__ = (unsigned int)__section_begin(".data.log_init");
+	__log_init_end__ = (unsigned int)__section_end(".data.log_init");
+	log_init_table = (log_init_t *)__log_init_begin__;
+#elif defined(__CC_ARM) || defined(__GNUC__)
 	__log_init_begin__ = log_init_table;
-	__log_init_end__ = __log_init_begin__ + sizeof(log_init_table);
+	__log_init_end__ = log_init_table + sizeof(log_init_table);
 #else
 	#error "not implement"
 #endif
@@ -136,9 +103,6 @@ void log_service_init(void)
   	/* Initial uart rx swmaphore*/
 	vSemaphoreCreateBinary(log_rx_interrupt_sema);
 	xSemaphoreTake(log_rx_interrupt_sema, 1/portTICK_RATE_MS);
-#if CONFIG_LOG_SERVICE_LOCK
-	log_service_lock_init();
-#endif
 	start_log_service();
 }
 
@@ -175,8 +139,7 @@ void* log_action(char *cmd)
 void* log_handler(char *cmd)
 {
 	log_act_t action=NULL;
-	char buf[LOG_SERVICE_BUFLEN];
-	memset(buf, 0, LOG_SERVICE_BUFLEN);
+	char buf[100] = {0};
 	char *copy=buf;
 	char *token = NULL;
 	char *param = NULL;
@@ -184,7 +147,7 @@ void* log_handler(char *cmd)
 #if CONFIG_LOG_HISTORY
 	strcpy(log_history[((log_history_count++)%LOG_HISTORY_LEN)], log_buf);
 #endif
-	strncpy(copy, cmd,LOG_SERVICE_BUFLEN-1);
+	strcpy(copy, cmd);
 
 #if defined(USE_STRSEP)
 	token = _strsep(&copy, "=");
@@ -213,63 +176,26 @@ void* log_handler(char *cmd)
 int parse_param(char *buf, char **argv)
 {
 	int argc = 1;
-	char str_buf[LOG_SERVICE_BUFLEN];
-	memset(str_buf, 0, LOG_SERVICE_BUFLEN);
-	int str_count = 0;
-	int buf_cnt = 0;
-
-	if(buf == NULL)
-		goto exit;
-	
 	while((argc < MAX_ARGC) && (*buf != '\0')) {
-		while((*buf == ',') || (*buf == '[') || (*buf == ']')){
-			if((*buf == ',') && (*(buf+1) == ',')){
-				argv[argc] = NULL;
-				argc++;
-			}
-			*buf = '\0';
-			buf++;
-		}
-
-		if(*buf == '\0')
-			break;
-		else if(*buf == '"'){
-			memset(str_buf,'\0',LOG_SERVICE_BUFLEN);
-			str_count = 0;
-			buf_cnt = 0;
-			*buf = '\0';
+		while((*buf == '[')||(*buf == ' '))
 			buf ++;         
-			if(*buf == '\0')
+		if((*buf == ']')||(*buf == '\0'))
 			break;
 		argv[argc] = buf;
-			while((*buf != '"')&&(*buf != '\0')){
-				if(*buf == '\\'){
+		argc ++;
 		buf ++;
-					buf_cnt++;
-				}
-				str_buf[str_count] = *buf;
-				str_count++;
-				buf_cnt++;
-			buf ++;
-			}
-			*buf = '\0';
-			memcpy(buf-buf_cnt,str_buf,buf_cnt);
-		}
-		else{
-			argv[argc] = buf;
-		}
-		argc++;
-		buf++;
 
-		while( (*buf != ',')&&(*buf != '\0')&&(*buf != '[')&&(*buf != ']') )
-			buf++;
+		while((*buf != ',')&&(*buf != '[')&&(*buf != ']')&&(*buf != '\0'))
+			buf ++;
+
+		while((*buf == ',')||(*buf == '[')||(*buf == ']')) {
+			*buf = '\0';
+			buf ++;
+		}
 	}
-exit:
 	return argc;
 }
 
-unsigned char  gDbgLevel = AT_DBG_ERROR;
-unsigned int   gDbgFlag  = 0xFFFFFFFF;
 void at_set_debug_level(unsigned char newDbgLevel)
 {
     gDbgLevel = newDbgLevel;
@@ -311,12 +237,10 @@ void legency_interactive_handler(unsigned char argc, unsigned char **argv)
 #endif
 int mp_commnad_handler(char *cmd)
 {
-	char buf[64];
+	char buf[64] = {0};
 	char *token = NULL;
-	memset(buf, 0, 64);
 	
-	//strcpy(buf, cmd);
-        strncpy(buf, cmd, (64-1));
+	strcpy(buf, cmd);
 	token = strtok(buf, " ");
 	if(token && (strcmp(buf, "iwpriv") == 0)){
 		token = strtok(NULL, "");
@@ -342,36 +266,12 @@ int print_help_handler(char *cmd){
         return -1;
 }
 
-#if CONFIG_LOG_SERVICE_LOCK
-void log_service_lock(void)
-{
-	rtw_down_sema(&log_service_sema);
-}
-
-u32 log_service_lock_timeout(u32 ms)
-{
-	return rtw_down_timeout_sema(&log_service_sema, ms);
-}
-
-void log_service_unlock(void)
-{
-	rtw_up_sema(&log_service_sema);
-}
-
-void log_service_lock_init(void){
-	rtw_init_sema(&log_service_sema, 1);
-}
-#endif
-
 void log_service(void *param)
 {
-	_AT_DBG_MSG(AT_FLAG_COMMON, AT_DBG_ALWAYS, "\n\rStart LOG SERVICE MODE\n\r");
-	_AT_DBG_MSG(AT_FLAG_COMMON, AT_DBG_ALWAYS, "\n\r# ");        
+	printf("\n\rStart LOG SERVICE MODE\n\r");
+	printf("\n\r# ");        
 	while(1){
 		while(xSemaphoreTake(log_rx_interrupt_sema, portMAX_DELAY) != pdTRUE);
-#if CONFIG_LOG_SERVICE_LOCK
-		log_service_lock();
-#endif
 		if(log_handler((char *)log_buf) == NULL){
 #if CONFIG_WLAN
 			if(mp_commnad_handler((char *)log_buf) < 0)
@@ -380,9 +280,10 @@ void log_service(void *param)
 			#if SUPPORT_INTERACTIVE_MODE
 				print_help_handler((char *)log_buf);
 				legency_interactive_handler(NULL, NULL);
+				continue;
 			#else
 				if(print_help_handler((char *)log_buf) < 0){
-					at_printf("\r\nunknown command '%s'", log_buf);
+					printf("\n\runknown command '%s'", log_buf);
 				}
 			#endif
 			}
@@ -391,19 +292,10 @@ void log_service(void *param)
 #if CONFIG_INIC_EN
 		inic_cmd_ioctl = 0;
 #endif
-		_AT_DBG_MSG(AT_FLAG_COMMON, AT_DBG_ALWAYS, "\n\r[MEM] After do cmd, available heap %d\n\r", xPortGetFreeHeapSize());
-		_AT_DBG_MSG(AT_FLAG_COMMON, AT_DBG_ALWAYS, "\r\n\n# "); //"#" is needed for mp tool
-#if CONFIG_EXAMPLE_UART_ATCMD
-		if(atcmd_lwip_is_tt_mode())
-			at_printf(STR_END_OF_ATDATA_RET);
-		else
-			at_printf(STR_END_OF_ATCMD_RET);
-#endif
-#if CONFIG_LOG_SERVICE_LOCK
-		log_service_unlock();
-#endif
+		printf("\n\r[MEM] After do cmd, available heap %d\n\r", xPortGetFreeHeapSize());
+		printf("\r\n\n# ");
 #if defined(configUSE_WAKELOCK_PMU) && (configUSE_WAKELOCK_PMU == 1)
-		pmu_release_wakelock(BIT(PMU_LOGUART_DEVICE));
+		release_wakelock(WAKELOCK_LOGUART);
 #endif
 	}
 }
@@ -411,44 +303,9 @@ void log_service(void *param)
 #define STACKSIZE               1280
 void start_log_service(void)
 {
-	xTaskHandle CreatedTask;
-	int result;
-
-#if CONFIG_USE_TCM_HEAP
-	/*********************************************************************
-	 *                                                                                                                         
-	 * ATCMD V2 supports commands for SSL                                                                                     
-	 * It will cause problems while doing SSL operations if the stack is placed in TCM region   
-	 *
-	 *********************************************************************/
-	void *stack_addr = NULL;
-#if (ATCMD_VER == ATVER_1) || ((ATCMD_VER == ATVER_2)&&(ATCMD_SUPPORT_SSL == 0))
-	extern void *tcm_heap_malloc(int size);
-	stack_addr = tcm_heap_malloc(STACKSIZE * sizeof(int));
-
-	if(stack_addr == NULL){
-	}
-#endif
-
-	result = xTaskGenericCreate(
-			log_service,
-			( signed portCHAR * ) "log_service",
-			STACKSIZE,
-			NULL,
-			tskIDLE_PRIORITY + 5,
-			&CreatedTask,
-			stack_addr,
-			NULL);
-#else		
-	result = xTaskCreate( log_service, ( signed portCHAR * ) "log_service", STACKSIZE, NULL, tskIDLE_PRIORITY + 5, &CreatedTask );
-#endif
-   
-	if(result != pdPASS) {
+	if(xTaskCreate(log_service, (char const*)"log_service", STACKSIZE, NULL, tskIDLE_PRIORITY + 5, NULL) != pdPASS)
 		printf("\n\r%s xTaskCreate failed", __FUNCTION__);
-	}
-
 }
-
 void fAT_exit(void *arg){
 	printf("\n\rLeave LOG SERVICE");
 	vTaskDelete(NULL);

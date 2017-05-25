@@ -24,8 +24,8 @@ extern HAL_Status HalTimerInitRtl8195a_Patch(
 static void gtimer_timeout_handler (uint32_t tid)
 {
     gtimer_t *obj = (gtimer_t *)tid;
+    //PTIMER_ADAPTER pTimerAdapter = &(obj->hal_gtimer_adp);
     gtimer_irq_handler handler;
-    u8 timer_id = obj->hal_gtimer_adp.TimerId;
     
     if (obj->handler != NULL) {
         handler = (gtimer_irq_handler)obj->handler;
@@ -34,38 +34,21 @@ static void gtimer_timeout_handler (uint32_t tid)
 
     if (!obj->is_periodcal) {
         gtimer_stop(obj);
-    }
-
-    if(timer_id < 2) {
-        // Timer0 | Timer1: clear ISR here
-        // Timer 2~7 ISR will be cleared in HAL
-        HalTimerClearIsr(timer_id);
-    }
+    }    
 }
 
 void gtimer_init (gtimer_t *obj, uint32_t tid)
 {
     PTIMER_ADAPTER pTimerAdapter = &(obj->hal_gtimer_adp);
 
-    if ((tid == 1) || (tid == 6) || (tid == 7)) {
-		DBG_TIMER_ERR("gtimer_init: This timer is reserved for HAL driver\r\n", tid);
-        return;
-    }
-
     if (tid > GTIMER_MAX) {
-		DBG_TIMER_ERR("gtimer_init: Invalid TimerId=%d\r\n", tid);
+		DBG_TIMER_ERR("%s: Invalid TimerId=%d\r\n", __FUNCTION__, tid);
         return;
     }
     
     pTimerAdapter->IrqDis = 0;    // Enable Irq @ initial
     pTimerAdapter->IrqHandle.IrqFun = (IRQ_FUN) gtimer_timeout_handler;
-	if(tid == 0) {
-        pTimerAdapter->IrqHandle.IrqNum = TIMER0_IRQ;
-    } else if(tid == 1) {
-    	pTimerAdapter->IrqHandle.IrqNum = TIMER1_IRQ;
-    } else {
-		pTimerAdapter->IrqHandle.IrqNum = TIMER2_7_IRQ;
-    }
+    pTimerAdapter->IrqHandle.IrqNum = TIMER2_7_IRQ;
     pTimerAdapter->IrqHandle.Priority = 0;
     pTimerAdapter->IrqHandle.Data = (u32)obj;
     pTimerAdapter->TimerId = (u8)tid;

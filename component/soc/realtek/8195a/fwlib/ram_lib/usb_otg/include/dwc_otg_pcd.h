@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
  * DAMAGE.
  * ========================================================================== */
-#if 1//ndef DWC_HOST_ONLY
+#ifndef DWC_HOST_ONLY
 #if !defined(__DWC_PCD_H__)
 #define __DWC_PCD_H__
 
@@ -88,7 +88,7 @@ struct dwc_otg_pcd;
 typedef struct usb_iso_request dwc_otg_pcd_iso_request_t;
 
 #ifdef DWC_UTE_PER_IO
-XXX
+
 /**
  * This shall be the exact analogy of the same type structure defined in the
  * usb_gadget.h. Each descriptor contains
@@ -254,18 +254,15 @@ struct dwc_otg_pcd {
 };
 
 //FIXME this functions should be static, and this prototypes should be removed
-extern _LONG_CALL_ void dwc_otg_request_nuke(dwc_otg_pcd_ep_t * ep);
-extern _LONG_CALL_ void dwc_otg_request_done(dwc_otg_pcd_ep_t * ep,
+extern void dwc_otg_request_nuke(dwc_otg_pcd_ep_t * ep);
+extern void dwc_otg_request_done(dwc_otg_pcd_ep_t * ep,
 				dwc_otg_pcd_request_t * req, int32_t status);
 
-_LONG_CALL_ void dwc_otg_iso_buffer_done(dwc_otg_pcd_t * pcd, dwc_otg_pcd_ep_t * ep,
+void dwc_otg_iso_buffer_done(dwc_otg_pcd_t * pcd, dwc_otg_pcd_ep_t * ep,
 			    void *req_handle);
-extern _LONG_CALL_ void dwc_otg_pcd_start_iso_ddma(dwc_otg_core_if_t * core_if, 
+extern void dwc_otg_pcd_start_iso_ddma(dwc_otg_core_if_t * core_if, 
 				dwc_otg_pcd_ep_t * ep);
 
-extern _LONG_CALL_ void do_test_mode(void *data);
-
-extern _LONG_CALL_ void dwc_pcd_data_init(VOID);
-
+extern void do_test_mode(void *data);
 #endif
 #endif /* DWC_HOST_ONLY */

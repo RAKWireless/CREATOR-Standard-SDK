@@ -40,8 +40,6 @@
 #include "task.h"
 #include "queue.h"
 #include "lwip/lwip_timers.h"
-#include "autoconf.h"
-#include "tcm_heap.h"
 
 xTaskHandle xTaskGetCurrentTaskHandle( void ) PRIVILEGED_FUNCTION;
 extern void * vTaskGetCurrentTCB( void );
@@ -64,7 +62,7 @@ err_t sys_mbox_new(sys_mbox_t *mbox, int size)
 {
 	(void ) size;
 	
-	*mbox = xQueueCreate( size, sizeof( void * ) );
+	*mbox = xQueueCreate( archMESG_QUEUE_LENGTH, sizeof( void * ) );
 
 #if SYS_STATS
       ++lwip_stats.sys.mbox.used;
@@ -433,64 +431,6 @@ void sys_mutex_unlock(sys_mutex_t *mutex)
 	xSemaphoreGive(*mutex);
 }
 #endif /*LWIP_COMPAT_MUTEX*/
-
-/*-----------------------------------------------------------------------------------*/
-// TODO
-/*-----------------------------------------------------------------------------------*/
-/*
-  Starts a new thread with priority "prio" that will begin its execution in the
-  function "thread()". The "arg" argument will be passed as an argument to the
-  thread() function. The id of the new thread is returned. Both the id and
-  the priority are system dependent.
-*/
-sys_thread_t sys_thread_new_tcm(const char *name, lwip_thread_fn thread , void *arg, int stacksize, int prio)
-{
-xTaskHandle CreatedTask;
-int result;
-
-   if ( s_nextthread < SYS_THREAD_MAX )
-   {
-	   vPortEnterCritical();
-#if CONFIG_USE_TCM_HEAP
-	   {
-		   void *stack_addr = tcm_heap_malloc(stacksize * sizeof(int));
-
-		   if(stack_addr == NULL){
-		   }
-
-		   result = xTaskGenericCreate(
-				   thread,
-				   ( signed portCHAR * ) name,
-				   stacksize,
-				   arg,
-				   prio,
-				   &CreatedTask,
-				   stack_addr,
-				   NULL);
-	   }
-#else		
-	   result = xTaskCreate( thread, ( signed portCHAR * ) name, stacksize, arg, prio, &CreatedTask );
-#endif
-
-	   // For each task created, store the task handle (pid) in the timers array.
-	   // This scheme doesn't allow for threads to be deleted
-	   s_timeoutlist[s_nextthread++].pid = CreatedTask;
-       vPortExitCritical();
-	   
-	   if(result == pdPASS)
-	   {
-		   return CreatedTask;
-	   }
-	   else
-	   {
-		   return NULL;
-	   }
-   }
-   else
-   {
-      return NULL;
-   }
-}
 /*-----------------------------------------------------------------------------------*/
 // TODO
 /*-----------------------------------------------------------------------------------*/
@@ -623,11 +563,6 @@ void sys_assert( const char *msg )
 }
 
 u32_t sys_now(void)
-{
-	return xTaskGetTickCount();
-}
-
-u32_t sys_jiffies(void)
 {
 	return xTaskGetTickCount();
 }

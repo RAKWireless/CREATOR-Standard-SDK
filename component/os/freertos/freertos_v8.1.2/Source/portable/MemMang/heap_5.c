@@ -114,7 +114,6 @@ task.h is included from an application file. */
 
 #include "FreeRTOS.h"
 #include "task.h"
-#include "platform_opts.h"
 
 #undef MPU_WRAPPERS_INCLUDED_FROM_API_FILE
 
@@ -164,57 +163,19 @@ static size_t xBlockAllocatedBit = 0;
 
 /* Realtek test code start */
 //TODO: remove section when combine BD and BF
-#if ((defined CONFIG_PLATFORM_8195A) || (defined CONFIG_PLATFORM_8711B))
 #include "section_config.h"
 SRAM_BF_DATA_SECTION
-#endif
 static unsigned char ucHeap[ configTOTAL_HEAP_SIZE ];
 
-#if (defined CONFIG_PLATFORM_8195A)
 HeapRegion_t xHeapRegions[] =
 {
-	{ (uint8_t*)0x10002300, 0x3D00 },	// Image1 recycle heap
-	{ ucHeap, sizeof(ucHeap) }, 		// Defines a block from ucHeap
-#if 0
-	{ (uint8_t*)0x301b5000, 300*1024 }, // SDRAM heap
-#endif        
-	{ NULL, 0 } 							// Terminates the array.
+	{ NULL, 0 }, // Defines a block from ucHeap
+	{ NULL, 0 },
+	{ NULL, 0 }                // Terminates the array.
 };
-#elif (defined CONFIG_PLATFORM_8711B)
-#include "rtl8710b_boot.h"
-extern BOOT_EXPORT_SYMB_TABLE boot_export_symbol;
-HeapRegion_t xHeapRegions[] =
-{
-	{ 0, 0},	// Image1 reserved ,length will be corrected in pvPortMalloc()
-	{ ucHeap, sizeof(ucHeap) }, 	// Defines a block from ucHeap
-#if (CONFIG_ENABLE_RDP == 0)	
-	{ (uint8_t*)0x1003f000, 0x1000},	// RDP reserved
-#endif	
-	{ NULL, 0 } 					// Terminates the array.
-};
-#else
-#error NOT SUPPORT CHIP
-#endif
 /* Realtek test code end */
 
 /*-----------------------------------------------------------*/
-#if 1
-/*
-	Dump xBlock list
-*/
-void dump_mem_block_list()
-{
-	BlockLink_t *pxBlock = &xStart;
-	int count = 0;
-
-	printf("\n===============================>Memory List:\n");
-	while(pxBlock->pxNextFreeBlock != NULL)
-	{
-		printf("[%d]=0x%p, %d\n", count++, pxBlock, pxBlock->xBlockSize);
-		pxBlock = pxBlock->pxNextFreeBlock;
-	}
-}
-#endif
 
 void *pvPortMalloc( size_t xWantedSize )
 {
@@ -224,10 +185,11 @@ void *pvReturn = NULL;
 	/* Realtek test code start */
 	if(pxEnd == NULL)
 	{
-#if (defined CONFIG_PLATFORM_8711B)
-		xHeapRegions[ 0 ].xSizeInBytes = (uint32_t)((uint8_t*)0x10005000 - (uint8_t*)boot_export_symbol.boot_ram_end);
-		xHeapRegions[ 0 ].pucStartAddress = (uint8_t*)boot_export_symbol.boot_ram_end;
-#endif		
+		// lower StartAddress must put in lower index of array, must sort by address
+		xHeapRegions[0].pucStartAddress = (uint8_t*)0x10002300;	// released image1 text
+		xHeapRegions[0].xSizeInBytes = 0x3D00;
+		xHeapRegions[1].pucStartAddress = ucHeap;
+		xHeapRegions[1].xSizeInBytes = sizeof(ucHeap);
 		vPortDefineHeapRegions( xHeapRegions );
 	}
 	/* Realtek test code end */

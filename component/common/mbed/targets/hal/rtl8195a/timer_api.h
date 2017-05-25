@@ -15,13 +15,14 @@ typedef void (*gtimer_irq_handler)(uint32_t id);
 
 typedef struct gtimer_s gtimer_t;
 enum { 
-    TIMER0 = 2,    // GTimer 2, share with PWM_3
+    TIMER0 = 2,    // GTimer 2, share with us_tick(wait_ms()) functions
     TIMER1 = 3,    // GTimer 3, share with PWM_0
     TIMER2 = 4,    // GTimer 4, share with PWM_1
     TIMER3 = 5,    // GTimer 5, share with PWM_2
-    TIMER4 = 0,    // GTimer 0, share with software-RTC functions
+    TIMER4 = 6,    // GTimer 6, share with PWM_3
+    TIMER5 = 7,    // share with the software-RTC
 
-    GTIMER_MAX = 5    
+    GTIMER_MAX = 7    
 };
 
 void gtimer_init (gtimer_t *obj, uint32_t tid);

@@ -131,13 +131,6 @@ typedef enum _SSI_DBG_TYPE_LIST_ {
     IRQ_HANDLE TxGdmaIrqHandle;
 }SSI_DMA_CONFIG, *PSSI_DMA_CONFIG;
 
-#ifdef CONFIG_GDMA_EN
-typedef struct _HAL_SSI_DMA_MULTIBLK_ {
-    volatile GDMA_CH_LLI_ELE GdmaChLli[16];
-    struct GDMA_CH_LLI Lli[16];
-    struct BLOCK_SIZE_LIST BlockSizeList[16];   
-}SSI_DMA_MULTIBLK, *PSSI_DMA_MULTIBLK;
-#endif
 /**
  * DesignWare SSI Configurations
  */
@@ -182,16 +175,8 @@ typedef struct _HAL_SSI_ADAPTOR_ {
     u8   TransferMechanism;
 
     // Extend
-    u8 Reserve;
-    u8 HaveTxChannel;
-    u8 HaveRxChannel;
+    u32 Reserved1;
     u8 DefaultRxThresholdLevel;
-    #ifdef CONFIG_GDMA_EN
-    SSI_DMA_MULTIBLK DmaTxMultiBlk, DmaRxMultiBlk;
-    #endif
-    u32 ReservedDummy;
-    VOID (*TxIdleCallback)(VOID *Para);
-    VOID *TxIdleCbPara;    
 }HAL_SSI_ADAPTOR, *PHAL_SSI_ADAPTOR;
 
 typedef struct _HAL_SSI_OP_{
@@ -271,14 +256,12 @@ struct spi_s {
     u32 irq_handler;
     u32 irq_id;
     u32 dma_en;
-    volatile u32 state;
+    u32 state;
     u8 sclk;
 #ifdef CONFIG_GDMA_EN    
     HAL_GDMA_ADAPTER spi_gdma_adp_tx;
     HAL_GDMA_ADAPTER spi_gdma_adp_rx;
 #endif    
-    u32 bus_tx_done_handler;
-    u32 bus_tx_done_irq_id;
 };
 
 VOID HalSsiOpInit(VOID *Adaptor);
@@ -293,33 +276,22 @@ HAL_Status HalSsiInit(VOID * Data);
 HAL_Status HalSsiDeInit(VOID * Data);
 HAL_Status HalSsiEnable(VOID * Data);
 HAL_Status HalSsiDisable(VOID * Data);
-HAL_Status HalSsiEnterCritical(VOID * Data);
-HAL_Status HalSsiExitCritical(VOID * Data);
-HAL_Status HalSsiTimeout(u32 StartCount, u32 TimeoutCnt);
-HAL_Status HalSsiStopRecv(VOID * Data);
-HAL_Status HalSsiSetFormat(VOID * Data);
-VOID HalSsiClearFIFO(VOID * Data);
+
+
 #ifdef CONFIG_GDMA_EN    
 HAL_Status HalSsiTxGdmaInit(PHAL_SSI_OP pHalSsiOp, PHAL_SSI_ADAPTOR pHalSsiAdapter);
 VOID HalSsiTxGdmaDeInit(PHAL_SSI_ADAPTOR pHalSsiAdapter);
 HAL_Status HalSsiRxGdmaInit(PHAL_SSI_OP pHalSsiOp, PHAL_SSI_ADAPTOR pHalSsiAdapter);
 VOID HalSsiRxGdmaDeInit(PHAL_SSI_ADAPTOR pHalSsiAdapter);
-HAL_Status HalSsiRxMultiBlkChnl(PHAL_SSI_ADAPTOR pHalSsiAdapter);
-HAL_Status HalSsiDmaRecv(VOID * Adapter, u8 * pRxData, u32 Length);
-HAL_Status HalSsiDmaSend(VOID *Adapter, u8 *pTxData, u32 Length);
 
 static __inline__ VOID
 HalSsiDmaInit(
     IN PHAL_SSI_ADAPTOR pHalSsiAdapter
 )
 {
-    #if CONFIG_CHIP_E_CUT
-    HalSsiDmaInitRtl8195a_V04((void *)pHalSsiAdapter);
-    #else
     HalSsiDmaInitRtl8195a((void *)pHalSsiAdapter);
-    #endif
 }
-/*
+
 static __inline__ HAL_Status HalSsiDmaSend(VOID *Adapter, u8 *pTxData, u32 Length)
 {
     return (HalSsiDmaSendRtl8195a(Adapter, pTxData, Length));
@@ -329,7 +301,7 @@ static __inline__ HAL_Status HalSsiDmaRecv(VOID *Adapter, u8  *pRxData, u32 Leng
 {
     return (HalSsiDmaRecvRtl8195a(Adapter, pRxData, Length));
 }
-*/   
+    
 
 #endif  // end of "#ifdef CONFIG_GDMA_EN"
 

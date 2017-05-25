@@ -804,8 +804,8 @@ osStatus osMailFree (osMailQId queue_id, void *mail);
 
 #endif  // Mail Queues available
 
-#define malloc            pvPortMalloc
-#define free              vPortFree
+#define malloc(size)            pvPortMalloc(size)
+#define free(pbuf)              vPortFree(pbuf)
 extern void *calloc_freertos(size_t nelements, size_t elementSize);
 #define calloc(nelements, elementSize) calloc_freertos(nelements, elementSize)
 

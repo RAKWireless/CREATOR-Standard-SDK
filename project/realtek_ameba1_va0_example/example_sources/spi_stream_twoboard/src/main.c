@@ -17,7 +17,6 @@
 #define SCLK_FREQ           1000000
 #define SPI_DMA_DEMO        0
 #define TEST_LOOP           100
-#define GPIO_SYNC_PIN PA_1
 
 // SPI0
 #define SPI0_MOSI  PC_2
@@ -30,44 +29,16 @@ void __rtl_memDump_v1_00(const u8 *start, u32 size, char * strHeader);
 extern void wait_ms(u32);
 
 char TestBuf[TEST_BUF_SIZE];
-volatile int MasterTxDone;
-volatile int MasterRxDone;
-volatile int SlaveTxDone;
-volatile int SlaveRxDone;
-gpio_t GPIO_Syc;
+volatile int TrDone;
 
 void master_tr_done_callback(void *pdata, SpiIrq event)
 {
-    switch(event){
-        case SpiRxIrq:
-            DBG_8195A("Master RX done!\n");
-            MasterRxDone = 1;
-            gpio_write(&GPIO_Syc, 0);
-            break;
-        case SpiTxIrq:
-            DBG_8195A("Master TX done!\n");
-            MasterTxDone = 1;
-            break;
-        default:
-            DBG_8195A("unknown interrput evnent!\n");
-    }
+    TrDone = 1;
 }
 
 void slave_tr_done_callback(void *pdata, SpiIrq event)
 {
-    switch(event){
-        case SpiRxIrq:
-            DBG_8195A("Slave RX done!\n");
-            SlaveRxDone = 1; 
-            gpio_write(&GPIO_Syc, 0);
-            break;
-        case SpiTxIrq:
-            DBG_8195A("Slave TX done!\n");
-            SlaveTxDone = 1;
-            break;
-        default:
-            DBG_8195A("unknown interrput evnent!\n");
-    }
+    TrDone = 1;
 }
 
 #if SPI_IS_AS_MASTER
@@ -84,16 +55,13 @@ void main(void)
 {
     int Counter = 0;
     int i;
-    gpio_init(&GPIO_Syc, GPIO_SYNC_PIN);
-    gpio_write(&GPIO_Syc, 0);//Initialize GPIO Pin to low 
-    gpio_dir(&GPIO_Syc, PIN_OUTPUT);    // Direction: Output
-    gpio_mode(&GPIO_Syc, PullNone);     // No pull   
 
 #if SPI_IS_AS_MASTER
     spi_init(&spi_master, SPI0_MOSI, SPI0_MISO, SPI0_SCLK, SPI0_CS);
     spi_frequency(&spi_master, SCLK_FREQ);
     spi_format(&spi_master, 16, (SPI_SCLK_IDLE_LOW|SPI_SCLK_TOGGLE_MIDDLE) , 0);
     // wait Slave ready
+    wait_ms(1000);
 
     while (Counter < TEST_LOOP) {
         DBG_8195A("======= Test Loop %d =======\r\n", Counter);
@@ -104,8 +72,7 @@ void main(void)
 
         spi_irq_hook(&spi_master, master_tr_done_callback, (uint32_t)&spi_master);
         DBG_8195A("SPI Master Write Test==>\r\n");
-        MasterTxDone = 0;
-        while(gpio_read(&GPIO_Syc) == 0);
+        TrDone = 0;
 #if SPI_DMA_DEMO
         spi_master_write_stream_dma(&spi_master, TestBuf, TEST_BUF_SIZE);
 #else
@@ -113,20 +80,22 @@ void main(void)
 #endif
         i=0;
         DBG_8195A("SPI Master Wait Write Done...\r\n");
-        while(MasterTxDone == 0) {
+        while(TrDone == 0) {
             wait_ms(10);
             i++;
         }
         DBG_8195A("SPI Master Write Done!!\r\n");
 
         DBG_8195A("SPI Master Read Test==>\r\n");
-
+        DBG_8195A("Wait 5 sec for SPI Slave get ready...\r\n");
+        for (i=0;i<5;i++) {
+            wait_ms(1000);
+        }
 
         _memset(TestBuf, 0, TEST_BUF_SIZE);
         spi_flush_rx_fifo(&spi_master);
 
-        MasterRxDone = 0;
-        while(gpio_read(&GPIO_Syc) == 0);
+        TrDone = 0;
 #if SPI_DMA_DEMO
         spi_master_read_stream_dma(&spi_master, TestBuf, TEST_BUF_SIZE);
 #else
@@ -134,7 +103,7 @@ void main(void)
 #endif
         i=0;
         DBG_8195A("SPI Master Wait Read Done...\r\n");
-        while(MasterRxDone == 0) {
+        while(TrDone == 0) {
             wait_ms(10);
             i++;
         }
@@ -159,17 +128,16 @@ void main(void)
         _memset(TestBuf, 0, TEST_BUF_SIZE);
         DBG_8195A("SPI Slave Read Test ==>\r\n");
         spi_irq_hook(&spi_slave, slave_tr_done_callback, (uint32_t)&spi_slave);
-        SlaveRxDone = 0;
+        TrDone = 0;
         spi_flush_rx_fifo(&spi_slave);
 #if SPI_DMA_DEMO
         spi_slave_read_stream_dma(&spi_slave, TestBuf, TEST_BUF_SIZE);
 #else
         spi_slave_read_stream(&spi_slave, TestBuf, TEST_BUF_SIZE);
 #endif
-        gpio_write(&GPIO_Syc, 1);
         i=0;
         DBG_8195A("SPI Slave Wait Read Done...\r\n");
-        while(SlaveRxDone == 0) {
+        while(TrDone == 0) {
             wait_ms(100);
             i++;
             if (i>150) {
@@ -177,22 +145,19 @@ void main(void)
                 break;
             }
         }
-        
         __rtl_memDump_v1_00(TestBuf, TEST_BUF_SIZE, "SPI Slave Read Data:");
 
         // Slave Write Test
         DBG_8195A("SPI Slave Write Test ==>\r\n");
-        SlaveTxDone = 0;
+        TrDone = 0;
 #if SPI_DMA_DEMO
         spi_slave_write_stream_dma(&spi_slave, TestBuf, TEST_BUF_SIZE);
 #else
         spi_slave_write_stream(&spi_slave, TestBuf, TEST_BUF_SIZE);
 #endif
-        gpio_write(&GPIO_Syc, 1);
-
         i=0;
         DBG_8195A("SPI Slave Wait Write Done...\r\n");
-        while(SlaveTxDone == 0) {
+        while(TrDone == 0) {
             wait_ms(100);
             i++;
             if (i> 200) {

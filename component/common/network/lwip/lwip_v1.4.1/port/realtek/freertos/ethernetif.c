@@ -55,20 +55,10 @@
 #include "err.h"
 #include "ethernetif.h"
 #include "queue.h"
-#include "lwip_netconf.h"
 
-//#include "lwip/ethip6.h" //Add for ipv6
-
-#include <platform/platform_stdlib.h>
-#include "platform_opts.h"
-
-#if CONFIG_WLAN
+//#include "lwip/ethip6.h" //Evan add for ipv6
 #include <lwip_intf.h>
-#endif
-
-#if CONFIG_INIC_HOST
-#include "freertos/inic_intf.h"
-#endif
+#include <platform/platform_stdlib.h>
 
 #define netifMTU                                (1500)
 #define netifINTERFACE_TASK_STACK_SIZE		( 350 )
@@ -106,11 +96,6 @@ static void low_level_init(struct netif *netif)
 	/* Accept broadcast address and ARP traffic */
 	netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP;	     
 
-#if LWIP_IGMP
-	/* make LwIP_Init do igmp_start to add group 224.0.0.1 */
-	netif->flags |= NETIF_FLAG_IGMP;
-#endif
-
 	/* Wlan interface is initialized later */
 }
 
@@ -139,46 +124,22 @@ static err_t low_level_output(struct netif *netif, struct pbuf *p)
 	struct eth_drv_sg sg_list[MAX_ETH_DRV_SG];
 	int sg_len = 0;
 	struct pbuf *q;
-#if CONFIG_WLAN
+
 	if(!rltk_wlan_running(netif_get_idx(netif)))
 		return ERR_IF;
-#endif
+
 	for (q = p; q != NULL && sg_len < MAX_ETH_DRV_SG; q = q->next) {
 		sg_list[sg_len].buf = (unsigned int) q->payload;
 		sg_list[sg_len++].len = q->len;
 	}
 
 	if (sg_len) {
-#if CONFIG_WLAN
 		if (rltk_wlan_send(netif_get_idx(netif), sg_list, sg_len, p->tot_len) == 0)
-#elif CONFIG_INIC_HOST
-		if(rltk_inic_send( sg_list, sg_len, p->tot_len) == 0)
-#else
-                if(1)
-#endif
 			return ERR_OK;
 		else
 			return ERR_BUF;	// return a non-fatal error
 	}
-	return ERR_OK;
-}
 
-/*for ethernet mii interface*/
-static err_t low_level_output_mii(struct netif *netif, struct pbuf *p)
-{
-	struct eth_drv_sg sg_list[MAX_ETH_DRV_SG];
-	int sg_len = 0;
-	struct pbuf *q;
-	for (q = p; q != NULL && sg_len < MAX_ETH_DRV_SG; q = q->next) {
-		sg_list[sg_len].buf = (unsigned int) q->payload;
-		sg_list[sg_len++].len = q->len;
-	}
-	if (sg_len) {
-		 if(rltk_mii_send(sg_list, sg_len, p->tot_len) == 0)
-			return ERR_OK;
-		else
-			return ERR_BUF;	// return a non-fatal error
-	}
 	return ERR_OK;
 }
 
@@ -212,10 +173,10 @@ void ethernetif_recv(struct netif *netif, int total_len)
 	struct eth_drv_sg sg_list[MAX_ETH_DRV_SG];
 	struct pbuf *p, *q;
 	int sg_len = 0;
-#if CONFIG_WLAN
+
 	if(!rltk_wlan_running(netif_get_idx(netif)))
 		return;
-#endif
+
 	if ((total_len > MAX_ETH_MSG) || (total_len < 0))
 		total_len = MAX_ETH_MSG;
 
@@ -234,45 +195,14 @@ void ethernetif_recv(struct netif *netif, int total_len)
 
 	// Copy received packet to scatter list from wrapper rx skb
   	//printf("\n\rwlan:%c: Recv sg_len: %d, tot_len:%d", netif->name[1],sg_len, total_len);
-#if CONFIG_WLAN
 	rltk_wlan_recv(netif_get_idx(netif), sg_list, sg_len);
-#elif CONFIG_INIC_HOST
-	rltk_inic_recv(sg_list, sg_len);
-#endif
-	// Pass received packet to the interface
-	if (ERR_OK != netif->input(p, netif))
-		pbuf_free(p);
-
-}
-
-void ethernetif_mii_recv(struct netif *netif, int total_len)
-{
-	struct eth_drv_sg sg_list[MAX_ETH_DRV_SG];
-	struct pbuf *p, *q;
-	int sg_len = 0;
-
-	if ((total_len > MAX_ETH_MSG) || (total_len < 0))
-		total_len = MAX_ETH_MSG;
-
-	// Allocate buffer to store received packet
-	p = pbuf_alloc(PBUF_RAW, total_len, PBUF_POOL);
-	if (p == NULL) {
-		printf("\n\rCannot allocate pbuf to receive packet");
-		return;
-	}
-
-	// Create scatter list
-	for (q = p; q != NULL && sg_len < MAX_ETH_DRV_SG; q = q->next) {
-   		sg_list[sg_len].buf = (unsigned int) q->payload;
-		sg_list[sg_len++].len = q->len;
-	}
-	rltk_mii_recv(sg_list, sg_len);
 
 	// Pass received packet to the interface
 	if (ERR_OK != netif->input(p, netif))
 		pbuf_free(p);
 
 }
+
 /**
  * Should be called at the beginning of the program to set up the
  * network interface. It calls the function low_level_init() to do the
@@ -302,28 +232,6 @@ err_t ethernetif_init(struct netif *netif)
 //	netif->output_ip6 = ethip6_output;
 //#endif
 	netif->linkoutput = low_level_output;
-
-	/* initialize the hardware */
-	low_level_init(netif);
-
-	etharp_init();
-
-	return ERR_OK;
-}
-
-err_t ethernetif_mii_init(struct netif *netif)
-{
-	LWIP_ASSERT("netif != NULL", (netif != NULL));
-
-#if LWIP_NETIF_HOSTNAME
-		netif->hostname = "lwip2";		
-#endif /* LWIP_NETIF_HOSTNAME */
-
-	netif->output = etharp_output;
-//#if LWIP_IPV6
-//	netif->output_ip6 = ethip6_output;
-//#endif
-	netif->linkoutput = low_level_output_mii;
 
 	/* initialize the hardware */
 	low_level_init(netif);
@@ -374,4 +282,3 @@ void lwip_POST_SLEEP_PROCESSING(void)
 		tcpip_timeout(ARP_TMR_INTERVAL, arp_timer, NULL);
 	}
 }
-

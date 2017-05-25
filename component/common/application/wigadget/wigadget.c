@@ -7,7 +7,8 @@
 #include <lwip_netconf.h>
 #include <lwip/netif.h>
 #include "flash_api.h"
-#include "encrypt.h"
+#include <rom_wac_aes.h>
+#include "rom_wac_curve25519-donna.h"
 #include "gpio_api.h"
 #include "gpio_irq_api.h"
 #include "cJSON.h"
@@ -19,13 +20,7 @@
 #define MAX_BUFFER_SIZE         256
 #define ENC_SIZE          64
 #define CONTROL_TYPE		1
-#ifdef CONFIG_PLATFORM_8195A
 #define GPIO_SOFTAP_RESET_PIN		PC_4
-#endif
-
-#ifdef CONFIG_PLATFORM_8711B
-#define GPIO_SOFTAP_RESET_PIN		PA_0
-#endif
 
 flash_t iot_flash;
 uint8_t aes_key[16];
@@ -108,7 +103,7 @@ static char *iot_itoa(int value)
 
 void encrypt_data_aes(unsigned char *plaint_text, unsigned char *enc_data)
 {
-	unsigned char iv[16] = {0};
+	unsigned char iv[16] = NULL;
 	unsigned char* iv_bak = "AAAAAAAAAAAAAAAA";
 	aes_encrypt_ctx enc_ctx;
 	
@@ -124,7 +119,7 @@ void encrypt_data_aes(unsigned char *plaint_text, unsigned char *enc_data)
 
 void decrypt_data_aes(unsigned char *enc_data, unsigned char *dec_data, int data_len)
 {
-	unsigned char iv[16] = {0};
+	unsigned char iv[16] = NULL;
 	unsigned char* iv_bak = "AAAAAAAAAAAAAAAA";
 	aes_decrypt_ctx dec_ctx;
 
@@ -151,7 +146,7 @@ void iotapp_platform_reset(void)
 
 void iotapp_reset_irq_handler(uint32_t id, gpio_irq_event event) 
 {
-	printf("\n\r\n\r\n\r\n\r<<<<<<Reset the device>>>>>>>\n\r\n\r\n\r\n\r");
+	printf("\n\r\n\r\n\r\n\r<<<<<<Reset the device using PC_4>>>>>>>\n\r\n\r\n\r\n\r");
 	flash_erase_sector(&iot_flash, FLASH_IOT_DATA);	
 	iotapp_platform_reset();
 }
@@ -285,7 +280,7 @@ exit2:
 
 static void local_link_task(void *param)
 {
-	unsigned char data[ENC_SIZE] = {0};
+	unsigned char data[ENC_SIZE] = NULL;
 	vTaskDelay(1000);
         char i[16], j[16];
 	float temperature = 1.123f;
@@ -452,7 +447,7 @@ exit2:
 static void pair_device_task(void)
 {
 	int i, j, k, HANDSHAKE;
-	uint8_t PAIR_STATE[1] = {0};
+	uint8_t PAIR_STATE[1] = NULL;
 	
 	if(CONTROL_TYPE == 1){
 		printf("\r\n\r\n<<<<<<CONTROL_TYPE = 1  Need 3 times handshake>>>>>>\r\n\r\n");
@@ -467,7 +462,7 @@ static void pair_device_task(void)
 		static const uint8_t basepoint[32] = {9};
 		uint8_t mysecret[32];
 		uint8_t mypublic[32];
-		uint8_t theirpublic[32] = {0};
+		uint8_t theirpublic[32] = NULL;
 		uint8_t shared_key[32];
 //First handshake  
 		if(i == 0){
@@ -595,7 +590,7 @@ static void mdns_task(void *param)
 	uint8_t *mac, *ip;
 	int j, ret = 0;
 	uint8_t *flash_data;
-	uint8_t PAIR_STATE[1] = {0};
+	uint8_t PAIR_STATE[1] = NULL;
 	static unsigned char MAC_ADD[21];
 	static unsigned char IP[16];
 	static unsigned char port[6];

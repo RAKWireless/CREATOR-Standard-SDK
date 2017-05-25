@@ -3,7 +3,7 @@
 #include "cmsis_os.h"
 #include "diag.h"
 
-#define CMSIS_OS_ERR(fmt, args...)          DBG_8195A("\n\r%s: " fmt, __FUNCTION__, ## args)
+#define CMSIS_OS_ERR(...)          do { DBG_8195A("\n\r%s: ", __FUNCTION__); DBG_8195A(__VA_ARGS__); } while(0)
 
 extern void *_memset( void *s, int c, SIZE_T n );
 #define os_memset           _memset

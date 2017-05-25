@@ -81,78 +81,6 @@
 #endif
 
 
-typedef enum {
-	ETH_TXDONE,
-	ETH_RXDONE,
-	ETH_LINKUP,
-	ETH_LINKDOWN
-}EthernetEventType;
-
-typedef struct _HAL_ETHER_ADAPTER_{
-	IRQ_HANDLE IrqHandle;
-	u32 InterruptMask;
-	u8	tx_desc_num;
-	u8	rx_desc_num;
-	volatile u8 *TxDescAddr;
-	volatile u8 *RxDescAddr;
-	volatile u8 *pTxPktBuf;
-	volatile u8 *pRxPktBuf;
-	VOID (*CallBack)(u32 Event, u32 Data);
-}HAL_ETHER_ADAPTER, *PHAL_ETHER_ADAPTER;
-
-
-
-extern s32
-HalMiiInit(
-	IN VOID
-);
-
-extern VOID
-HalMiiDeInit(
-	IN VOID
-);
-
-extern s32
-HalMiiWriteData(
-	IN const char *Data,
-	IN u32 Size
-);
-
-extern u32
-HalMiiSendPacket(
-	IN VOID
-);
-
-extern u32
-HalMiiReceivePacket(
-	IN VOID
-);
-
-extern u32
-HalMiiReadData(
-	IN u8 *Data,
-	IN u32 Size
-);
-
-extern VOID
-HalMiiGetMacAddress(
-	IN u8 *Addr
-);
-
-extern u32
-HalMiiGetLinkStatus(
-	IN VOID
-);
-
-extern VOID
-HalMiiForceLink(
-	IN s32 Speed,
-	IN s32 Duplex
-);
-
-
-#ifdef CONFIG_MII_VERIFY
-
 typedef struct _HAL_MII_ADAPTER_ {
     u32 InterruptMask;
     PPHY_MODE_INFO pPhyModeInfo;
@@ -160,6 +88,7 @@ typedef struct _HAL_MII_ADAPTER_ {
 
 typedef struct _HAL_MII_OP_ {
     BOOL (*HalMiiGmacInit)(VOID *Data);
+    BOOL (*HalMiiInit)(VOID *Data);
     BOOL (*HalMiiGmacReset)(VOID *Data);
     BOOL (*HalMiiGmacEnablePhyMode)(VOID *Data);
     u32  (*HalMiiGmacXmit)(VOID *Data);
@@ -185,7 +114,5 @@ typedef struct _MII_ADAPTER_ {
     VOID*            RxBuffer;
 }MII_ADAPTER, *PMII_ADAPTER;
 
-#endif  // #ifdef CONFIG_MII_VERIFY
-
-#endif  // #ifndef _HAL_MII_H_
+#endif
 

@@ -27,9 +27,6 @@ struct sk_buff {
 	const char		*funcname[TRACE_SKB_DEPTH];
 	unsigned int		list_idx;	/* Trace the List we are on */
 #endif	
-//#ifdef CONFIG_DONT_CARE_TP
-	int 			dyalloc_flag;
-//#endif
 };
 
 unsigned char *skb_put(struct sk_buff *skb, unsigned int len);

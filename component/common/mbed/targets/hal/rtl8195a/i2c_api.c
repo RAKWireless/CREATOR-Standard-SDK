@@ -92,8 +92,8 @@ void i2c_init(i2c_t *obj, PinName sda, PinName scl) {
         return;
     }
     
-    //DBG_8195A("i2c_sel:%x\n",i2c_sel);
-    //DBG_8195A("i2c_idx:%x\n",i2c_idx);
+    DBG_8195A("i2c_sel:%x\n",i2c_sel);
+    DBG_8195A("i2c_idx:%x\n",i2c_idx);
     
     /* Get I2C device handler */
     pSalI2CMngtAdpt     = &(obj->SalI2CMngtAdpt);
@@ -111,7 +111,7 @@ void i2c_init(i2c_t *obj, PinName sda, PinName scl) {
 #if  defined(CONFIG_CHIP_A_CUT) || defined(CONFIG_CHIP_B_CUT) || defined(CONFIG_CHIP_C_CUT)
     pSalI2CMngtAdpt->pHalOpInit     = HalI2COpInit_Patch;
 #elif defined(CONFIG_CHIP_E_CUT)
-    pSalI2CMngtAdpt->pHalOpInit     = HalI2COpInit_V04;
+    pSalI2CMngtAdpt->pHalOpInit     = HalI2COpInitV02;
 #endif
     /* To assign the default (ROM) HAL GDMA OP initialization function */
     pSalI2CMngtAdpt->pHalGdmaOpInit = HalGdmaOpInit;
@@ -120,7 +120,7 @@ void i2c_init(i2c_t *obj, PinName sda, PinName scl) {
 #if defined(CONFIG_CHIP_A_CUT) || defined(CONFIG_CHIP_B_CUT) || defined(CONFIG_CHIP_C_CUT)
     pSalI2CMngtAdpt->pSalIrqFunc    = I2CISRHandle_Patch;
 #elif defined(CONFIG_CHIP_E_CUT)
-    pSalI2CMngtAdpt->pSalIrqFunc    = I2CISRHandle_V04;
+    pSalI2CMngtAdpt->pSalIrqFunc    = I2CISRHandleV02;
 #endif
 
     /* To assign the default (ROM) SAL DMA TX interrupt function */
@@ -180,20 +180,15 @@ void i2c_init(i2c_t *obj, PinName sda, PinName scl) {
     pSalI2CHND->I2CAckAddr    = 0;    
     pSalI2CHND->TimeOut       = 300;
     pSalI2CHND->AddRtyTimeOut = 3000;
-    //pSalI2CHND->I2CExd     	|= (I2C_EXD_MTR_ADDR_RTY);
+    pSalI2CHND->I2CExd     	|= (I2C_EXD_MTR_ADDR_RTY);
 
     pSalI2CMngtAdpt->InnerTimeOut   = pSalI2CHND->TimeOut;
-
-    /* for 10-bit mode */
-    //pSalI2CHND->I2CAddrMod = I2C_ADDR_10BIT;
+    
 
     /* Deinit I2C first */
     //i2c_reset(obj);
 
     /* Init I2C now */
-    pSalI2CHND->pInitDat->I2CAckAddr = i2c_target_addr[pSalI2CHND->DevNum];
-    HalI2CSetTarRtl8195a(pSalI2CHND->pInitDat);
-    HalI2CSetSarRtl8195a(pSalI2CHND->pInitDat);
     RtkI2CInitForPS(pSalI2CHND); 
 }
 
@@ -228,9 +223,6 @@ void i2c_frequency(i2c_t *obj, int hz) {
         pSalI2CHND->I2CClk = i2c_user_clk;
 
         /* Init I2C now */
-        pSalI2CHND->pInitDat->I2CAckAddr = i2c_target_addr[pSalI2CHND->DevNum];
-        HalI2CSetTarRtl8195a(pSalI2CHND->pInitDat);
-        HalI2CSetSarRtl8195a(pSalI2CHND->pInitDat);
         RtkI2CInitForPS(pSalI2CHND);        
     }
 }
@@ -259,10 +251,6 @@ int i2c_read(i2c_t *obj, int address, char *data, int length, int stop) {
     pSalI2CHND              = &(pSalI2CMngtAdpt->pSalHndPriv->SalI2CHndPriv);
     
     if (i2c_target_addr[pSalI2CHND->DevNum] != address) {
-        pSalI2CHND->pInitDat->I2CAckAddr = address;
-        i2c_target_addr[pSalI2CHND->DevNum] = address;
-        HalI2CSetTarRtl8195a(pSalI2CHND->pInitDat);
-#if 0        
         /* Deinit I2C first */
         i2c_reset(obj);
 
@@ -272,7 +260,6 @@ int i2c_read(i2c_t *obj, int address, char *data, int length, int stop) {
 
         /* Init I2C now */
         RtkI2CInitForPS(pSalI2CHND); 
-#endif
     }
 
     /* Check if the it's the last byte or not */
@@ -283,7 +270,7 @@ int i2c_read(i2c_t *obj, int address, char *data, int length, int stop) {
 
     pSalI2CHND->pRXBuf            = &i2crxtranbuf[pSalI2CHND->DevNum];
     pSalI2CHND->pRXBuf->DataLen   = length;
-    pSalI2CHND->pRXBuf->TargetAddr= address;//pSalI2CHND->I2CAckAddr;
+    pSalI2CHND->pRXBuf->TargetAddr= pSalI2CHND->I2CAckAddr;
     pSalI2CHND->pRXBuf->RegAddr   = 0;
     pSalI2CHND->pRXBuf->pDataBuf  = (u8 *)data;
 
@@ -349,10 +336,6 @@ int i2c_write(i2c_t *obj, int address, const char *data, int length, int stop) {
     pSalI2CHND              = &(pSalI2CMngtAdpt->pSalHndPriv->SalI2CHndPriv);
     
     if (i2c_target_addr[pSalI2CHND->DevNum] != address) {
-        pSalI2CHND->pInitDat->I2CAckAddr = address;
-        i2c_target_addr[pSalI2CHND->DevNum] = address;
-        HalI2CSetTarRtl8195a(pSalI2CHND->pInitDat);
-#if 0
         /* Deinit I2C first */
         i2c_reset(obj);
 
@@ -362,7 +345,6 @@ int i2c_write(i2c_t *obj, int address, const char *data, int length, int stop) {
 
         /* Init I2C now */
         RtkI2CInitForPS(pSalI2CHND); 
-#endif
     }
 
     /* Check if the it's the last byte or not */
@@ -373,7 +355,7 @@ int i2c_write(i2c_t *obj, int address, const char *data, int length, int stop) {
     
     pSalI2CHND->pTXBuf            = &i2ctxtranbuf[pSalI2CHND->DevNum];
     pSalI2CHND->pTXBuf->DataLen   = length;
-    pSalI2CHND->pTXBuf->TargetAddr= address;//pSalI2CHND->I2CAckAddr;
+    pSalI2CHND->pTXBuf->TargetAddr= pSalI2CHND->I2CAckAddr;
     pSalI2CHND->pTXBuf->RegAddr   = 0;
     pSalI2CHND->pTXBuf->pDataBuf  = (u8 *)data;
 
@@ -439,7 +421,7 @@ int i2c_byte_read(i2c_t *obj, int last) {
 
     pSalI2CHND->pRXBuf            = &i2crxtranbuf[pSalI2CHND->DevNum];
     pSalI2CHND->pRXBuf->DataLen   = 1;
-    pSalI2CHND->pRXBuf->TargetAddr= i2c_target_addr[pSalI2CHND->DevNum];//pSalI2CHND->I2CAckAddr;
+    pSalI2CHND->pRXBuf->TargetAddr= pSalI2CHND->I2CAckAddr;
     pSalI2CHND->pRXBuf->RegAddr   = 0;
     pSalI2CHND->pRXBuf->pDataBuf  = &i2cdatlocal;
     RtkI2CReceive(pSalI2CHND);
@@ -459,7 +441,7 @@ int i2c_byte_write(i2c_t *obj, int data) {
 
     pSalI2CHND->pTXBuf            = &i2ctxtranbuf[pSalI2CHND->DevNum];
     pSalI2CHND->pTXBuf->DataLen   = 1;
-    pSalI2CHND->pTXBuf->TargetAddr= i2c_target_addr[pSalI2CHND->DevNum];//pSalI2CHND->I2CAckAddr;
+    pSalI2CHND->pTXBuf->TargetAddr= pSalI2CHND->I2CAckAddr;
     pSalI2CHND->pTXBuf->RegAddr   = 0;
     pSalI2CHND->pTXBuf->pDataBuf  = (unsigned char*)&data;
 
@@ -480,62 +462,6 @@ void i2c_reset(i2c_t *obj) {
     RtkI2CDeInitForPS(pSalI2CHND);
 }
 
-void i2c_restart_enable(i2c_t *obj) {
-    PSAL_I2C_MNGT_ADPT      pSalI2CMngtAdpt     = NULL;
-    PSAL_I2C_HND            pSalI2CHND          = NULL;
-    uint32_t                i2clocaltmp;
-    uint8_t                 i2cen;
-    pSalI2CMngtAdpt         = &(obj->SalI2CMngtAdpt);
-    pSalI2CHND              = &(pSalI2CMngtAdpt->pSalHndPriv->SalI2CHndPriv);
-
-    i2cen = pSalI2CHND->pInitDat->I2CEn;
-
-    if (i2cen == I2C_ENABLE) {
-        pSalI2CHND->pInitDat->I2CEn     = I2C_DISABLE;
-        pSalI2CMngtAdpt->pHalOp->HalI2CEnable(pSalI2CHND->pInitDat);
-    }
-    
-    i2clocaltmp = HalI2CRead32(pSalI2CHND->DevNum, REG_DW_I2C_IC_CON);
-    i2clocaltmp |= BIT_IC_CON_IC_RESTART_EN;
-    HalI2CWrite32(pSalI2CHND->DevNum, REG_DW_I2C_IC_CON, i2clocaltmp);
-
-    if (i2cen == I2C_ENABLE) {
-        pSalI2CHND->pInitDat->I2CEn     = I2C_ENABLE;
-        pSalI2CMngtAdpt->pHalOp->HalI2CEnable(pSalI2CHND->pInitDat);
-    }
-    
-    pSalI2CHND->pInitDat->I2CReSTR  = I2C_ENABLE;
-    
-}
-
-void i2c_restart_disable(i2c_t *obj) {
-    PSAL_I2C_MNGT_ADPT      pSalI2CMngtAdpt     = NULL;
-    PSAL_I2C_HND            pSalI2CHND          = NULL;
-    uint32_t                i2clocaltmp;
-    uint8_t                 i2cen;
-    pSalI2CMngtAdpt         = &(obj->SalI2CMngtAdpt);
-    pSalI2CHND              = &(pSalI2CMngtAdpt->pSalHndPriv->SalI2CHndPriv);
-
-    i2cen = pSalI2CHND->pInitDat->I2CEn;
-
-    if (i2cen == I2C_ENABLE) {
-        pSalI2CHND->pInitDat->I2CEn     = I2C_DISABLE;
-        pSalI2CMngtAdpt->pHalOp->HalI2CEnable(pSalI2CHND->pInitDat);
-    }
-
-    i2clocaltmp = HalI2CRead32(pSalI2CHND->DevNum, REG_DW_I2C_IC_CON);
-    i2clocaltmp &= (~BIT_IC_CON_IC_RESTART_EN);
-    HalI2CWrite32(pSalI2CHND->DevNum, REG_DW_I2C_IC_CON, i2clocaltmp);
-
-    if (i2cen == I2C_ENABLE) {
-        pSalI2CHND->pInitDat->I2CEn     = I2C_ENABLE;
-        pSalI2CMngtAdpt->pHalOp->HalI2CEnable(pSalI2CHND->pInitDat);
-    }
-
-    pSalI2CHND->pInitDat->I2CReSTR  = I2C_DISABLE;
-    
-}
-
 void i2c_set_user_callback(i2c_t *obj, I2CCallback i2ccb, void(*i2c_callback)(void *)) {
 
     PSAL_I2C_MNGT_ADPT      pSalI2CMngtAdpt     = NULL;
@@ -550,9 +476,6 @@ void i2c_set_user_callback(i2c_t *obj, I2CCallback i2ccb, void(*i2c_callback)(vo
                 break;
             case I2C_RX_COMPLETE:
                 pSalI2CHND->pUserCB->pRXCCB->USERCB = i2c_callback;
-                break;
-            case I2C_RD_REQ_COMMAND:
-                pSalI2CHND->pUserCB->pRDREQCB->USERCB = i2c_callback;
                 break;
             case I2C_ERR_OCCURRED:
                 pSalI2CHND->pUserCB->pERRCB->USERCB = i2c_callback;
@@ -588,20 +511,6 @@ void i2c_clear_user_callback(i2c_t *obj, I2CCallback i2ccb) {
     }
 }
 
-int i2c_enable_control(i2c_t *obj, int enable) {
-    PSAL_I2C_MNGT_ADPT      pSalI2CMngtAdpt     = NULL;
-    PSAL_I2C_HND            pSalI2CHND          = NULL;
-    pSalI2CMngtAdpt         = &(obj->SalI2CMngtAdpt);
-    pSalI2CHND              = &(pSalI2CMngtAdpt->pSalHndPriv->SalI2CHndPriv);
-
-    pSalI2CHND->pInitDat->I2CEn = enable;
-
-    if(pSalI2CMngtAdpt->pHalOp->HalI2CEnable(pSalI2CHND->pInitDat) != HAL_OK)
-		return 0; // error
-	else
-		return 1;
-}
-
 #if DEVICE_I2CSLAVE
 
 void i2c_slave_address(i2c_t *obj, int idx, uint32_t address, uint32_t mask) {
@@ -613,20 +522,15 @@ void i2c_slave_address(i2c_t *obj, int idx, uint32_t address, uint32_t mask) {
     uint16_t i2c_default_addr   = (uint16_t) pSalI2CHND->I2CAckAddr;
     uint16_t i2c_user_addr      = (uint16_t) address;
 
-    if (i2c_target_addr[pSalI2CHND->DevNum] != i2c_user_addr) {
-        pSalI2CHND->pInitDat->I2CAckAddr = address;
-        i2c_target_addr[pSalI2CHND->DevNum] = address;
-        HalI2CSetSarRtl8195a(pSalI2CHND->pInitDat);
-#if 0
+    if (i2c_default_addr != i2c_user_addr) {
         /* Deinit I2C first */
         i2c_reset(obj);
 
         /* Load the user defined I2C clock */
         pSalI2CHND->I2CAckAddr    = i2c_user_addr;
-        
+
         /* Init I2C now */
         RtkI2CInitForPS(pSalI2CHND);
-#endif
     }
 }
 
@@ -647,9 +551,6 @@ void i2c_slave_mode(i2c_t *obj, int enable_slave) {
 
     /* Init I2C now */
     RtkI2CInitForPS(pSalI2CHND);
-
-    pSalI2CHND->pInitDat->I2CAckAddr = i2c_target_addr[pSalI2CHND->DevNum];
-    HalI2CSetSarRtl8195a(pSalI2CHND->pInitDat);
 }
 
 // See I2CSlave.h
@@ -742,73 +643,6 @@ int i2c_slave_write(i2c_t *obj, const char *data, int length) {
     return 1;
 }
 
-/** \brief Description of i2c_slave_set_for_rd_req
- *  
- *    i2c_slave_set_for_rd_req is used to set/clear i2c slave RD_REQ interrupt mask.
- *    If RD_REQ interrupt is set, slave could invoke read request callback when it gets 
- *    a read command from other i2c master.
- *    
- *   \param i2c_t *obj  : i2c object
- *   \param int set     : set or clear for read request. Once it's set, i2c would invoke read request callback when a
- *                        read command is sent to it.
- *   \return result
- */
-int i2c_slave_set_for_rd_req(i2c_t *obj, int set) {
-    PSAL_I2C_MNGT_ADPT      pSalI2CMngtAdpt     = NULL;
-    PSAL_I2C_HND            pSalI2CHND          = NULL;
-    PHAL_I2C_INIT_DAT   pHalI2CInitDat      = NULL;
-    PHAL_I2C_OP         pHalI2COP           = NULL; 
-    u32 I2CLocalTemp;
-    
-    pSalI2CMngtAdpt = &(obj->SalI2CMngtAdpt);
-    pSalI2CHND      = &(pSalI2CMngtAdpt->pSalHndPriv->SalI2CHndPriv);
-    pHalI2CInitDat  = pSalI2CMngtAdpt->pHalInitDat;
-    pHalI2COP       = pSalI2CMngtAdpt->pHalOp;
-    
-    I2CLocalTemp = pHalI2COP->HalI2CReadReg(pHalI2CInitDat, REG_DW_I2C_IC_INTR_MASK);
-
-    if (set) {
-        I2CLocalTemp |= BIT_IC_INTR_MASK_M_RD_REQ;
-    } else {
-        I2CLocalTemp &= (~BIT_IC_INTR_MASK_M_RD_REQ);
-    }
-    
-    pHalI2CInitDat->I2CIntrMSK = I2CLocalTemp;
-    pHalI2COP->HalI2CIntrCtrl(pHalI2CInitDat);
-
-    return 1;
-}
-
-/** \brief Description of i2c_slave_set_for_data_nak
- *  
- *    i2c_slave_set_for_data_nak is used to set/clear i2c slave NAK or ACK data part in transfer.
- *    
- *   \param i2c_t *obj  : i2c object
- *   \param int set     : set or clear for data NAK.
- *   \return result
- */
-int i2c_slave_set_for_data_nak(i2c_t *obj, int set_nak) {
-    PSAL_I2C_MNGT_ADPT      pSalI2CMngtAdpt     = NULL;
-    PSAL_I2C_HND            pSalI2CHND          = NULL;
-    PHAL_I2C_INIT_DAT   pHalI2CInitDat      = NULL;
-    PHAL_I2C_OP         pHalI2COP           = NULL; 
-    u32 I2CLocalTemp;
-
-    pSalI2CMngtAdpt = &(obj->SalI2CMngtAdpt);
-    pSalI2CHND      = &(pSalI2CMngtAdpt->pSalHndPriv->SalI2CHndPriv);
-    pHalI2CInitDat  = pSalI2CMngtAdpt->pHalInitDat;
-    pHalI2COP       = pSalI2CMngtAdpt->pHalOp;
-    I2CLocalTemp = pHalI2COP->HalI2CReadReg(pHalI2CInitDat, REG_DW_I2C_IC_STATUS);
-    
-    //if (set_nak) {
-        while (BIT_IC_STATUS_SLV_ACTIVITY & I2CLocalTemp) {
-            I2CLocalTemp = pHalI2COP->HalI2CReadReg(pHalI2CInitDat, REG_DW_I2C_IC_STATUS);
-        }
-    //}
-    
-    HAL_I2C_WRITE32(pSalI2CHND->DevNum, REG_DW_I2C_IC_SLV_DATA_NACK_ONLY, set_nak);
-	return 1;
-}
 
 #endif // CONFIG_I2C_SLAVE_EN
 

@@ -144,29 +144,23 @@ void nfc_load_tag_content_from_flash() {
             flash_write_word(&flash_nfc, address, nfc_tag_content[i]);
         }
     }
-
 }
 
-void nfc_store_tag_content() {
+void nfc_store_tag_content_to_flash() {
     int i, address;
     int modified_page_count;
 
     // dump the modified tag content
-    modified_page_count = 0;
+    modified_page_count = 4; // 4 for tag header
     for (i = 4; i < NFC_MAX_PAGE_NUM && nfc_tag_dirty[i]; i++) {
         modified_page_count++;
         DiagPrintf("page:%02d data:%08x\r\n", i, nfc_tag_content[i]);
     }
 
-    // update to cache from page 4
-    nfc_cache_write(&nfctag, &(nfc_tag_content[4]), 4, modified_page_count);
-
-    modified_page_count += 4; // we also need update tag header to flash which has size 4
     flash_erase_sector(&flash_nfc, FLASH_APP_NFC_BASE);
     for (i = 0, address = FLASH_APP_NFC_BASE; i < modified_page_count; i++, address += 4) {
         flash_write_word(&flash_nfc, address, nfc_tag_content[i]);
     }
-
 }
 
 void nfc_task(void const *arg) {
@@ -186,7 +180,7 @@ void nfc_task(void const *arg) {
         if (evt.status == osEventSignal && (evt.value.signals & NFC_EV_WRITE)) {
             osDelay(300);
 
-            nfc_store_tag_content();
+            nfc_store_tag_content_to_flash();
 
             memset(nfc_tag_dirty, 0, NFC_MAX_PAGE_NUM);
             osSignalClear(nfc_tid, NFC_EV_WRITE);

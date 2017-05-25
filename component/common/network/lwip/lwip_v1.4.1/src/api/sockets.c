@@ -1936,10 +1936,9 @@ lwip_setsockopt(int s, int level, int optname, const void *optval, socklen_t opt
     /* UNIMPL case IP_RCVIF: */
     case IP_TTL:
     case IP_TOS:
-      if (optlen < sizeof(u8_t)) {
+      if (optlen < sizeof(int)) {
         err = EINVAL;
       }
-      sock->conn->pcb.udp->tos = *(u8_t*)optval;
       break;
 #if LWIP_IGMP
     case IP_MULTICAST_TTL:

@@ -244,13 +244,11 @@ extern _LONG_CALL_ void * __rtl_sbrk_r_v1_00(
 #include <stdio.h>
 #include <stdarg.h>
 
+#define __rtl_fflush_r 			__rtl_fflush_r_v1_00
 #define __rtl_vfprintf_r		__rtl_vfprintf_r_v1_00
 
+extern _LONG_CALL_ int __rtl_fflush_r_v1_00(struct _reent *ptr, register FILE * fp);
 extern _LONG_CALL_ int __rtl_vfprintf_r_v1_00(struct _reent *, FILE *, const char *, va_list);
 
-#ifndef CONFIG_RELEASE_BUILD_LIBRARIES
-#define __rtl_fflush_r 			__rtl_fflush_r_v1_00
-extern _LONG_CALL_ int __rtl_fflush_r_v1_00(struct _reent *ptr, register FILE * fp);
-#endif
 
 #endif /* _RTL_LIB_ROM_H_ */

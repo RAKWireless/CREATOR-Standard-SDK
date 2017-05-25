@@ -11,7 +11,7 @@
   </pass> 
  
   <ignore>CODE 0x00000000 0x000FFFFF</ignore> 
-  <ignore>CODE 0x10000000 0x10000bc7</ignore>
+  <ignore>CODE 0x10000000 0x10000bbf</ignore>
   <ignore>CODE 0x10006000 0x1006FFFF</ignore> 
   <ignore>CODE 0x30000000 0x301FFFFF</ignore> 
 </flash_board> 

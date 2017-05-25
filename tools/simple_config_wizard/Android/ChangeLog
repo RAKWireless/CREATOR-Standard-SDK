@@ -1,39 +1,5 @@
                         ChangeLog
 ----------------------------------------------------------------
-2016/10/06
-	-Refined soft AP SSID
-
-2016/08/30
-	-Refined security with soft AP
-	
-2016/08/10
-	-Refined simple config flow with soft AP
-	
-2016/05/23
-	-Refined simple config flow with PIN code
-
-2016/05/03
-	-Refined simple config flow
-
-2016/02/22
-	- Support multiple device
-	- Scan flow refined after configuration
-
-2016/01/21
-	- Connection issue fixed when AP is hidden SSID 
-	
-2016/01/10
-	- Fixed ssid is empty when AP is hidden SSID 
-
-2015/11/11
-	- Refined wifi connection
-	
-2015/09/25
-	- Refined SimpleConfig ap list and wifi connection 
-	
-2015/08/15
-	- Refined simple config
-	
 2015/07/23
 	- device type : 0xff00~0xffff for customer
 

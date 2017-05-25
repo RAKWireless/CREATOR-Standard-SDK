@@ -20,15 +20,19 @@
 //#ifdef __KERNEL__
 #include "osdep_api.h"
 #include "usb_ch9.h"
+//#include "usb_gadget.h"
+#include "rtl8195a_otg_zero.h"
+//#include "../otg/lm.h"
 
 #if 1//defined(CONFIG_RTL_ULINKER)
 #include "usb_ulinker.h"
 #endif
 
+   
+#include "hal_util.h"
 #include "usb.h"
-#include "dwc_list.h"   
+   
 typedef unsigned  int   gfp_t;
-
 //struct usb_ep;
 /**
  * struct usb_ep - device side representation of USB endpoint
@@ -50,13 +54,11 @@ struct usb_ep {
 
 	const char		*name;
 	const struct usb_ep_ops	*ops;
-	//_LIST    ep_list;//ModifiedByJD    
-	dwc_list_link_t ep_list;// by jimmy
+	_LIST    ep_list;//ModifiedByJD    
 	unsigned		maxpacket:16;
 	const struct usb_endpoint_descriptor	*desc;
 };
 
-struct usb_request;
 
 typedef void (*usb_req_complete_t)(struct usb_ep *, struct usb_request *);
 
@@ -127,8 +129,8 @@ struct usb_request {
 
 	usb_req_complete_t complete;
 	void			*context;
-	//_LIST	list;//ModifiedByJD    
-	dwc_list_link_t list;// by jimmy
+	_LIST	list;//ModifiedByJD    
+
 	int			status;
 	unsigned		actual;
 };
@@ -192,8 +194,11 @@ struct usb_ep_ops {
  *
  * returns zero, or a negative error code.
  */
-extern _LONG_CALL_ 
-int usb_ep_enable (struct usb_ep *ep, const struct usb_endpoint_descriptor *desc);
+static inline int
+usb_ep_enable (struct usb_ep *ep, const struct usb_endpoint_descriptor *desc)
+{
+	return ep->ops->enable (ep, desc);
+}
 
 /**
  * usb_ep_disable - endpoint is no longer usable
@@ -207,8 +212,11 @@ int usb_ep_enable (struct usb_ep *ep, const struct usb_endpoint_descriptor *desc
  *
  * returns zero, or a negative error code.
  */
-extern _LONG_CALL_ 
-int usb_ep_disable (struct usb_ep *ep);
+static inline int
+usb_ep_disable (struct usb_ep *ep)
+{
+	return ep->ops->disable (ep);
+}
 
 /**
  * usb_ep_alloc_request - allocate a request object to use with this endpoint
@@ -224,8 +232,11 @@ int usb_ep_disable (struct usb_ep *ep);
  *
  * Returns the request, or null if one could not be allocated.
  */
-extern _LONG_CALL_ struct usb_request *
-usb_ep_alloc_request (struct usb_ep *ep, gfp_t gfp_flags);
+static inline struct usb_request *
+usb_ep_alloc_request (struct usb_ep *ep, gfp_t gfp_flags)
+{
+	return ep->ops->alloc_request (ep, gfp_flags);
+}
 
 /**
  * usb_ep_free_request - frees a request object
@@ -236,8 +247,11 @@ usb_ep_alloc_request (struct usb_ep *ep, gfp_t gfp_flags);
  * Caller guarantees the request is not queued, and that it will
  * no longer be requeued (or otherwise used).
  */
-extern _LONG_CALL_ void
-usb_ep_free_request (struct usb_ep *ep, struct usb_request *req);
+static inline void
+usb_ep_free_request (struct usb_ep *ep, struct usb_request *req)
+{
+	ep->ops->free_request (ep, req);
+}
 #if 0
 /**
  * usb_ep_alloc_buffer - allocate an I/O buffer
@@ -334,8 +348,12 @@ usb_ep_free_buffer (struct usb_ep *ep, void *buf, dma_addr_t dma, unsigned len)
  * report errors; errors will also be
  * reported when the usb peripheral is disconnected.
  */
-extern _LONG_CALL_ int
-usb_ep_queue (struct usb_ep *ep, struct usb_request *req, gfp_t gfp_flags);
+static inline int
+usb_ep_queue (struct usb_ep *ep, struct usb_request *req, gfp_t gfp_flags)
+{
+    DBG_8195A_OTG("%s, gfp_flags = %x\n",__func__, gfp_flags);
+	return ep->ops->queue (ep, req, gfp_flags);
+}
 
 /**
  * usb_ep_dequeue - dequeues (cancels, unlinks) an I/O request from an endpoint
@@ -351,8 +369,11 @@ usb_ep_queue (struct usb_ep *ep, struct usb_request *req, gfp_t gfp_flags);
  * restrictions prevent drivers from supporting configuration changes,
  * even to configuration zero (a "chapter 9" requirement).
  */
-extern _LONG_CALL_ int usb_ep_dequeue (struct usb_ep *ep, struct usb_request *req);
-
+static inline int usb_ep_dequeue (struct usb_ep *ep, struct usb_request *req)
+{
+	return ep->ops->dequeue (ep, req);
+}
+#if 0
 /**
  * usb_ep_set_halt - sets the endpoint halt feature.
  * @ep: the non-isochronous endpoint being stalled
@@ -374,7 +395,11 @@ extern _LONG_CALL_ int usb_ep_dequeue (struct usb_ep *ep, struct usb_request *re
  * transfer requests are still queued, or if the controller hardware
  * (usually a FIFO) still holds bytes that the host hasn't collected.
  */
-extern _LONG_CALL_ int usb_ep_set_halt (struct usb_ep *ep);
+static inline int
+usb_ep_set_halt (struct usb_ep *ep)
+{
+	return ep->ops->set_halt (ep, 1);
+}
 
 /**
  * usb_ep_clear_halt - clears endpoint halt, and resets toggle
@@ -389,9 +414,12 @@ extern _LONG_CALL_ int usb_ep_set_halt (struct usb_ep *ep);
  * Note that some hardware can't support this request (like pxa2xx_udc),
  * and accordingly can't correctly implement interface altsettings.
  */
-extern _LONG_CALL_ int usb_ep_clear_halt (struct usb_ep *ep);
+static inline int
+usb_ep_clear_halt (struct usb_ep *ep)
+{
+	return ep->ops->set_halt (ep, 0);
+}
 
-#if 0
 /**
  * usb_ep_fifo_status - returns number of bytes in fifo, or error
  * @ep: the endpoint whose fifo status is being checked.
@@ -476,28 +504,25 @@ usb_ep_fifo_flush (struct usb_ep *ep)
  * driver suspend() calls.  They are valid only when is_otg, and when the
  * device is acting as a B-Peripheral (so is_a_peripheral is false).
  */
-#include"rtl8195a_otg_zero.h"
-struct usb_gadget { 
-    /* readonly to gadget driver */ 
-    const struct usb_gadget_ops     *ops; 
-    struct usb_ep                   *ep0; 
-//    _LIST           ep_list;        /* of usb_ep */ //ModifiedByJD    
-	dwc_list_link_t					ep_list; // by jimmy
 
-    enum usb_device_speed           speed; 
-    enum usb_device_speed           max_speed; 
-    enum usb_device_state           state; 
-    unsigned                        is_dualspeed:1; 
-    unsigned                        is_otg:1; 
-    unsigned                        is_a_peripheral:1; 
-    unsigned                        b_hnp_enable:1; 
-    unsigned                        a_hnp_support:1; 
-    unsigned                        a_alt_hnp_support:1; 
-    const char                      *name; 
-    void                          *driver_data; 
-    void                                *device; 
+struct usb_gadget {
+	/* readonly to gadget driver */
+	const struct usb_gadget_ops	*ops;
+	struct usb_ep			*ep0;
+	_LIST		ep_list;	/* of usb_ep */ //ModifiedByJD    
+	enum usb_device_speed		speed;
+	enum usb_device_speed		max_speed;
+	unsigned			is_dualspeed:1;
+	unsigned			is_otg:1;
+	unsigned			is_a_peripheral:1;
+	unsigned			b_hnp_enable:1;
+	unsigned			a_hnp_support:1;
+	unsigned			a_alt_hnp_support:1;
+	const char			*name;
+	struct zero_dev			dev;
+    void                          *driver_data;
+    void 				*device;
 };
-
 
 
 
@@ -645,8 +670,13 @@ usb_gadget_vbus_connect(struct usb_gadget *gadget)
  *
  * Returns zero on success, else negative errno.
  */
-extern _LONG_CALL_ int
-usb_gadget_vbus_draw(struct usb_gadget *gadget, unsigned mA);
+static inline int
+usb_gadget_vbus_draw(struct usb_gadget *gadget, unsigned mA)
+{
+	if (!gadget->ops->vbus_draw)
+		return -1;//ModifiedByJD    
+	return gadget->ops->vbus_draw (gadget, mA);
+}
 #if 0
 /**
  * usb_gadget_vbus_disconnect - notify controller about VBUS session end
@@ -784,7 +814,7 @@ usb_gadget_disconnect (struct usb_gadget *gadget)
  */
 struct usb_gadget_driver {
 	char			*function;
-	enum usb_device_speed	max_speed;
+	enum usb_device_speed	*speed;
 	int			(*bind)(struct usb_gadget *,
                                         struct usb_gadget_driver *);
 	void			(*unbind)(struct usb_gadget *);
@@ -797,20 +827,6 @@ struct usb_gadget_driver {
 	// FIXME support safe rmmod
 //	struct device_driver	*driver;
 	void *		driver;
-};
-
-#include "dwc_otg_pcd_if.h"
-
-struct gadget_wrapper {
-	dwc_otg_pcd_t *pcd;
-
-	struct usb_gadget gadget;
-	struct usb_gadget_driver *driver;
-
-	struct usb_ep ep0;
-	struct usb_ep in_ep[16];
-	struct usb_ep out_ep[16];
-
 };
 
 
@@ -835,7 +851,7 @@ struct gadget_wrapper {
  * the bind() functions will be in init sections.
  * This function must be called in a context that can sleep.
  */
-extern _LONG_CALL_ int usb_gadget_register_driver (struct usb_gadget_driver *driver);
+int usb_gadget_register_driver (struct usb_gadget_driver *driver);
 
 /**
  * usb_gadget_unregister_driver - unregister a gadget driver
@@ -850,13 +866,16 @@ extern _LONG_CALL_ int usb_gadget_register_driver (struct usb_gadget_driver *dri
  * will in in exit sections, so may not be linked in some kernels.
  * This function must be called in a context that can sleep.
  */
-extern _LONG_CALL_ int usb_gadget_unregister_driver (struct usb_gadget_driver *driver);
+int usb_gadget_unregister_driver (struct usb_gadget_driver *driver);
 
 /**
  * usb_free_descriptors - free descriptors returned by usb_copy_descriptors()
  * @v: vector of descriptors
  */
-extern _LONG_CALL_ void usb_free_descriptors(struct usb_descriptor_header **v);
+static inline void usb_free_descriptors(struct usb_descriptor_header **v)
+{
+	RtlMfree((u8 *)v, sizeof(struct usb_descriptor_header));
+}
 
 /*-------------------------------------------------------------------------*/
 
@@ -893,7 +912,10 @@ struct usb_gadget_strings {
  * gadget_is_dualspeed - return true iff the hardware handles high speed
  * @g: controller that might support both high and full speeds
  */
-extern _LONG_CALL_ int gadget_is_dualspeed(struct usb_gadget *g);
+static inline int gadget_is_dualspeed(struct usb_gadget *g)
+{
+	return g->max_speed >= USB_SPEED_HIGH;
+}
 #if 0
 /**
  * gadget_is_superspeed() - return true if the hardware handles superspeed
@@ -905,32 +927,33 @@ static inline int gadget_is_superspeed(struct usb_gadget *g)
 }
 #endif
 /* put descriptor for string with that id into buf (buflen >= 256) */
-extern _LONG_CALL_ int usb_gadget_get_string (struct usb_gadget_strings *table, int id, u8 *buf);
+int usb_gadget_get_string (struct usb_gadget_strings *table, int id, u8 *buf);
 
 /*-------------------------------------------------------------------------*/
 
 /* utility to simplify managing config descriptors */
 
 /* write vector of descriptors into buffer */
-extern _LONG_CALL_ int usb_descriptor_fillbuf(void *, unsigned,
+int usb_descriptor_fillbuf(void *, unsigned,
 		const struct usb_descriptor_header **);
 
 /* build config descriptor from single descriptor vector */
-extern _LONG_CALL_ int usb_gadget_config_buf(const struct usb_config_descriptor *config,
+int usb_gadget_config_buf(const struct usb_config_descriptor *config,
 	void *buf, unsigned buflen, const struct usb_descriptor_header **desc);
 
 /*-------------------------------------------------------------------------*/
 
-extern _LONG_CALL_ void set_gadget_data(struct usb_gadget *gadget, void *data);
-extern _LONG_CALL_ void *get_gadget_data(struct usb_gadget *gadget);
-
+static inline void set_gadget_data(struct usb_gadget *gadget, void *data)
+	{ gadget->driver_data = data; }
+static inline void *get_gadget_data(struct usb_gadget *gadget)
+	{ return gadget->driver_data; }
 
 /* utility wrapping a simple endpoint selection policy */
 #if 1
-extern _LONG_CALL_ struct usb_ep *usb_ep_autoconfig (struct usb_gadget *,
+extern struct usb_ep *usb_ep_autoconfig (struct usb_gadget *,
 			struct usb_endpoint_descriptor *);// ULINKER_DEVINIT;
 
-extern _LONG_CALL_ void usb_ep_autoconfig_reset (struct usb_gadget *);// ULINKER_DEVINIT;
+extern void usb_ep_autoconfig_reset (struct usb_gadget *);// ULINKER_DEVINIT;
 #endif
 //#endif  /* __KERNEL__ */
 

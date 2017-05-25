@@ -8,7 +8,8 @@
  */
 
 
-#include "rtl8195a.h"
+#include "platform_autoconf.h" 
+#include "diag.h"
 #include "rtl8195a_pcm.h"
 #include "hal_pcm.h"
 

@@ -100,7 +100,7 @@ RtkI2SIrqInit(
 
     pIrqHandle->Data = (u32) (pI2SAdapter);
     pIrqHandle->IrqFun = (IRQ_FUN) I2SISRHandle;
-    pIrqHandle->Priority = 6;
+    pIrqHandle->Priority = 3;
     InterruptRegister(pIrqHandle);
     InterruptEn(pIrqHandle);
     
@@ -416,31 +416,21 @@ VOID HalI2SOpInit(
 {
     PHAL_I2S_OP pHalI2SOp = (PHAL_I2S_OP) Data;
 
+    pHalI2SOp->HalI2SInit        = HalI2SInitRtl8195a_Patch;
     pHalI2SOp->HalI2SDeInit      = HalI2SDeInitRtl8195a;
     pHalI2SOp->HalI2STx          = HalI2STxRtl8195a;
     pHalI2SOp->HalI2SRx          = HalI2SRxRtl8195a;
     pHalI2SOp->HalI2SEnable      = HalI2SEnableRtl8195a;
     pHalI2SOp->HalI2SIntrCtrl    = HalI2SIntrCtrlRtl8195a;
     pHalI2SOp->HalI2SReadReg     = HalI2SReadRegRtl8195a;
-    pHalI2SOp->HalI2SClrIntr     = HalI2SClrIntrRtl8195a;
-    pHalI2SOp->HalI2SClrAllIntr  = HalI2SClrAllIntrRtl8195a;
-    pHalI2SOp->HalI2SDMACtrl     = HalI2SDMACtrlRtl8195a;
-
-#ifndef CONFIG_CHIP_E_CUT
-    pHalI2SOp->HalI2SInit        = HalI2SInitRtl8195a_Patch;
     pHalI2SOp->HalI2SSetRate     = HalI2SSetRateRtl8195a;
     pHalI2SOp->HalI2SSetWordLen  = HalI2SSetWordLenRtl8195a;
     pHalI2SOp->HalI2SSetChNum    = HalI2SSetChNumRtl8195a;
     pHalI2SOp->HalI2SSetPageNum  = HalI2SSetPageNumRtl8195a;
     pHalI2SOp->HalI2SSetPageSize = HalI2SSetPageSizeRtl8195a;
-#else
-    pHalI2SOp->HalI2SInit        = HalI2SInitRtl8195a_V04;
-    pHalI2SOp->HalI2SSetRate     = HalI2SSetRateRtl8195a_V04;
-    pHalI2SOp->HalI2SSetWordLen  = HalI2SSetWordLenRtl8195a_V04;
-    pHalI2SOp->HalI2SSetChNum    = HalI2SSetChNumRtl8195a_V04;
-    pHalI2SOp->HalI2SSetPageNum  = HalI2SSetPageNumRtl8195a_V04;
-    pHalI2SOp->HalI2SSetPageSize = HalI2SSetPageSizeRtl8195a_V04;
-#endif  // #ifndef CONFIG_CHIP_E_CUT
+    pHalI2SOp->HalI2SClrIntr     = HalI2SClrIntrRtl8195a;
+    pHalI2SOp->HalI2SClrAllIntr  = HalI2SClrAllIntrRtl8195a;
+    pHalI2SOp->HalI2SDMACtrl     = HalI2SDMACtrlRtl8195a;
 }
 
 HAL_Status 
@@ -450,25 +440,10 @@ HalI2SInit(
 {
     HAL_Status ret;
     PHAL_I2S_ADAPTER pI2SAdapter = (PHAL_I2S_ADAPTER) Data;
-    u32 Function;
-    u8 funret;    
     
 #ifdef CONFIG_SOC_PS_MODULE
     REG_POWER_STATE I2sPwrState;
 #endif
-
-    if(pI2SAdapter->DevNum == 0){
-        Function = I2S0;
-    }
-    else {
-        Function = I2S1;
-    }
-        
-    funret = FunctionChk(Function, (u32)pI2SAdapter->PinMux);
-
-    if (funret == _FALSE){
-        return HAL_ERR_HW;
-    }
 
     ret = RtkI2SInit(Data);
 #ifdef CONFIG_SOC_PS_MODULE

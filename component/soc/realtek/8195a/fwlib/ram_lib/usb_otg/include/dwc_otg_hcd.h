@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
  * DAMAGE.
  * ========================================================================== */
-#if 1//ndef DWC_DEVICE_ONLY
+#ifndef DWC_DEVICE_ONLY
 #ifndef __DWC_HCD_H__
 #define __DWC_HCD_H__
 
@@ -40,7 +40,7 @@
 #include "dwc_otg_core_if.h"
 #include "dwc_list.h"
 #include "dwc_otg_cil.h"
-#undef DWC_HS_ELECT_TST 
+
 /**
  * @file
  *
@@ -88,48 +88,74 @@ struct dwc_otg_hcd_urb {
 	struct dwc_otg_hcd_iso_packet_desc iso_descs[0];
 };
 
-extern _LONG_CALL_ 
-uint8_t dwc_otg_hcd_get_ep_num(struct dwc_otg_hcd_pipe_info *pipe);
+static inline uint8_t dwc_otg_hcd_get_ep_num(struct dwc_otg_hcd_pipe_info *pipe)
+{
+	return pipe->ep_num;
+}
 
-extern _LONG_CALL_ 
-uint8_t dwc_otg_hcd_get_pipe_type(struct dwc_otg_hcd_pipe_info
-						*pipe);
+static inline uint8_t dwc_otg_hcd_get_pipe_type(struct dwc_otg_hcd_pipe_info
+						*pipe)
+{
+	return pipe->pipe_type;
+}
 
-extern _LONG_CALL_ 
-uint16_t dwc_otg_hcd_get_mps(struct dwc_otg_hcd_pipe_info *pipe);
+static inline uint16_t dwc_otg_hcd_get_mps(struct dwc_otg_hcd_pipe_info *pipe)
+{
+	return pipe->mps;
+}
 
-extern _LONG_CALL_ 
-uint8_t dwc_otg_hcd_get_dev_addr(struct dwc_otg_hcd_pipe_info
-					       *pipe);
+static inline uint8_t dwc_otg_hcd_get_dev_addr(struct dwc_otg_hcd_pipe_info
+					       *pipe)
+{
+	return pipe->dev_addr;
+}
 
-extern _LONG_CALL_ 
-uint8_t dwc_otg_hcd_is_pipe_isoc(struct dwc_otg_hcd_pipe_info
-					       *pipe);
+static inline uint8_t dwc_otg_hcd_is_pipe_isoc(struct dwc_otg_hcd_pipe_info
+					       *pipe)
+{
+	return (pipe->pipe_type == UE_ISOCHRONOUS);
+}
 
-extern _LONG_CALL_ 
-uint8_t dwc_otg_hcd_is_pipe_int(struct dwc_otg_hcd_pipe_info
-					      *pipe);
+static inline uint8_t dwc_otg_hcd_is_pipe_int(struct dwc_otg_hcd_pipe_info
+					      *pipe)
+{
+	return (pipe->pipe_type == UE_INTERRUPT);
+}
 
-extern _LONG_CALL_ 
-uint8_t dwc_otg_hcd_is_pipe_bulk(struct dwc_otg_hcd_pipe_info
-					       *pipe);
+static inline uint8_t dwc_otg_hcd_is_pipe_bulk(struct dwc_otg_hcd_pipe_info
+					       *pipe)
+{
+	return (pipe->pipe_type == UE_BULK);
+}
 
-extern _LONG_CALL_ 
-uint8_t dwc_otg_hcd_is_pipe_control(struct dwc_otg_hcd_pipe_info
-						  *pipe);
+static inline uint8_t dwc_otg_hcd_is_pipe_control(struct dwc_otg_hcd_pipe_info
+						  *pipe)
+{
+	return (pipe->pipe_type == UE_CONTROL);
+}
 
-extern _LONG_CALL_ 
-uint8_t dwc_otg_hcd_is_pipe_in(struct dwc_otg_hcd_pipe_info *pipe);
+static inline uint8_t dwc_otg_hcd_is_pipe_in(struct dwc_otg_hcd_pipe_info *pipe)
+{
+	return (pipe->pipe_dir == UE_DIR_IN);
+}
 
-extern _LONG_CALL_ 
-uint8_t dwc_otg_hcd_is_pipe_out(struct dwc_otg_hcd_pipe_info
-					      *pipe);
+static inline uint8_t dwc_otg_hcd_is_pipe_out(struct dwc_otg_hcd_pipe_info
+					      *pipe)
+{
+	return (!dwc_otg_hcd_is_pipe_in(pipe));
+}
 
-extern _LONG_CALL_ 
-void dwc_otg_hcd_fill_pipe(struct dwc_otg_hcd_pipe_info *pipe,
+static inline void dwc_otg_hcd_fill_pipe(struct dwc_otg_hcd_pipe_info *pipe,
 					 uint8_t devaddr, uint8_t ep_num,
 					 uint8_t pipe_type, uint8_t pipe_dir,
-					 uint16_t mps);
+					 uint16_t mps)
+{
+	pipe->dev_addr = devaddr;
+	pipe->ep_num = ep_num;
+	pipe->pipe_type = pipe_type;
+	pipe->pipe_dir = pipe_dir;
+	pipe->mps = mps;
+}
 
 /**
  * Phases for control transfers.
@@ -537,34 +563,34 @@ struct dwc_otg_hcd {
 
 /** @name Transaction Execution Functions */
 /** @{ */
-extern _LONG_CALL_ dwc_otg_transaction_type_e dwc_otg_hcd_select_transactions(dwc_otg_hcd_t
+extern dwc_otg_transaction_type_e dwc_otg_hcd_select_transactions(dwc_otg_hcd_t
 								  * hcd);
-extern _LONG_CALL_ void dwc_otg_hcd_queue_transactions(dwc_otg_hcd_t * hcd,
+extern void dwc_otg_hcd_queue_transactions(dwc_otg_hcd_t * hcd,
 					   dwc_otg_transaction_type_e tr_type);
 
 /** @} */
 
 /** @name Interrupt Handler Functions */
 /** @{ */
-extern _LONG_CALL_ int32_t dwc_otg_hcd_handle_intr(dwc_otg_hcd_t * dwc_otg_hcd);
-extern _LONG_CALL_ int32_t dwc_otg_hcd_handle_sof_intr(dwc_otg_hcd_t * dwc_otg_hcd);
-extern _LONG_CALL_ int32_t dwc_otg_hcd_handle_rx_status_q_level_intr(dwc_otg_hcd_t *
+extern int32_t dwc_otg_hcd_handle_intr(dwc_otg_hcd_t * dwc_otg_hcd);
+extern int32_t dwc_otg_hcd_handle_sof_intr(dwc_otg_hcd_t * dwc_otg_hcd);
+extern int32_t dwc_otg_hcd_handle_rx_status_q_level_intr(dwc_otg_hcd_t *
 							 dwc_otg_hcd);
-extern _LONG_CALL_ int32_t dwc_otg_hcd_handle_np_tx_fifo_empty_intr(dwc_otg_hcd_t *
+extern int32_t dwc_otg_hcd_handle_np_tx_fifo_empty_intr(dwc_otg_hcd_t *
 							dwc_otg_hcd);
-extern _LONG_CALL_ int32_t dwc_otg_hcd_handle_perio_tx_fifo_empty_intr(dwc_otg_hcd_t *
+extern int32_t dwc_otg_hcd_handle_perio_tx_fifo_empty_intr(dwc_otg_hcd_t *
 							   dwc_otg_hcd);
-extern _LONG_CALL_ int32_t dwc_otg_hcd_handle_incomplete_periodic_intr(dwc_otg_hcd_t *
+extern int32_t dwc_otg_hcd_handle_incomplete_periodic_intr(dwc_otg_hcd_t *
 							   dwc_otg_hcd);
-extern _LONG_CALL_ int32_t dwc_otg_hcd_handle_port_intr(dwc_otg_hcd_t * dwc_otg_hcd);
-extern _LONG_CALL_ int32_t dwc_otg_hcd_handle_conn_id_status_change_intr(dwc_otg_hcd_t *
+extern int32_t dwc_otg_hcd_handle_port_intr(dwc_otg_hcd_t * dwc_otg_hcd);
+extern int32_t dwc_otg_hcd_handle_conn_id_status_change_intr(dwc_otg_hcd_t *
 							     dwc_otg_hcd);
-extern _LONG_CALL_ int32_t dwc_otg_hcd_handle_disconnect_intr(dwc_otg_hcd_t * dwc_otg_hcd);
-extern _LONG_CALL_ int32_t dwc_otg_hcd_handle_hc_intr(dwc_otg_hcd_t * dwc_otg_hcd);
-extern _LONG_CALL_ int32_t dwc_otg_hcd_handle_hc_n_intr(dwc_otg_hcd_t * dwc_otg_hcd,
+extern int32_t dwc_otg_hcd_handle_disconnect_intr(dwc_otg_hcd_t * dwc_otg_hcd);
+extern int32_t dwc_otg_hcd_handle_hc_intr(dwc_otg_hcd_t * dwc_otg_hcd);
+extern int32_t dwc_otg_hcd_handle_hc_n_intr(dwc_otg_hcd_t * dwc_otg_hcd,
 					    uint32_t num);
-extern _LONG_CALL_ int32_t dwc_otg_hcd_handle_session_req_intr(dwc_otg_hcd_t * dwc_otg_hcd);
-extern _LONG_CALL_ int32_t dwc_otg_hcd_handle_wakeup_detected_intr(dwc_otg_hcd_t *
+extern int32_t dwc_otg_hcd_handle_session_req_intr(dwc_otg_hcd_t * dwc_otg_hcd);
+extern int32_t dwc_otg_hcd_handle_wakeup_detected_intr(dwc_otg_hcd_t *
 						       dwc_otg_hcd);
 /** @} */
 
@@ -572,85 +598,108 @@ extern _LONG_CALL_ int32_t dwc_otg_hcd_handle_wakeup_detected_intr(dwc_otg_hcd_t
 /** @{ */
 
 /* Implemented in dwc_otg_hcd_queue.c */
-extern _LONG_CALL_ dwc_otg_qh_t *dwc_otg_hcd_qh_create(dwc_otg_hcd_t * hcd,
+extern dwc_otg_qh_t *dwc_otg_hcd_qh_create(dwc_otg_hcd_t * hcd,
 					   dwc_otg_hcd_urb_t * urb, int atomic_alloc);
-extern _LONG_CALL_ void dwc_otg_hcd_qh_free(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh);
-extern _LONG_CALL_ int dwc_otg_hcd_qh_add(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh);
-extern _LONG_CALL_ void dwc_otg_hcd_qh_remove(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh);
-extern _LONG_CALL_ void dwc_otg_hcd_qh_deactivate(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh,
+extern void dwc_otg_hcd_qh_free(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh);
+extern int dwc_otg_hcd_qh_add(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh);
+extern void dwc_otg_hcd_qh_remove(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh);
+extern void dwc_otg_hcd_qh_deactivate(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh,
 				      int sched_csplit);
 
 /** Remove and free a QH */
-extern _LONG_CALL_
-void dwc_otg_hcd_qh_remove_and_free(dwc_otg_hcd_t * hcd,
-						  dwc_otg_qh_t * qh);
+static inline void dwc_otg_hcd_qh_remove_and_free(dwc_otg_hcd_t * hcd,
+						  dwc_otg_qh_t * qh)
+{
+	dwc_irqflags_t flags;
+	DWC_SPINLOCK_IRQSAVE(hcd->lock, &flags);
+	dwc_otg_hcd_qh_remove(hcd, qh);
+	DWC_SPINUNLOCK_IRQRESTORE(hcd->lock, flags);
+	dwc_otg_hcd_qh_free(hcd, qh);
+}
 
 /** Allocates memory for a QH structure.
  * @return Returns the memory allocate or NULL on error. */
-extern _LONG_CALL_
-dwc_otg_qh_t *dwc_otg_hcd_qh_alloc(int atomic_alloc);
+static inline dwc_otg_qh_t *dwc_otg_hcd_qh_alloc(int atomic_alloc)
+{
+	if (atomic_alloc)
+		return (dwc_otg_qh_t *) DWC_ALLOC_ATOMIC(sizeof(dwc_otg_qh_t));
+	else
+		return (dwc_otg_qh_t *) DWC_ALLOC(sizeof(dwc_otg_qh_t));
+}
 
-extern _LONG_CALL_ dwc_otg_qtd_t *dwc_otg_hcd_qtd_create(dwc_otg_hcd_urb_t * urb,
+extern dwc_otg_qtd_t *dwc_otg_hcd_qtd_create(dwc_otg_hcd_urb_t * urb,
 					     int atomic_alloc);
-extern _LONG_CALL_ void dwc_otg_hcd_qtd_init(dwc_otg_qtd_t * qtd, dwc_otg_hcd_urb_t * urb);
-extern _LONG_CALL_ int dwc_otg_hcd_qtd_add(dwc_otg_qtd_t * qtd, dwc_otg_hcd_t * dwc_otg_hcd,
+extern void dwc_otg_hcd_qtd_init(dwc_otg_qtd_t * qtd, dwc_otg_hcd_urb_t * urb);
+extern int dwc_otg_hcd_qtd_add(dwc_otg_qtd_t * qtd, dwc_otg_hcd_t * dwc_otg_hcd,
 			       dwc_otg_qh_t ** qh, int atomic_alloc);
 
 /** Allocates memory for a QTD structure.
  * @return Returns the memory allocate or NULL on error. */
-extern _LONG_CALL_
-dwc_otg_qtd_t *dwc_otg_hcd_qtd_alloc(int atomic_alloc);
+static inline dwc_otg_qtd_t *dwc_otg_hcd_qtd_alloc(int atomic_alloc)
+{
+	if (atomic_alloc)
+		return (dwc_otg_qtd_t *) DWC_ALLOC_ATOMIC(sizeof(dwc_otg_qtd_t));
+	else
+		return (dwc_otg_qtd_t *) DWC_ALLOC(sizeof(dwc_otg_qtd_t));
+}
 
 /** Frees the memory for a QTD structure.  QTD should already be removed from
  * list.
  * @param qtd QTD to free.*/
-extern _LONG_CALL_
-void dwc_otg_hcd_qtd_free(dwc_otg_qtd_t * qtd);
+static inline void dwc_otg_hcd_qtd_free(dwc_otg_qtd_t * qtd)
+{
+	DWC_FREE(qtd);
+}
 
 /** Removes a QTD from list.
  * @param hcd HCD instance.
  * @param qtd QTD to remove from list.
  * @param qh QTD belongs to.
  */
-extern _LONG_CALL_
-void dwc_otg_hcd_qtd_remove(dwc_otg_hcd_t * hcd,
+static inline void dwc_otg_hcd_qtd_remove(dwc_otg_hcd_t * hcd,
 					  dwc_otg_qtd_t * qtd,
-					  dwc_otg_qh_t * qh);
+					  dwc_otg_qh_t * qh)
+{
+	DWC_CIRCLEQ_REMOVE(&qh->qtd_list, qtd, qtd_list_entry);
+}
 
 /** Remove and free a QTD 
   * Need to disable IRQ and hold hcd lock while calling this function out of 
   * interrupt servicing chain */
-extern _LONG_CALL_
-void dwc_otg_hcd_qtd_remove_and_free(dwc_otg_hcd_t * hcd,
+static inline void dwc_otg_hcd_qtd_remove_and_free(dwc_otg_hcd_t * hcd,
 						   dwc_otg_qtd_t * qtd,
-						   dwc_otg_qh_t * qh);
+						   dwc_otg_qh_t * qh)
+{
+	dwc_otg_hcd_qtd_remove(hcd, qtd, qh);
+	dwc_otg_hcd_qtd_free(qtd);
+}
 
 /** @} */
 
 /** @name Descriptor DMA Supporting Functions */
 /** @{ */
 
-extern _LONG_CALL_ void dwc_otg_hcd_start_xfer_ddma(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh);
-extern _LONG_CALL_ void dwc_otg_hcd_complete_xfer_ddma(dwc_otg_hcd_t * hcd,
+extern void dwc_otg_hcd_start_xfer_ddma(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh);
+extern void dwc_otg_hcd_complete_xfer_ddma(dwc_otg_hcd_t * hcd,
 					   dwc_hc_t * hc,
 					   dwc_otg_hc_regs_t * hc_regs,
 					   dwc_otg_halt_status_e halt_status);
 
-extern _LONG_CALL_ int dwc_otg_hcd_qh_init_ddma(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh);
-extern _LONG_CALL_ void dwc_otg_hcd_qh_free_ddma(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh);
-extern _LONG_CALL_ void reset_tasklet_func(void *data);
+extern int dwc_otg_hcd_qh_init_ddma(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh);
+extern void dwc_otg_hcd_qh_free_ddma(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh);
+void reset_tasklet_func(void *data);
 
 /** @} */
 
 /** @name Internal Functions */
 /** @{ */
-extern _LONG_CALL_ dwc_otg_qh_t *dwc_urb_to_qh(dwc_otg_hcd_urb_t * urb);
+dwc_otg_qh_t *dwc_urb_to_qh(dwc_otg_hcd_urb_t * urb);
 /** @} */
 
 #ifdef CONFIG_USB_DWC_OTG_LPM
-extern _LONG_CALL_ int dwc_otg_hcd_get_hc_for_lpm_tran(dwc_otg_hcd_t * hcd,
+extern int dwc_otg_hcd_get_hc_for_lpm_tran(dwc_otg_hcd_t * hcd,
 					   uint8_t devaddr);
-extern _LONG_CALL_ void dwc_otg_hcd_free_hc_from_lpm(dwc_otg_hcd_t * hcd);
+extern void dwc_otg_hcd_free_hc_from_lpm(dwc_otg_hcd_t * hcd);
 #endif
 
 /** Gets the QH that contains the list_head */
@@ -674,35 +723,47 @@ extern _LONG_CALL_ void dwc_otg_hcd_free_hc_from_lpm(dwc_otg_hcd_t * hcd);
  * done modulo DWC_HFNUM_MAX_FRNUM. This accounts for the rollover of the
  * frame number when the max frame number is reached.
  */
-extern _LONG_CALL_
-int dwc_frame_num_le(uint16_t frame1, uint16_t frame2);
+static inline int dwc_frame_num_le(uint16_t frame1, uint16_t frame2)
+{
+	return ((frame2 - frame1) & DWC_HFNUM_MAX_FRNUM) <=
+	    (DWC_HFNUM_MAX_FRNUM >> 1);
+}
 
 /**
  * Returns true if _frame1 is greater than _frame2. The comparison is done
  * modulo DWC_HFNUM_MAX_FRNUM. This accounts for the rollover of the frame
  * number when the max frame number is reached.
  */
-extern _LONG_CALL_
-int dwc_frame_num_gt(uint16_t frame1, uint16_t frame2);
+static inline int dwc_frame_num_gt(uint16_t frame1, uint16_t frame2)
+{
+	return (frame1 != frame2) &&
+	    (((frame1 - frame2) & DWC_HFNUM_MAX_FRNUM) <
+	     (DWC_HFNUM_MAX_FRNUM >> 1));
+}
 
 /**
  * Increments _frame by the amount specified by _inc. The addition is done
  * modulo DWC_HFNUM_MAX_FRNUM. Returns the incremented value.
  */
-extern _LONG_CALL_
-uint16_t dwc_frame_num_inc(uint16_t frame, uint16_t inc);
+static inline uint16_t dwc_frame_num_inc(uint16_t frame, uint16_t inc)
+{
+	return (frame + inc) & DWC_HFNUM_MAX_FRNUM;
+}
 
-extern _LONG_CALL_
-uint16_t dwc_full_frame_num(uint16_t frame);
+static inline uint16_t dwc_full_frame_num(uint16_t frame)
+{
+	return (frame & DWC_HFNUM_MAX_FRNUM) >> 3;
+}
 
-extern _LONG_CALL_
-uint16_t dwc_micro_frame_num(uint16_t frame);
+static inline uint16_t dwc_micro_frame_num(uint16_t frame)
+{
+	return frame & 0x7;
+}
 
-extern _LONG_CALL_ void dwc_otg_hcd_save_data_toggle(dwc_hc_t * hc,
+void dwc_otg_hcd_save_data_toggle(dwc_hc_t * hc,
 				  dwc_otg_hc_regs_t * hc_regs,
 				  dwc_otg_qtd_t * qtd);
 
-extern _LONG_CALL_ void dwc_hcd_data_init(void);
 #ifdef OTGDEBUG
 /**
  * Macro to sample the remaining PHY clocks left in the current frame. This

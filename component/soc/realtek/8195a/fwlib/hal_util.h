@@ -223,7 +223,7 @@ RtlListDelete(
 #define CONTAINER_OF(ptr, type, member) \
         ((type *)((char *)(ptr)-(SIZE_T)(&((type *)0)->member)))
 #endif
-#if 0
+/*
 #define list_entry(ptr, type, member) \
  		CONTAINER_OF(ptr, type, member)
 
@@ -239,7 +239,7 @@ RtlListDelete(
              pos = list_next_entry(pos, member, type))
 #define list_for_each(pos, head) \
         for (pos = (head)->Next; pos != (head); pos = pos->Next)
-#endif
+*/
 
 #ifndef BIT
 	#define BIT(x)	( 1 << (x))

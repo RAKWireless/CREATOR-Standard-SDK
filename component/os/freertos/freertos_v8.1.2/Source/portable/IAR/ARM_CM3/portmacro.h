@@ -71,7 +71,6 @@
 extern "C" {
 #endif
 
-#ifdef CONFIG_PLATFORM_8195A
 // to prevent marco define use in standard header file
 #define _NO_DEFINITIONS_IN_HEADER_FILES
 #include <string.h>
@@ -86,7 +85,6 @@ extern "C" {
 #endif
 #ifndef memcpy
 #define memcpy(dst, src, sz)			_memcpy(dst, src, sz)
-#endif
 #endif
 #endif
 /*-----------------------------------------------------------

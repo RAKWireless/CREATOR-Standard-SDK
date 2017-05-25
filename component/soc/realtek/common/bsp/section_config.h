@@ -11,7 +11,6 @@
 #define _SECTION_CONFIG_H_
 
 #include "basic_types.h"
-#include "platform_autoconf.h"
 
 #define RAM_DEDECATED_VECTOR_TABLE_SECTION          \
         SECTION(".ram_dedecated_vector_table")
@@ -102,7 +101,7 @@
         SECTION(".fwu.data")
 
 #define FWU_RODATA_SECTION                    \
-        SECTION(".fwu.rodata")
+            SECTION(".fwu.rodata")
 
 #define FWU_TEXT_SECTION                    \
         SECTION(".fwu.text")
@@ -116,7 +115,7 @@
 
 #define C_CUT_ROM_DATA_SECTION                         \
         SECTION(".cutc.ram.data")
-//3 No ROM code changed for D_Cut, so no D-Cut section
+//3 No ROM code changed for D_Cut
 //3 E-Cut ROM Patch/New functions location
 #define E_CUT_ROM_TEXT_SECTION                         \
         SECTION(".cute.rom.text")
@@ -126,22 +125,6 @@
 
 #define E_CUT_ROM_DATA_SECTION                         \
         SECTION(".cute.ram.data")
-
-//#define FWUROM_DATA_SECTION                    \
-//        SECTION(".fwurom.data")
-    
-//#define FWUROM_RODATA_SECTION                    \
-//        SECTION(".fwurom.rodata")
-    
-#define FWUROM_TEXT_SECTION                    \
-        SECTION(".fwurom.text")
-    
-#define XMPORT_ROM_TEXT_SECTION                    \
-        SECTION(".xmportrom.text")
-    
-#define XDMROM_TEXT_SECTION                    \
-        SECTION(".xmodemrom.text")
-
 
 //3 Store the Image 1 validate code
 #define IMAGE1_VALID_PATTEN_SECTION                   \
@@ -248,32 +231,18 @@
 #define OTG_ROM_BSS_SECTION                             \
         SECTION(".otg.rom.bss")
         
-#if  defined(CONFIG_CHIP_E_CUT) || defined(CONFIG_USB_BOOT_SIM)
 #define OTG_ROM_TEXT_SECTION                            \
         SECTION(".otg.rom.text")
 
 #define OTG_ROM_DATA_SECTION                      \
         SECTION(".otg.rom.rodata")
-
+        
 #define START_OTG_RAM_FUN_SECTION                       \
         SECTION(".ram.otg.data.a")
 
 #define START_OTG_RAM_DATA_SECTION                      \
         SECTION(".ram.otg.data.b")
 
-#else
-#define OTG_ROM_TEXT_SECTION                            \
-//        SECTION(".otg.ram.text")
-        
-#define OTG_ROM_DATA_SECTION                      \
-//        SECTION(".otg.ram.rodata")
-        
-#define START_OTG_RAM_FUN_SECTION                       \
-//		SECTION(".ram.otg.data.a")
-	
-#define START_OTG_RAM_DATA_SECTION                      \
-//		SECTION(".ram.otg.data.b")
-#endif
 
 #define IMAGE2_START_RAM_FUN_SECTION                     \
             SECTION(".image2.ram.data")

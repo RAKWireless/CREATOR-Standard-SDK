@@ -16,8 +16,20 @@
 #include "pinmap.h"
 #include "ex_api.h"
 
-#define I2C_MASTER_DEVICE
-#define I2C_SLAVE_DEVICE
+#define I2C_SINGLE_BOARD
+#ifndef I2C_SINGLE_BOARD
+	#define I2C_DUAL_BOARD
+#endif
+#ifdef I2C_SINGLE_BOARD
+	#define I2C_MASTER_DEVICE
+	#define I2C_SLAVE_DEVICE
+#endif
+#ifdef I2C_DUAL_BOARD
+	#define I2C_MASTER_DEVICE
+	#ifndef I2C_MASTER_DEVICE
+		#define I2C_SLAVE_DEVICE
+	#endif
+#endif
 
 #define MBED_I2C_MTR_SDA    PB_3
 #define MBED_I2C_MTR_SCL    PB_2
@@ -76,7 +88,11 @@ void main(void)
     for (i2clocalcnt=0; i2clocalcnt < I2C_DATA_LENGTH; i2clocalcnt++){
         i2cdatasrc[i2clocalcnt] = i2clocalcnt+1;
     }
-
+#ifdef I2C_MASTER_DEVICE
+    i2c_init(&i2cmaster, MBED_I2C_MTR_SDA ,MBED_I2C_MTR_SCL);
+    i2c_frequency(&i2cmaster,MBED_I2C_BUS_CLK);
+#endif
+	
 #ifdef I2C_SLAVE_DEVICE
     i2c_init(&i2cslave, MBED_I2C_SLV_SDA ,MBED_I2C_SLV_SCL);
     i2c_frequency(&i2cslave,MBED_I2C_BUS_CLK);
@@ -89,8 +105,6 @@ void main(void)
 #endif
 
 #ifdef I2C_MASTER_DEVICE
-	i2c_init(&i2cmaster, MBED_I2C_MTR_SDA ,MBED_I2C_MTR_SCL);
-    i2c_frequency(&i2cmaster,MBED_I2C_BUS_CLK);
     DBG_8195A("master write...\n");
     i2c_write(&i2cmaster, MBED_I2C_SLAVE_ADDR0, &i2cdatasrc[0], I2C_DATA_LENGTH, 1);
 #endif

@@ -16,7 +16,7 @@ extern IRQ_FUN Timer2To7VectorTable[MAX_TIMER_VECTOR_TABLE_NUM];
 HAL_RAM_BSS_SECTION u32 gTimerRecord;
 #endif
 
-#if defined(CONFIG_CHIP_C_CUT) || defined(CONFIG_CHIP_E_CUT)
+#ifdef CONFIG_CHIP_C_CUT
 extern u32 Timer2To7HandlerData[MAX_TIMER_VECTOR_TABLE_NUM];
 #else
 u32 Timer2To7HandlerData[MAX_TIMER_VECTOR_TABLE_NUM];
@@ -85,7 +85,7 @@ HalTimerIrqRegisterRtl8195a_Patch(
     return HAL_OK;
 }
 
-#if defined(CONFIG_CHIP_A_CUT) || defined(CONFIG_CHIP_B_CUT)
+#ifndef CONFIG_CHIP_C_CUT
 // Patch for A/B Cut
 HAL_Status
 HalTimerInitRtl8195a_Patch(
@@ -149,7 +149,7 @@ HalTimerInitRtl8195a_Patch(
     return ret;
 }
 
-#elif defined(CONFIG_CHIP_C_CUT)
+#else
 // Patch for C Cut
 HAL_Status
 HalTimerInitRtl8195a_Patch(
@@ -170,8 +170,6 @@ HalTimerInitRtl8195a_Patch(
     return ret;
 }
 #endif
-
-#if defined(CONFIG_CHIP_A_CUT) || defined(CONFIG_CHIP_B_CUT)
 
 HAL_Status
 HalTimerIrqUnRegisterRtl8195a_Patch(
@@ -234,6 +232,30 @@ HalTimerDeInitRtl8195a_Patch(
     gTimerRecord &= ~(1<<pHalTimerAdap->TimerId);
 }
 
+VOID
+HalTimerReLoadRtl8195a_Patch(
+    IN  u32 TimerId,
+    IN  u32 LoadUs
+)
+{
+    u32 LoadCount = 0;
+    u32 ms125;  // how many 125ms
+    u32 remain_us;
+
+    ms125 = LoadUs/125000;
+    remain_us = LoadUs - (ms125*125000);
+    LoadCount = ms125 * (GTIMER_CLK_HZ/8);
+    LoadCount += (remain_us*GTIMER_CLK_HZ)/1000000;
+    if (LoadCount == 0) {
+        LoadCount = 1;
+    }
+    
+//    DBG_TIMER_INFO("%s: Load Count=0x%x\r\n", __FUNCTION__, LoadCount);
+    // set TimerLoadCount Register
+    HAL_TIMER_WRITE32((TIMER_INTERVAL*TimerId + TIMER_LOAD_COUNT_OFF),
+                        LoadCount);
+}
+
 u32
 HalTimerReadCountRtl8195a_Patch(
     IN  u32 TimerId
@@ -262,37 +284,6 @@ HalTimerReadCountRtl8195a_Patch(
     }    
 }
 
-
-#endif  // #if defined(CONFIG_CHIP_A_CUT) || defined(CONFIG_CHIP_B_CUT)
-
-#if defined(CONFIG_CHIP_A_CUT) || defined(CONFIG_CHIP_B_CUT) || defined(CONFIG_CHIP_C_CUT)
-
-VOID
-HalTimerReLoadRtl8195a_Patch(
-    IN  u32 TimerId,
-    IN  u32 LoadUs
-)
-{
-    u32 LoadCount = 0;
-    u32 ms125;  // how many 125ms
-    u32 remain_us;
-
-    ms125 = LoadUs/125000;
-    remain_us = LoadUs - (ms125*125000);
-    LoadCount = ms125 * (GTIMER_CLK_HZ/8);
-    LoadCount += (remain_us*GTIMER_CLK_HZ)/1000000;
-    if (LoadCount == 0) {
-        LoadCount = 1;
-    }
-    
-//    DBG_TIMER_INFO("%s: Load Count=0x%x\r\n", __FUNCTION__, LoadCount);
-    // set TimerLoadCount Register
-    HAL_TIMER_WRITE32((TIMER_INTERVAL*TimerId + TIMER_LOAD_COUNT_OFF),
-                        LoadCount);
-}
-
-#endif  // #if defined(CONFIG_CHIP_A_CUT) || defined(CONFIG_CHIP_B_CUT) || defined(CONFIG_CHIP_C_CUT)
-
 VOID
 HalTimerIrqEnRtl8195a(
     IN  u32 TimerId
@@ -309,14 +300,6 @@ HalTimerIrqDisRtl8195a(
 {
     HAL_TIMER_WRITE32((TIMER_INTERVAL*TimerId + TIMER_CTL_REG_OFF), 
                         HAL_TIMER_READ32(TIMER_INTERVAL*TimerId  + TIMER_CTL_REG_OFF) | (BIT2));
-}
-
-VOID
-HalTimerClearIsrRtl8195a(
-    IN  u32 TimerId
-)
-{
-    HAL_TIMER_READ32(TIMER_INTERVAL*TimerId + TIMER_EOI_OFF);
 }
 
 VOID

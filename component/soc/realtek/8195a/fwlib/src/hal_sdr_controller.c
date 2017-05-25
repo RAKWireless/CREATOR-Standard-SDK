@@ -25,7 +25,7 @@
 #define HAL_SDRAM_READ8(addr)             HAL_READ8(SDR_SDRAM_BASE, addr)
 #endif
 
-extern SPIC_INIT_PARA SpicInitParaAllClk[3][CPU_CLK_TYPE_NO];
+
 
 HAL_CUT_B_RAM_DATA_SECTION
 DRAM_INFO SdrDramDev = {
@@ -81,11 +81,8 @@ DRAM_DEVICE_INFO SdrDramInfo = {
 #define MIN_RD_PIPE 0x0
 #define MAX_RD_PIPE 0x7
 
-#define DRAM_CALIBRATION_IN_NVM 1
-#ifndef CONFIG_IMAGE_SEPARATE       // Store SPIC Calibration only for seprated image
-#undef DRAM_CALIBRATION_IN_NVM 
-#define DRAM_CALIBRATION_IN_NVM 0
-#endif
+#define SUPPORT_DRAM_KED
+
 
 #ifdef FPGA
 #ifdef FPGA_TEMP
@@ -711,13 +708,10 @@ SdrCalibration(
     u32 RdPipe = 0, TapCnt = 0, Pass = 0, AvaWdsCnt = 0;
     u32 RdPipeCounter, RecNum[2], RecRdPipe[2];//, AvaWds[2][REC_NUM];
     BOOL RdPipeFlag, PassFlag = 0, Result; 
-    u8 flashtype = 0;
-
-    flashtype = SpicInitParaAllClk[0][0].flashtype;
     
     Result = _FALSE;
 
-#if DRAM_CALIBRATION_IN_NVM
+#ifdef SUPPORT_DRAM_KED
 	// read calibration data from system data 0x5d~0x6c
 	SPIC_INIT_PARA SpicInitPara;	
 	u32 valid;
@@ -739,7 +733,7 @@ SdrCalibration(
 	if((valid==1)&&(RdPipe!=0xFFFFFFFF)&&(TapCnt!=0xFFFFFFFF)){
 		// wait DRAM settle down
 		HalDelayUs(10);
-		// load previous dram calibration data
+		// load previous dram Ked data
 		HAL_SDR_WRITE32(REG_SDR_IOCR, ((HAL_SDR_READ32(REG_SDR_IOCR) & 0xff) | (RdPipe << PCTL_IOCR_RD_PIPE_BFO)));
 		SDR_DDL_FCTRL(TapCnt);
 		if(MemTest(3))
@@ -878,7 +872,7 @@ SdrCalibration(
 //            Value32 = Value32 | (AvaWds[BestRangeIndex][BestIndex] << 16);
 //            WR_DATA(SDR_CLK_DLY_CTRL, Value32);
 #endif            
-		#if DRAM_CALIBRATION_IN_NVM
+		#ifdef SUPPORT_DRAM_KED
 			RdPipe = RecRdPipe[BestRangeIndex];
 			TapCnt = AvaWds[BestRangeIndex][BestIndex];
 			
@@ -887,15 +881,8 @@ SdrCalibration(
 			value.b[2] = (u8)TapCnt;
 			value.b[3] = ~value.b[2];
 			//DiagPrintf("dump1w %x, %x %x %x %x \n\r", value.l, value.b[0], value.b[1], value.b[2], value.b[3]);
-			if( HAL_READ32(SPI_FLASH_BASE, FLASH_SDRC_PARA_BASE+8*CpuType+4) == 0xFFFFFFFF)
-			{
-				HAL_WRITE32(SPI_FLASH_BASE, FLASH_SDRC_PARA_BASE+8*CpuType+4, value.l);
-				if(flashtype == FLASH_MICRON){
-					SpicWaitOperationDoneRtl8195A(SpicInitPara);
-				}
-				else
-					SpicWaitWipDoneRefinedRtl8195A(SpicInitPara);
-			}
+			HAL_WRITE32(SPI_FLASH_BASE, FLASH_SDRC_PARA_BASE+8*CpuType+4, value.l);
+			SpicWaitWipDoneRefinedRtl8195A(SpicInitPara);
 			
 			valid = 1;
 			value.b[0] = (u8)valid;
@@ -903,15 +890,8 @@ SdrCalibration(
 			value.b[2] = 0xFF;
 			value.b[3] = 0xFF;
 			//DiagPrintf("dump1w %x, %x %x %x %x \n\r", value.l, value.b[0], value.b[1], value.b[2], value.b[3]);
-			if( HAL_READ32(SPI_FLASH_BASE, FLASH_SDRC_PARA_BASE+8*CpuType) == 0xFFFFFFFF )
-			{
-				HAL_WRITE32(SPI_FLASH_BASE, FLASH_SDRC_PARA_BASE+8*CpuType, value.l);
-				if(flashtype == FLASH_MICRON){
-					SpicWaitOperationDoneRtl8195A(SpicInitPara);
-				}
-				else
-					SpicWaitWipDoneRefinedRtl8195A(SpicInitPara);
-			}
+			HAL_WRITE32(SPI_FLASH_BASE, FLASH_SDRC_PARA_BASE+8*CpuType, value.l);
+			SpicWaitWipDoneRefinedRtl8195A(SpicInitPara);
 		#endif				
             Result = _TRUE;
             break;
@@ -987,27 +967,5 @@ MemTest(
     return _TRUE;
 
 } // MemTest
-
-#if defined ( __ICCARM__ )
-u8 IsSdrPowerOn(
-    VOID
-)
-{
-    if ( HAL_READ32(PERI_ON_BASE, REG_SOC_FUNC_EN) & BIT(21) ) {
-        return 0;
-    } else {
-        return 1;
-    }
-}
-
-VOID SdrPowerOff(
-    VOID
-)
-{
-    SDR_PIN_FCTRL(OFF);
-    LDO25M_CTRL(OFF);
-    HAL_WRITE32(PERI_ON_BASE, REG_SOC_FUNC_EN, HAL_READ32(PERI_ON_BASE, REG_SOC_FUNC_EN) | BIT(21));
-}
-#endif
 
 #endif  // end of "#ifdef CONFIG_SDR_EN"

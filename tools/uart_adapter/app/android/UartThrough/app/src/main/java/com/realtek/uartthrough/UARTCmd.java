@@ -17,7 +17,7 @@ public class UARTCmd {
 
 	public char[] getReqSettingCmd(UART_Setting_Type uartType){
 		
-		char[] result = cmd_c;
+		//char[] result = cmd_c;
 		
 		switch(uartType){
 		case UART_BaudRate:{

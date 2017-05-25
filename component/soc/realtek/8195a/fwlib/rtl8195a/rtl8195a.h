@@ -23,7 +23,6 @@
 #include "hal_vector_table.h"
 #include "hal_diag.h"
 #include "hal_spi_flash.h"
-#include "rtl8195a_spi_flash.h"
 #include "hal_timer.h"
 #include "hal_util.h"
 #include "hal_efuse.h"
@@ -97,10 +96,10 @@
 #include "rtl8195a_dac.h"
 #endif
 
-#ifdef CONFIG_ADC_EN
+
 #include "hal_adc.h"
 #include "rtl8195a_adc.h"
-#endif
+
 
 #ifdef CONFIG_SDR_EN
 #endif
@@ -126,12 +125,6 @@
 #include "rtl8195a_usb.h"
 #endif
 
-#include "hal_log_uart.h"
-
-#ifdef CONFIG_MII_EN
-#include "hal_mii.h"
-#include "rtl8195a_mii.h"
-#endif
 
 // firmware information, located at the header of Image2
 #define FW_VERSION          (0x0100)

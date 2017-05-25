@@ -47,7 +47,6 @@ void gpio_demo_irq_handler (uint32_t id, gpio_irq_event event)
 void main(void)
 {
     gpio_irq_t gpio_btn;
-    int IsDramOn = 1;
 
     DBG_INFO_MSG_OFF(_DBG_GPIO_);
 
@@ -64,17 +63,13 @@ void main(void)
     led_ctrl = 1;
     gpio_write(&gpio_led, led_ctrl);
     DBG_8195A("Push button to enter sleep\r\n");
-    //system will hang when it tries to suspend SDRAM for 8711AF
-    if ( sys_is_sdram_power_on() == 0 ) {
-        IsDramOn = 0;
-    }
 
     put_to_sleep = 0;
     while(1) {
         if (put_to_sleep) {
             DBG_8195A("Sleep 8s or push button to resume system...\r\n");
             sys_log_uart_off();
-            sleep_ex_selective(SLP_GPIO | SLEEP_WAKEUP_BY_STIMER, 8000, 0, IsDramOn); // sleep_ex can't be put in irq handler
+            sleep_ex(SLP_GPIO | SLEEP_WAKEUP_BY_STIMER, 8000); // sleep_ex can't be put in irq handler
             sys_log_uart_on();
             DBG_8195A("System resume\r\n");
 

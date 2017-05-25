@@ -18,12 +18,8 @@ HalTimerOpInit_Patch(
     PHAL_TIMER_OP pHalTimerOp = (PHAL_TIMER_OP) Data;
 
     pHalTimerOp->HalGetTimerId = HalGetTimerIdRtl8195a;    
-#ifdef CONFIG_CHIP_E_CUT
-    pHalTimerOp->HalTimerInit = (BOOL (*)(void*))HalTimerInitRtl8195a_V04;   
-#else
     pHalTimerOp->HalTimerInit = (BOOL (*)(void*))HalTimerInitRtl8195a_Patch;   
-#endif
-#if defined(CONFIG_CHIP_C_CUT) || defined(CONFIG_CHIP_E_CUT)
+#ifdef CONFIG_CHIP_C_CUT
     pHalTimerOp->HalTimerReadCount = HalTimerReadCountRtl8195aV02;    
 #else
     pHalTimerOp->HalTimerReadCount = HalTimerReadCountRtl8195a_Patch;    

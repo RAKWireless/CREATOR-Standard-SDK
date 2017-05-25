@@ -5,6 +5,7 @@
  ******************************************************************************/
 
 #include <osdep_service.h>
+
 #define OSDEP_DBG(x, ...) do {} while(0)
 
 extern struct osdep_service_ops osdep_service;
@@ -537,16 +538,6 @@ void rtw_mutex_get(_mutex *pmutex)
 		OSDEP_DBG("Not implement osdep service: rtw_mutex_get");
 }
 
-int rtw_mutex_get_timeout(_mutex *pmutex, u32 timeout_ms)
-{
-	if(osdep_service.rtw_mutex_get_timeout)
-		return osdep_service.rtw_mutex_get_timeout(pmutex, timeout_ms);
-	else{
-		OSDEP_DBG("Not implement osdep service: rtw_mutex_get_timeout");
-		return -1;
-	}
-}
-
 void rtw_enter_critical(_lock *plock, _irqL *pirqL)
 {
 	if(osdep_service.rtw_enter_critical)
@@ -561,22 +552,6 @@ void rtw_exit_critical(_lock *plock, _irqL *pirqL)
 		osdep_service.rtw_exit_critical(plock, pirqL);
 	else
 		OSDEP_DBG("Not implement osdep service: rtw_exit_critical");
-}
-
-void rtw_enter_critical_from_isr(_lock *plock, _irqL *pirqL)
-{
-	if(osdep_service.rtw_enter_critical)
-		osdep_service.rtw_enter_critical(plock, pirqL);
-	else
-		OSDEP_DBG("Not implement osdep service: rtw_enter_critical_from_isr");
-}
-
-void rtw_exit_critical_from_isr(_lock *plock, _irqL *pirqL)
-{
-	if(osdep_service.rtw_exit_critical)
-		osdep_service.rtw_exit_critical(plock, pirqL);
-	else
-		OSDEP_DBG("Not implement osdep service: rtw_exit_critical_from_isr");
 }
 
 void rtw_enter_critical_bh(_lock *plock, _irqL *pirqL)
@@ -849,6 +824,40 @@ void rtw_yield_os(void)
 		OSDEP_DBG("Not implement osdep service: rtw_yield_os");
 }
 
+void rtw_init_timer(_timer *ptimer, void *adapter, TIMER_FUN pfunc,void* cntx, const char *name)
+{
+	if(osdep_service.rtw_init_timer)
+		osdep_service.rtw_init_timer(ptimer, adapter, pfunc, cntx, name);
+	else
+		OSDEP_DBG("Not implement osdep service: rtw_init_timer");
+}
+
+void rtw_set_timer(_timer *ptimer,u32 delay_time)
+{
+	if(osdep_service.rtw_set_timer)
+		osdep_service.rtw_set_timer(ptimer, delay_time);
+	else
+		OSDEP_DBG("Not implement osdep service: rtw_set_timer");
+}
+
+u8 rtw_cancel_timer(_timer *ptimer)
+{
+	if(osdep_service.rtw_cancel_timer)
+		osdep_service.rtw_cancel_timer(ptimer);
+	else
+		OSDEP_DBG("Not implement osdep service: rtw_cancel_timer");
+	
+	return 0;
+}
+
+void rtw_del_timer(_timer *ptimer)
+{
+	if(osdep_service.rtw_del_timer)
+		osdep_service.rtw_del_timer(ptimer);
+	else
+		OSDEP_DBG("Not implement osdep service: rtw_del_timer");
+}
+
 void ATOMIC_SET(ATOMIC_T *v, int i)
 {
 	if(osdep_service.ATOMIC_SET)
@@ -1011,14 +1020,6 @@ void rtw_release_wakelock(void)
 		OSDEP_DBG("Not implement osdep service: rtw_release_wakelock");
 }
 
-void rtw_wakelock_timeout(u32 timeoutms)
-{
-	if (osdep_service.rtw_wakelock_timeout)
-		osdep_service.rtw_wakelock_timeout(timeoutms);
-	else
-		OSDEP_DBG("Not implement osdep service: rtw_wakelock_timeout");
-}
-
 int rtw_create_task(struct task_struct *task, const char *name,
 	u32 stack_size, u32 priority, thread_func_t func, void *thctx)
 {
@@ -1058,10 +1059,6 @@ static void worker_thread_main( void *arg )
 		if ( rtw_pop_from_xqueue( &worker_thread->event_queue, &message, RTW_WAIT_FOREVER ) == SUCCESS )
 		{
 			message.function(message.buf, message.buf_len, message.flags, message.user_data);
-			if(message.buf){
-				//printf("\n!!!!!Free %p(%d)\n", message.buf, message.buf_len);
-				_rtw_mfree(message.buf, message.buf_len);
-			}
 		}
 	}
 }
@@ -1158,83 +1155,6 @@ u32  rtw_timerChangePeriod( _timerHandle xTimer,
 	return 0;	
 }
 
-void *rtw_timerGetID( _timerHandle xTimer )
-{
-	if(osdep_service.rtw_timerGetID)
-		return osdep_service.rtw_timerGetID(xTimer);
-	else
-		OSDEP_DBG("Not implement osdep service: rtw_timerGetID");
-
-	return NULL;		
-}
-
-u32  rtw_timerStart( _timerHandle xTimer, osdepTickType xBlockTime )
-{
-	if(osdep_service.rtw_timerStart)
-		return osdep_service.rtw_timerStart(xTimer, xBlockTime);
-	else
-		OSDEP_DBG("Not implement osdep service: rtw_timerStart");
-
-	return 0;	
-}
-
-u32  rtw_timerStartFromISR( _timerHandle xTimer, 
-								osdepBASE_TYPE *pxHigherPriorityTaskWoken )
-{
-	if(osdep_service.rtw_timerStartFromISR)
-		return osdep_service.rtw_timerStartFromISR(xTimer, pxHigherPriorityTaskWoken);
-	else
-		OSDEP_DBG("Not implement osdep service: rtw_timerStartFromISR");
-
-	return 0;	
-}
-
-u32  rtw_timerStopFromISR( _timerHandle xTimer, 
-							   osdepBASE_TYPE *pxHigherPriorityTaskWoken )
-{
-	if(osdep_service.rtw_timerStopFromISR)
-		return osdep_service.rtw_timerStopFromISR(xTimer, pxHigherPriorityTaskWoken);
-	else
-		OSDEP_DBG("Not implement osdep service: rtw_timerStopFromISR");
-
-	return 0;	
-}
-
-u32  rtw_timerResetFromISR( _timerHandle xTimer, 
-							   osdepBASE_TYPE *pxHigherPriorityTaskWoken )
-{
-	if(osdep_service.rtw_timerResetFromISR)
-		return osdep_service.rtw_timerResetFromISR(xTimer, pxHigherPriorityTaskWoken);
-	else
-		OSDEP_DBG("Not implement osdep service: rtw_timerResetFromISR");
-
-	return 0;	
-}
-
-u32  rtw_timerChangePeriodFromISR( _timerHandle xTimer, 
-							   osdepTickType xNewPeriod, 
-							   osdepBASE_TYPE *pxHigherPriorityTaskWoken )
-{
-	if(osdep_service.rtw_timerChangePeriodFromISR)
-		return osdep_service.rtw_timerChangePeriodFromISR(xTimer, xNewPeriod, pxHigherPriorityTaskWoken);
-	else
-		OSDEP_DBG("Not implement osdep service: rtw_timerChangePeriodFromISR");
-
-	return 0;	
-}
-
-u32  rtw_timerReset( _timerHandle xTimer, 
-						osdepTickType xBlockTime )
-{
-	if(osdep_service.rtw_timerReset)
-		return osdep_service.rtw_timerReset(xTimer, xBlockTime);
-	else
-		OSDEP_DBG("Not implement osdep service: rtw_timerReset");
-
-	return 0;	
-}
-
-
 #if 0 //TODO
 void rtw_init_delayed_work(struct delayed_work *dwork, work_func_t func, const char *name)
 {
@@ -1291,18 +1211,4 @@ void rtw_thread_exit()
 		osdep_service.rtw_thread_exit();
 	else
 		OSDEP_DBG("Not implement osdep service: rtw_thread_exit");
-}
-
-u8 rtw_get_scheduler_state()
-{	
-	// OS_SCHEDULER_NOT_STARTED	0
-	// OS_SCHEDULER_RUNNING		1
-	// OS_SCHEDULER_SUSPENDED	2
-	// OS_SCHEDULER_UNREACHABLE	3
-	if(osdep_service.rtw_get_scheduler_state)
-		return osdep_service.rtw_get_scheduler_state();
-	else{
-		OSDEP_DBG("Not implement osdep service: rtw_get_scheduler_state");
-		return 3;
-	}
 }

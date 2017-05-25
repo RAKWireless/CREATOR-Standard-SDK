@@ -443,36 +443,36 @@ typedef enum _SSI_DATA_TRANSFER_MECHANISM_ {
 
 
 _LONG_CALL_ HAL_Status HalSsiPinmuxEnableRtl8195a(VOID *Adaptor);
-_LONG_CALL_ROM_ HAL_Status HalSsiEnableRtl8195a(VOID *Adaptor);
-_LONG_CALL_ROM_ HAL_Status HalSsiDisableRtl8195a(VOID *Adaptor);
+_LONG_CALL_ HAL_Status HalSsiEnableRtl8195a(VOID *Adaptor);
+_LONG_CALL_ HAL_Status HalSsiDisableRtl8195a(VOID *Adaptor);
 _LONG_CALL_ HAL_Status HalSsiInitRtl8195a(VOID *Adaptor);
 _LONG_CALL_ HAL_Status HalSsiSetSclkPolarityRtl8195a(VOID *Adaptor);
 _LONG_CALL_ HAL_Status HalSsiSetSclkPhaseRtl8195a(VOID *Adaptor);
 _LONG_CALL_ HAL_Status HalSsiWriteRtl8195a(VOID *Adaptor, u32 value);
 _LONG_CALL_ HAL_Status HalSsiLoadSettingRtl8195a(VOID *Adaptor, VOID *Setting);
-_LONG_CALL_ROM_ HAL_Status HalSsiSetInterruptMaskRtl8195a(VOID *Adaptor);
+_LONG_CALL_ HAL_Status HalSsiSetInterruptMaskRtl8195a(VOID *Adaptor);
 _LONG_CALL_ HAL_Status HalSsiSetDeviceRoleRtl8195a(VOID *Adaptor, u32 Role);
 _LONG_CALL_ HAL_Status HalSsiInterruptEnableRtl8195a(VOID *Adaptor);
 _LONG_CALL_ HAL_Status HalSsiInterruptDisableRtl8195a(VOID *Adaptor);
 _LONG_CALL_ HAL_Status HalSsiReadInterruptRtl8195a(VOID *Adaptor, VOID *RxData, u32 Length);
-_LONG_CALL_ROM_ HAL_Status HalSsiSetRxFifoThresholdLevelRtl8195a(VOID *Adaptor);
+_LONG_CALL_ HAL_Status HalSsiSetRxFifoThresholdLevelRtl8195a(VOID *Adaptor);
 _LONG_CALL_ HAL_Status HalSsiSetTxFifoThresholdLevelRtl8195a(VOID *Adaptor);
 _LONG_CALL_ HAL_Status HalSsiWriteInterruptRtl8195a(VOID *Adaptor, VOID *TxData, u32 Length);
-_LONG_CALL_ROM_ HAL_Status HalSsiSetSlaveEnableRegisterRtl8195a(VOID *Adaptor, u32 SlaveIndex);
-_LONG_CALL_ROM_ u32 HalSsiBusyRtl8195a(VOID *Adaptor);
-_LONG_CALL_ROM_ u32 HalSsiWriteableRtl8195a(VOID *Adaptor);
-_LONG_CALL_ROM_ u32 HalSsiReadableRtl8195a(VOID *Adaptor);
-_LONG_CALL_ROM_ u32 HalSsiGetInterruptMaskRtl8195a(VOID *Adaptor);
-_LONG_CALL_ROM_ u32 HalSsiGetRxFifoLevelRtl8195a(VOID *Adaptor);
+_LONG_CALL_ HAL_Status HalSsiSetSlaveEnableRegisterRtl8195a(VOID *Adaptor, u32 SlaveIndex);
+_LONG_CALL_ u32 HalSsiBusyRtl8195a(VOID *Adaptor);
+_LONG_CALL_ u32 HalSsiWriteableRtl8195a(VOID *Adaptor);
+_LONG_CALL_ u32 HalSsiReadableRtl8195a(VOID *Adaptor);
+_LONG_CALL_ u32 HalSsiGetInterruptMaskRtl8195a(VOID *Adaptor);
+_LONG_CALL_ u32 HalSsiGetRxFifoLevelRtl8195a(VOID *Adaptor);
 _LONG_CALL_ u32 HalSsiGetTxFifoLevelRtl8195a(VOID *Adaptor);
-_LONG_CALL_ROM_ u32 HalSsiGetStatusRtl8195a(VOID *Adaptor);
-_LONG_CALL_ROM_ u32 HalSsiGetInterruptStatusRtl8195a(VOID *Adaptor);
+_LONG_CALL_ u32 HalSsiGetStatusRtl8195a(VOID *Adaptor);
+_LONG_CALL_ u32 HalSsiGetInterruptStatusRtl8195a(VOID *Adaptor);
 _LONG_CALL_ u32 HalSsiReadRtl8195a(VOID *Adaptor);
 _LONG_CALL_ u32 HalSsiGetRawInterruptStatusRtl8195a(VOID *Adaptor);
-_LONG_CALL_ROM_ u32 HalSsiGetSlaveEnableRegisterRtl8195a(VOID *Adaptor);
+_LONG_CALL_ u32 HalSsiGetSlaveEnableRegisterRtl8195a(VOID *Adaptor);
 
-_LONG_CALL_ROM_ VOID _SsiReadInterrupt(VOID *Adaptor);
-_LONG_CALL_ROM_ VOID _SsiWriteInterrupt(VOID *Adaptor);
+_LONG_CALL_ VOID _SsiReadInterrupt(VOID *Adaptor);
+_LONG_CALL_ VOID _SsiWriteInterrupt(VOID *Adaptor);
 _LONG_CALL_ u32  _SsiIrqHandle(VOID *Adaptor);
 
 // ROM code patch
@@ -487,44 +487,12 @@ HAL_Status HalSsiClockOnRtl8195a(VOID * Adapter);
 VOID HalSsiSetSclkRtl8195a(VOID *Adapter, u32 ClkRate);
 HAL_Status HalSsiIntReadRtl8195a(VOID *Adapter, VOID *RxData, u32 Length);
 HAL_Status HalSsiIntWriteRtl8195a(VOID *Adapter, u8 *pTxData, u32 Length);
-VOID HalSsiTxFIFOThresholdRtl8195a(VOID *Adaptor, u32 txftl);
-HAL_Status HalSsiEnterCriticalRtl8195a(VOID * Data);
-HAL_Status HalSsiExitCriticalRtl8195a(VOID * Data);
-HAL_Status HalSsiIsTimeoutRtl8195a(u32 StartCount, u32 TimeoutCnt);
-HAL_Status HalSsiStopRecvRtl8195a(VOID * Data);
-
-#if CONFIG_CHIP_E_CUT
-HAL_Status HalSsiPinmuxEnableRtl8195a_V04(VOID *Adaptor);
-HAL_Status HalSsiPinmuxDisableRtl8195a_V04(VOID * Adaptor);
-VOID _SsiReadInterruptRtl8195a_V04(VOID *Adapter);
-VOID _SsiWriteInterruptRtl8195a_V04(VOID *Adapter);
-HAL_Status HalSsiInitRtl8195a_V04(VOID *Adaptor);
-HAL_Status HalSsiSetFormatRtl8195a_V04(VOID * Adaptor);
-HAL_Status HalSsiDeInitRtl8195a_V04(VOID *Adapter);
-HAL_Status HalSsiIntReadRtl8195a_V04(VOID *Adapter, VOID *RxData, u32 Length);
-HAL_Status HalSsiIntWriteRtl8195a_V04(VOID *Adapter, u8 *pTxData, u32 Length);
-HAL_Status HalSsiClockOffRtl8195a_V04(VOID * Adapter);
-HAL_Status HalSsiClockOnRtl8195a_V04(VOID * Adapter);
-VOID HalSsiSetSclkRtl8195a_V04(VOID *Adapter, u32 ClkRate);
-VOID HalSsiTxGdmaLoadDefRtl8195a_V04(IN VOID * Adapter);
-VOID HalSsiRxGdmaLoadDefRtl8195a_V04(IN VOID * Adapter);
-VOID HalSsiDmaInitRtl8195a_V04(VOID *Adapter);
-HAL_Status HalSsiDmaSendRtl8195a_V04(IN VOID * Adapter, IN u8 * pTxData, IN u32 Length);
-HAL_Status HalSsiDmaRecvRtl8195a_V04(IN VOID * Adapter, IN u8 * pRxData, IN u32 Length);
-HAL_Status HalSsiDmaSendMultiBlockRtl8195a_V04(VOID * Adapter, u8 * pTxData, u32 Length);
-HAL_Status HalSsiDmaRecvMultiBlockRtl8195a_V04(VOID * Adapter, u8 * pRxData, u32 Length);
-
-#endif
-
 #ifdef CONFIG_GDMA_EN
 VOID HalSsiTxGdmaLoadDefRtl8195a(VOID *Adapter);
 VOID HalSsiRxGdmaLoadDefRtl8195a(VOID *Adapter);
 VOID HalSsiDmaInitRtl8195a(VOID *Adapter);
 HAL_Status HalSsiDmaSendRtl8195a(VOID *Adapter, u8 *pTxData, u32 Length);
 HAL_Status HalSsiDmaRecvRtl8195a(VOID *Adapter, u8 *pRxData, u32 Length);
-HAL_Status HalSsiDmaSendMultiBlockRtl8195a(VOID * Adapter, u8 * pRxData, u32 Length);
-HAL_Status HalSsiDmaRecvMultiBlockRtl8195a(VOID * Adapter, u8 * pRxData, u32 Length);
-
 #endif  // end of "#ifdef CONFIG_GDMA_EN"
 
 #endif

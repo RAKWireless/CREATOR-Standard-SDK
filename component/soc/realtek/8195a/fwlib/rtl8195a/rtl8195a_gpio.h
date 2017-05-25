@@ -51,7 +51,7 @@ enum {
 //======================================================
 // ROM Function prototype
 extern PHAL_GPIO_ADAPTER _pHAL_Gpio_Adapter;
-#ifndef CONFIG_RELEASE_BUILD_LIBRARIES
+
 static __inline HAL_Status
 GPIO_Lock (
     VOID
@@ -94,7 +94,7 @@ GPIO_UnLock (
         _pHAL_Gpio_Adapter->ExitCritical();
     }
 }
-#endif  // #ifndef CONFIG_RELEASE_BUILD_LIBRARIES
+
 
 _LONG_CALL_ extern u32
 HAL_GPIO_IrqHandler_8195a(
@@ -211,6 +211,21 @@ HAL_GPIO_ClearISR_8195a(
 
 
 /********** HAL In-Line Functions **********/
+
+/**
+  * @brief  De-Initializes a GPIO Pin, reset it as default setting.
+  *
+  * @param  GPIO_Pin: The data structer which contains the parameters for the GPIO Pin.
+  *
+  * @retval HAL_Status
+  */
+static __inline VOID 
+HAL_GPIO_DeInit(
+    HAL_GPIO_PIN  *GPIO_Pin
+)
+{
+    HAL_GPIO_DeInit_8195a(GPIO_Pin);
+}
 
 /**
   * @brief  Reads the specified input port pin.

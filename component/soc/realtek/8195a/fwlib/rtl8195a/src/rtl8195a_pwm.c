@@ -48,7 +48,7 @@ Pwm_SetTimerTick_8195a(
         TimerAdapter.IrqDis = 1;    // Disable Irq
         TimerAdapter.IrqHandle.IrqFun = (IRQ_FUN) NULL;
         TimerAdapter.IrqHandle.IrqNum = TIMER2_7_IRQ;
-        TimerAdapter.IrqHandle.Priority = 10;
+        TimerAdapter.IrqHandle.Priority = 0;
         TimerAdapter.IrqHandle.Data = (u32)NULL;
         TimerAdapter.TimerId = pPwmAdapt->gtimer_id;
         TimerAdapter.TimerIrqPriority = 0;
@@ -95,7 +95,7 @@ HAL_Pwm_SetDuty_8195a(
         period = MIN_GTIMER_TIMEOUT*2;
     }
     else {
-        tick_time = period / 0x3fc; // a duty cycle be devided into 1020 ticks
+        tick_time = period / 0x3fc;
         if (tick_time < MIN_GTIMER_TIMEOUT) {
             tick_time = MIN_GTIMER_TIMEOUT;
         }

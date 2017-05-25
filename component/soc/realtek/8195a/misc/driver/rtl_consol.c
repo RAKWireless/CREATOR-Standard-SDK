@@ -10,29 +10,10 @@
 #include "rtl8195a.h"
 //#include <stdarg.h>
 #include "rtl_consol.h"
-#include "FreeRTOS.h"
-#include "task.h"
-#include <event_groups.h>
-#include "semphr.h"
+#include "osdep_api.h"
 #if defined(configUSE_WAKELOCK_PMU) && (configUSE_WAKELOCK_PMU == 1)
 #include "freertos_pmu.h"
 #endif
-#include "tcm_heap.h"
-
-// Those symbols will be defined in linker script for gcc compiler
-// If not doing this would cause extra memory cost
-#if defined (__GNUC__)
-
-    extern volatile UART_LOG_CTL    UartLogCtl;
-    extern volatile UART_LOG_CTL    *pUartLogCtl;
-    extern u8                       *ArgvArray[MAX_ARGV];
-    extern UART_LOG_BUF             UartLogBuf;
-
-#ifdef CONFIG_UART_LOG_HISTORY
-    extern u8  UartLogHistoryBuf[UART_LOG_HISTORY_LEN][UART_LOG_CMD_BUFLEN];
-#endif
-
-#else
 
 MON_RAM_BSS_SECTION 
     volatile UART_LOG_CTL    UartLogCtl;
@@ -43,17 +24,11 @@ MON_RAM_BSS_SECTION
 MON_RAM_BSS_SECTION 
     UART_LOG_BUF             UartLogBuf;
 
+
 #ifdef CONFIG_UART_LOG_HISTORY
 MON_RAM_BSS_SECTION
     u8  UartLogHistoryBuf[UART_LOG_HISTORY_LEN][UART_LOG_CMD_BUFLEN];
 #endif
-
-#endif
-
-#ifdef CONFIG_KERNEL
-static void (*up_sema_from_isr)(_sema *) = NULL;
-#endif
-
 
 _LONG_CALL_
 extern u8
@@ -122,7 +97,7 @@ UartLogCmdExecute(
 //<Return   >:  VOID
 //<Notes    >:  NA
 //======================================================
-//MON_RAM_TEXT_SECTION
+MON_RAM_TEXT_SECTION
 VOID
 UartLogIrqHandleRam
 (
@@ -153,10 +128,10 @@ UartLogIrqHandleRam
         else
         {
             //4 the input commands are valid only when the task is ready to execute commands
-            if ((pUartLogCtl->BootRdy == 1)
-#ifdef CONFIG_KERNEL
+            if ((pUartLogCtl->BootRdy == 1)  
+#ifdef CONFIG_KERNEL 
                 ||(pUartLogCtl->TaskRdy == 1)
-#endif
+#endif          
             )
             {
                 if ((*pUartLogCtl).EscSTS==0)
@@ -167,7 +142,7 @@ UartLogIrqHandleRam
             else
             {
                 (*pUartLogCtl).EscSTS = 0;
-            }
+            }            
         }
     }
     else if ((*pUartLogCtl).EscSTS==1){
@@ -196,9 +171,8 @@ UartLogIrqHandleRam
                 {
                     pUartLogCtl->ExecuteCmd = _TRUE;
 #if defined(CONFIG_KERNEL) && !TASK_SCHEDULER_DISABLED
-    				if (pUartLogCtl->TaskRdy && up_sema_from_isr != NULL)
-    					//RtlUpSemaFromISR((_Sema *)&pUartLogCtl->Sema);				
-						up_sema_from_isr((_sema *)&pUartLogCtl->Sema);
+    				if (pUartLogCtl->TaskRdy)
+    					RtlUpSemaFromISR((_Sema *)&pUartLogCtl->Sema);
 #endif
                 }
                 else
@@ -215,18 +189,18 @@ exit:
 
 
 
-//MON_RAM_TEXT_SECTION
+MON_RAM_TEXT_SECTION
 VOID
 RtlConsolInitRam(
     IN  u32     Boot,
     IN  u32     TBLSz,
-    IN  VOID    *pTBL
+    IN  VOID    *pTBL    
 )
 {
     UartLogBuf.BufCount = 0;
     ArrayInitialize(&UartLogBuf.UARTLogBuf[0],UART_LOG_CMD_BUFLEN,'\0');
     pUartLogCtl = &UartLogCtl;
-
+    
     pUartLogCtl->NewIdx = 0;
     pUartLogCtl->SeeIdx = 0;
     pUartLogCtl->RevdNo = 0;
@@ -240,7 +214,7 @@ RtlConsolInitRam(
     pUartLogCtl->pfINPUT = (VOID*)&DiagPrintf;
     pUartLogCtl->pCmdTbl = (PCOMMAND_TABLE) pTBL;
     pUartLogCtl->CmdTblSz = TBLSz;
-#ifdef CONFIG_KERNEL
+#ifdef CONFIG_KERNEL    
     pUartLogCtl->TaskRdy = 0;
 #endif
     //executing boot sequence
@@ -255,44 +229,16 @@ RtlConsolInitRam(
         pUartLogCtl->ExecuteEsc= _TRUE;//don't check Esc anymore
 #if defined(CONFIG_KERNEL)
         /* Create a Semaphone */
-        //RtlInitSema((_Sema*)&(pUartLogCtl->Sema), 0);
-        rtw_init_sema((_sema*)&(pUartLogCtl->Sema), 0);
+        RtlInitSema((_Sema*)&(pUartLogCtl->Sema), 0);
         pUartLogCtl->TaskRdy = 0;
 #ifdef PLATFORM_FREERTOS
-#define	LOGUART_STACK_SIZE	128 //USE_MIN_STACK_SIZE modify from 512 to 128
-#if CONFIG_USE_TCM_HEAP
-	{
-		int ret = 0;
-		void *stack_addr = tcm_heap_malloc(LOGUART_STACK_SIZE*sizeof(int));
-		//void *stack_addr = rtw_malloc(stack_size*sizeof(int));
-		if(stack_addr == NULL){
-			DiagPrintf("Out of TCM heap in \"LOGUART_TASK\" ");
-		}
-		ret = xTaskGenericCreate(
-				RtlConsolTaskRam,
-				(const char *)"LOGUART_TASK",
-				LOGUART_STACK_SIZE,
-				NULL,
-				tskIDLE_PRIORITY + 5 + PRIORITIE_OFFSET,
-				NULL,
-				stack_addr,
-				NULL);
-		if (pdTRUE != ret)
-		{
-			DiagPrintf("Create Log UART Task Err!!\n");
-		}
-	}
-#else
-	if (pdTRUE != xTaskCreate( RtlConsolTaskRam, (const signed char * const)"LOGUART_TASK", LOGUART_STACK_SIZE, NULL, tskIDLE_PRIORITY + 5 + PRIORITIE_OFFSET, NULL))
-	{
-		DiagPrintf("Create Log UART Task Err!!\n");
-	}
+        if (pdTRUE != xTaskCreate( RtlConsolTaskRam, (const signed char * const)"LOGUART_TASK", 128, NULL, tskIDLE_PRIORITY + 5 + PRIORITIE_OFFSET, NULL))
+        {
+            DiagPrintf("Create Log UART Task Err!!\n");
+        }
 #endif
-
-#endif
-
-#endif
-    }
+#endif    
+    }	
 
     CONSOLE_8195A();
 }
@@ -320,13 +266,12 @@ void console_cmd_exec(PUART_LOG_CTL   pUartLogCtlExe)
 #if SUPPORT_LOG_SERVICE
 //		if(log_handler(argv[0]) == NULL)
 //			legency_interactive_handler(argc, argv);
-              //RtlUpSema((_Sema *)&log_rx_interrupt_sema);
-		rtw_up_sema((_sema *)&log_rx_interrupt_sema);
+              RtlUpSema((_Sema *)&log_rx_interrupt_sema);
 #endif
               ArrayInitialize(argv[0], sizeof(argv[0]) ,0);
 	}else{
 #if defined(configUSE_WAKELOCK_PMU) && (configUSE_WAKELOCK_PMU == 1)
-		pmu_acquire_wakelock(BIT(PMU_LOGUART_DEVICE));
+		acquire_wakelock(WAKELOCK_LOGUART);
 #endif
 		CONSOLE_8195A(); // for null command
 	}
@@ -336,7 +281,7 @@ void console_cmd_exec(PUART_LOG_CTL   pUartLogCtlExe)
 }
 //======================================================
 // overload original RtlConsolTaskRam
-//MON_RAM_TEXT_SECTION
+MON_RAM_TEXT_SECTION
 VOID
 RtlConsolTaskRam(
     VOID *Data
@@ -348,17 +293,15 @@ RtlConsolTaskRam(
     //4 Set this for UartLog check cmd history
 #ifdef CONFIG_KERNEL
 	pUartLogCtl->TaskRdy = 1;
-	up_sema_from_isr = rtw_up_sema_from_isr;
 #endif
-#ifndef CONFIG_KERNEL
+#ifndef CONFIG_KERNEL   
     pUartLogCtl->BootRdy = 1;
 #endif
     do{
 #if defined(CONFIG_KERNEL) && !TASK_SCHEDULER_DISABLED
-		//RtlDownSema((_Sema *)&pUartLogCtl->Sema);
-		rtw_down_sema((_sema *)&pUartLogCtl->Sema);
+		RtlDownSema((_Sema *)&pUartLogCtl->Sema);
 #endif
-        if (pUartLogCtl->ExecuteCmd) {
+        if (pUartLogCtl->ExecuteCmd) {            
 			// Add command handler here
 			console_cmd_exec((PUART_LOG_CTL)pUartLogCtl);
             //UartLogCmdExecute((PUART_LOG_CTL)pUartLogCtl);
@@ -368,120 +311,27 @@ RtlConsolTaskRam(
 }
 
 //======================================================
-#if BUFFERED_PRINTF
-xTaskHandle print_task = NULL;
-EventGroupHandle_t print_event = NULL;
-char print_buffer[MAX_PRINTF_BUF_LEN];
-int flush_idx = 0;
-int used_length = 0;
-
-int available_space(void)
+void console_init(void)
 {
-    return MAX_PRINTF_BUF_LEN-used_length;
-}
+    IRQ_HANDLE          UartIrqHandle;
+    
+    //4 Register Log Uart Callback function
+	UartIrqHandle.Data = NULL;//(u32)&UartAdapter;
+    UartIrqHandle.IrqNum = UART_LOG_IRQ;
+    UartIrqHandle.IrqFun = (IRQ_FUN) UartLogIrqHandleRam;
+    UartIrqHandle.Priority = 0;
 
-int buffered_printf(const char* fmt, ...)
-{
-    if((print_task==NULL) || (print_event==NULL) )
-        return 0;
-    char tmp_buffer[UART_LOG_CMD_BUFLEN+1];
-    static int print_idx = 0;
-    int cnt;
-
-    if(xEventGroupGetBits(print_event)!=1)
-            xEventGroupSetBits(print_event, 1);
-
-    memset(tmp_buffer,0,UART_LOG_CMD_BUFLEN+1);
-    VSprintf(tmp_buffer, fmt, ((const int *)&fmt)+1);
-    cnt = _strlen(tmp_buffer);
-    if(cnt < available_space()){
-        if(print_idx >= flush_idx){
-            if(MAX_PRINTF_BUF_LEN-print_idx >= cnt){
-                memcpy(&print_buffer[print_idx], tmp_buffer, cnt);
-            }else{
-                memcpy(&print_buffer[print_idx], tmp_buffer, MAX_PRINTF_BUF_LEN-print_idx);
-                memcpy(&print_buffer[0], &tmp_buffer[MAX_PRINTF_BUF_LEN-print_idx], cnt-(MAX_PRINTF_BUF_LEN-print_idx));
-            }
-        }else{  // space is flush_idx - print_idx, and available space is enough
-            memcpy(&print_buffer[print_idx], tmp_buffer, cnt);
-        }
-        // protection needed
-        taskENTER_CRITICAL();
-        used_length+=cnt;
-        taskEXIT_CRITICAL();
-        print_idx+=cnt;
-        if(print_idx>=MAX_PRINTF_BUF_LEN)
-            print_idx -= MAX_PRINTF_BUF_LEN;
-    }else{
-        // skip
-        cnt = 0;
-    }
-
-    return cnt;
-}
-
-
-void printing_task(void* arg)
-{
-    while(1){
-        //wait event
-        if(xEventGroupWaitBits(print_event, 1,  pdFALSE, pdFALSE, 100 ) == 1){
-            while(used_length > 0){
-                putchar(print_buffer[flush_idx]);
-                flush_idx++;
-                if(flush_idx >= MAX_PRINTF_BUF_LEN)
-                    flush_idx-=MAX_PRINTF_BUF_LEN;
-                taskENTER_CRITICAL();
-                used_length--;
-                taskEXIT_CRITICAL();
-            }
-            // clear event
-            xEventGroupClearBits( print_event, 1);
-        }
-    }
-}
-
-void rtl_printf_init()
-{
-    if(print_event==NULL){
-        print_event = xEventGroupCreate();
-        if(print_event == NULL)
-            printf("\n\rprint event init fail!\n");
-    }
-    if(print_task == NULL){
-        if(xTaskCreate(printing_task, (const char *)"print_task", 512, NULL, tskIDLE_PRIORITY + 1, &print_task) != pdPASS)
-            printf("\n\rprint task init fail!\n");
-    }
-}
-#endif
-//======================================================
-
-
-__weak void console_init(void)
-{
-
-	    IRQ_HANDLE          UartIrqHandle;
-	    
-	    //4 Register Log Uart Callback function
-	    UartIrqHandle.Data = NULL;//(u32)&UartAdapter;
-	    UartIrqHandle.IrqNum = UART_LOG_IRQ;
-	    UartIrqHandle.IrqFun = (IRQ_FUN) UartLogIrqHandleRam;
-	    UartIrqHandle.Priority = 6;
-
-	    
-	    //4 Register Isr handle
-	    InterruptUnRegister(&UartIrqHandle); 
-	    InterruptRegister(&UartIrqHandle); 
-        
-
-
+    
+    //4 Register Isr handle
+    InterruptUnRegister(&UartIrqHandle); 
+    InterruptRegister(&UartIrqHandle); 
 #if !TASK_SCHEDULER_DISABLED    
     RtlConsolInitRam((u32)RAM_STAGE,(u32)0,(VOID*)NULL);
 #else
     RtlConsolInitRam((u32)ROM_STAGE,(u32)0,(VOID*)NULL);
 #endif
-
-#if BUFFERED_PRINTF
-    rtl_printf_init();
-#endif
 }
+
+
+
+

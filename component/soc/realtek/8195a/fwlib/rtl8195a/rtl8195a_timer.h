@@ -101,11 +101,6 @@ HalTimerIrqDisRtl8195a(
 );
 
 VOID
-HalTimerClearIsrRtl8195a(
-    IN  u32 TimerId
-);
-
-VOID
 HalTimerEnRtl8195a_Patch(
     IN  u32 TimerId
 );
@@ -120,7 +115,7 @@ HalTimerDeInitRtl8195a_Patch(
     IN  VOID    *Data
 );
 
-#if defined(CONFIG_CHIP_C_CUT) || defined(CONFIG_CHIP_E_CUT)
+#ifdef CONFIG_CHIP_C_CUT
 
 __weak _LONG_CALL_
 VOID
@@ -128,7 +123,7 @@ HalTimerIrq2To7HandleV02(
     IN  VOID    *Data
 );
 
-__weak _LONG_CALL_ROM_
+__weak _LONG_CALL_
 HAL_Status
 HalTimerIrqRegisterRtl8195aV02(
     IN  VOID    *Data
@@ -153,7 +148,7 @@ HalTimerReLoadRtl8195aV02(
     IN  u32 LoadUs
 );
 
-__weak _LONG_CALL_ROM_
+__weak _LONG_CALL_
 HAL_Status
 HalTimerIrqUnRegisterRtl8195aV02(
     IN  VOID    *Data
@@ -167,31 +162,13 @@ HalTimerDeInitRtl8195aV02(
 
 #endif  // end of "#ifdef CONFIG_CHIP_C_CUT"
 
-#ifdef CONFIG_CHIP_E_CUT
-_LONG_CALL_ VOID
-HalTimerReLoadRtl8195a_V04(
-    IN  u32 TimerId,
-    IN  u32 LoadUs
-);
-
-_LONG_CALL_ HAL_Status
-HalTimerInitRtl8195a_V04(
-    IN  VOID    *Data
-);
-#endif  // #ifdef CONFIG_CHIP_E_CUT
-
 // HAL functions wrapper
-#ifndef CONFIG_RELEASE_BUILD_LIBRARIES
 static __inline HAL_Status
 HalTimerInit(
     IN  VOID    *Data
 )
 {
-#ifdef CONFIG_CHIP_E_CUT
-    return (HalTimerInitRtl8195a_V04(Data));
-#else
     return (HalTimerInitRtl8195a_Patch(Data));
-#endif
 }
 
 static __inline VOID
@@ -212,27 +189,15 @@ HalTimerDisable(
 }
 
 static __inline VOID
-HalTimerClearIsr(
-    IN  u32 TimerId
-)
-{
-    HalTimerClearIsrRtl8195a(TimerId);
-}
-
-static __inline VOID
 HalTimerReLoad(
     IN  u32 TimerId,
     IN  u32 LoadUs
 )
 {
-#ifdef CONFIG_CHIP_E_CUT
-    HalTimerReLoadRtl8195a_V04(TimerId, LoadUs);
-#else
     HalTimerReLoadRtl8195a_Patch(TimerId, LoadUs);
-#endif
 }
 
-#if defined(CONFIG_CHIP_A_CUT) || defined(CONFIG_CHIP_B_CUT)
+#ifndef CONFIG_CHIP_C_CUT
 
 static __inline VOID
 HalTimerDeInit(
@@ -253,5 +218,5 @@ HalTimerDeInit(
 }
 
 #endif      // end of "#ifndef CONFIG_CHIP_C_CUT"
-#endif  // #ifndef CONFIG_RELEASE_BUILD_LIBRARIES
+
 #endif //_RTL8195A_TIMER_H_

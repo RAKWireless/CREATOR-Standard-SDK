@@ -33,7 +33,7 @@
 
 #if !defined(__DWC_OTG_ATTR_H__)
 #define __DWC_OTG_ATTR_H__
-#if 0
+
 /** @file
  * This file contains the interface to the Linux device attributes.
  */
@@ -82,5 +82,4 @@ void dwc_otg_attr_remove(
 				struct pci_dev *dev
 #endif
     );
-#endif
 #endif

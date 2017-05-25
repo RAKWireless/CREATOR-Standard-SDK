@@ -28,15 +28,12 @@ extern SPIC_INIT_PARA SpicInitParaAllClk[3][CPU_CLK_TYPE_NO];
 _LONG_CALL_
 extern VOID SpicWaitBusyDoneRtl8195A(VOID);
 
-static int isinit = 0;
-static flash_t flashobj;
-    
-static void flash_init(flash_t * obj);
-static void flash_turnon();
 /**
   * global data structure
   */   
-//flash_t	        flash;
+flash_t	        flash;
+
+static void flash_init(flash_t *obj);
 
 /**
   * @brief  Control the flash chip write protect enable/disable
@@ -45,10 +42,7 @@ static void flash_turnon();
   */   
 void flash_write_protect(flash_t *obj, uint32_t protect)
 {
-    flash_turnon();
-
-    if(isinit == 0)
-        flash_init(&flashobj);
+    flash_init(obj);
     SpicWriteProtectFlashRtl8195A(protect);
     SpicDisableRtl8195A();
 }
@@ -58,13 +52,13 @@ void flash_write_protect(flash_t *obj, uint32_t protect)
   * @param  obj: address of the flash object
   * @retval   none
   */
-void flash_init(flash_t *obj)
+static void flash_init(flash_t *obj)
 {
 	//SPIC_INIT_PARA spic_init_para;
 
 	// Init SPI Flash Controller
 //	DBG_8195A("Initial Spi Flash Controller\n");
-	//SPI_FLASH_PIN_FCTRL(ON);
+	SPI_FLASH_PIN_FCTRL(ON);
 
 	if (!SpicFlashInitRtl8195A(SpicOneBitMode)){
 
@@ -72,90 +66,11 @@ void flash_init(flash_t *obj)
 		HAL_WRITE32(SYSTEM_CTRL_BASE, REG_SYS_DSTBY_INFO3, HAL_READ32(SYSTEM_CTRL_BASE, REG_SYS_DSTBY_INFO3)|0xf);
 	}
 	else {
-		isinit = 1;
+//		DBG_8195A("SPI Init SUCCESS\n");
 	}
-    flashobj.SpicInitPara.flashtype = SpicInitParaAllClk[0][0].flashtype;
-    
+    obj->SpicInitPara.flashtype = SpicInitParaAllClk[SpicOneBitMode][0].flashtype;
     //DBG_8195A("Flash ID is = %x %x %x \n",SpicInitParaAllClk[0][0].id[0],SpicInitParaAllClk[0][0].id[1],SpicInitParaAllClk[0][0].id[2]);
 
-}
-
-/**
-  * @brief  Get flash ID (command: 0x9F). 
-  * @param  obj: Flash object define in application software.
-  * @param  buf: Pointer to a byte array to save the readback ID.
-  * @param  len: Specifies the length of the buf. It should be 3.
-  * @retval -1: Fail.
-  */
-int flash_read_id(flash_t *obj, uint8_t *buf, uint8_t len)
-{
-    int index = 0;
-    
-    flash_turnon();
-
-    if(isinit == 0)
-        flash_init(&flashobj);
-
-    if (len < 3) {
-        DBG_8195A("ID length should be >= 3\n");
-        return -1;
-    }
-    SpicReadIDRtl8195A();
-
-    for (index = 0; index < 3; index++) {
-        buf[index] = SpicInitParaAllClk[0][0].id[index];
-    }
-
-    if ((buf[0] == 0x0) || (buf[0] == 0xFF)) {
-        DBG_8195A("Invalid ID\n");
-        return -1;
-    }
-    
-    len = 3;
-    return len;   
-}
-
-/**
-  * @brief  This function is only for Winbond flash to get unique ID (command: 0x4B).
-  * @param  obj: Flash object define in application software.
-  * @param  buf: Pointer to a byte array to save the readback unique ID.
-  * @param  len: Specifies the length of the buf. It should be 8.
-  * @retval -1: Fail.
-  */
-int flash_read_unique_id(flash_t *obj, uint8_t *buf, uint8_t len)
-{
-    int index = 0;
-    
-    flash_turnon();
-
-    if(isinit == 0)
-        flash_init(&flashobj);
-
-    if (len < 8) {
-        DBG_8195A("Unique ID length should be >= 8.\n");
-        return -1;
-    }
-
-    if (FLASH_WINBOND != flashobj.SpicInitPara.flashtype) {
-        DBG_8195A("Only Winbond flash supports this function.\n");
-        return -1;        
-    }
-
-    SpicReadUniqueIDRtl8195A(buf, len);
-    
-    //for (index = 0; index < len; index++) {
-        //DBG_8195A("buf[%d] = %x\n",index,buf[index]);
-    //}
-
-    len = 8;
-    return len;
-
-}
-
-void flash_turnon()
-{
-    SPI_FLASH_PIN_FCTRL(ON);  
-    SpicWaitBusyDoneRtl8195A();
 }
 
 /**
@@ -165,22 +80,14 @@ void flash_turnon()
   */
 void flash_erase_sector(flash_t *obj, uint32_t address)
 {
-    flash_turnon();
-
-    if(isinit == 0)
-        flash_init(&flashobj);
-
+    flash_init(obj);
     SpicSectorEraseFlashRtl8195A(SPI_FLASH_BASE + address);
     SpicDisableRtl8195A();
 }
 
 void flash_erase_block(flash_t *obj, uint32_t address)
 {
-    flash_turnon();
-
-    if(isinit == 0)
-        flash_init(&flashobj);
-
+    flash_init(obj);
     SpicBlockEraseFlashRtl8195A(SPI_FLASH_BASE + address);
     SpicDisableRtl8195A();
 }
@@ -196,11 +103,13 @@ void flash_erase_block(flash_t *obj, uint32_t address)
 int  flash_read_word(flash_t *obj, uint32_t address, uint32_t * data)
 {
 	
-    flash_turnon();
-    if(isinit == 0)
-        flash_init(&flashobj);
+	// Check address
+	
+	// Read Word
+    flash_init(obj);
+
 	// Wait flash busy done (wip=0)
-	SpicWaitWipDoneRefinedRtl8195A(flashobj.SpicInitPara);
+	SpicWaitWipDoneRefinedRtl8195A(obj->SpicInitPara);
 
 	* data = HAL_READ32(SPI_FLASH_BASE, address);
     SpicDisableRtl8195A();
@@ -217,14 +126,11 @@ int  flash_read_word(flash_t *obj, uint32_t address, uint32_t * data)
   */
 int  flash_write_word(flash_t *obj, uint32_t address, uint32_t data)
 {
+    // Disable write protection
     u8 flashtype = 0;
-    
-    flash_turnon();
-    if(isinit == 0)
-        flash_init(&flashobj);
+    flash_init(obj);
 
-
-    flashtype = flashobj.SpicInitPara.flashtype;
+    flashtype = obj->SpicInitPara.flashtype;
 
 	//Write word
 	HAL_WRITE32(SPI_FLASH_BASE, address, data);
@@ -234,13 +140,14 @@ int  flash_write_word(flash_t *obj, uint32_t address, uint32_t data)
 	
 	// Wait flash busy done (wip=0)
     if(flashtype == FLASH_MICRON){
-        SpicWaitOperationDoneRtl8195A(flashobj.SpicInitPara);
+        SpicWaitOperationDoneRtl8195A(obj->SpicInitPara);
     }
     else
-        SpicWaitWipDoneRefinedRtl8195A(flashobj.SpicInitPara);
+	    SpicWaitWipDoneRefinedRtl8195A(obj->SpicInitPara);
     
     SpicDisableRtl8195A();
-    return 1;
+    // Enable write protection
+	return 1;
 }
 
 
@@ -259,15 +166,11 @@ int  flash_stream_read(flash_t *obj, uint32_t address, uint32_t len, uint8_t * d
     u32 read_word;
     uint8_t *ptr;
     uint8_t *pbuf;
-    
-    flash_turnon();
 
-    if(isinit == 0)
-        flash_init(&flashobj);
-
+    flash_init(obj);
 
 	// Wait flash busy done (wip=0)
-    SpicWaitWipDoneRefinedRtl8195A(flashobj.SpicInitPara);
+	SpicWaitWipDoneRefinedRtl8195A(obj->SpicInitPara);
 
     offset_to_align = address & 0x03;
     pbuf = data;
@@ -338,13 +241,9 @@ int  flash_stream_write(flash_t *obj, uint32_t address, uint32_t len, uint8_t * 
     uint8_t *ptr;
     uint8_t *pbuf;
     u8 flashtype = 0; 
+    flash_init(obj);
     
-    flash_turnon();
-
-    if(isinit == 0)
-        flash_init(&flashobj);
-  
-    flashtype = flashobj.SpicInitPara.flashtype;
+    flashtype = obj->SpicInitPara.flashtype;
     offset_to_align = address & 0x03;
     pbuf = data;
     if (offset_to_align != 0) {
@@ -367,10 +266,10 @@ int  flash_stream_write(flash_t *obj, uint32_t address, uint32_t len, uint8_t * 
         SpicWaitBusyDoneRtl8195A();
         // Wait flash busy done (wip=0)
         if(flashtype == FLASH_MICRON){
-            SpicWaitOperationDoneRtl8195A(flashobj.SpicInitPara);
+            SpicWaitOperationDoneRtl8195A(obj->SpicInitPara);
         }
         else
-            SpicWaitWipDoneRefinedRtl8195A(flashobj.SpicInitPara);
+            SpicWaitWipDoneRefinedRtl8195A(obj->SpicInitPara);
         
 
     }
@@ -386,10 +285,10 @@ int  flash_stream_write(flash_t *obj, uint32_t address, uint32_t len, uint8_t * 
             SpicWaitBusyDoneRtl8195A();
             // Wait flash busy done (wip=0)
             if(flashtype == FLASH_MICRON){
-                SpicWaitOperationDoneRtl8195A(flashobj.SpicInitPara);
+                SpicWaitOperationDoneRtl8195A(obj->SpicInitPara);
             }
             else
-                SpicWaitWipDoneRefinedRtl8195A(flashobj.SpicInitPara);
+                SpicWaitWipDoneRefinedRtl8195A(obj->SpicInitPara);
 
             pbuf += 4;
             address += 4;
@@ -404,10 +303,10 @@ int  flash_stream_write(flash_t *obj, uint32_t address, uint32_t len, uint8_t * 
             SpicWaitBusyDoneRtl8195A();
             // Wait flash busy done (wip=0)
             if(flashtype == FLASH_MICRON){
-                SpicWaitOperationDoneRtl8195A(flashobj.SpicInitPara);
+                SpicWaitOperationDoneRtl8195A(obj->SpicInitPara);
             }
             else
-                SpicWaitWipDoneRefinedRtl8195A(flashobj.SpicInitPara);
+                SpicWaitWipDoneRefinedRtl8195A(obj->SpicInitPara);
 
             pbuf += 4;
             address += 4;
@@ -428,10 +327,10 @@ int  flash_stream_write(flash_t *obj, uint32_t address, uint32_t len, uint8_t * 
         SpicWaitBusyDoneRtl8195A();
         // Wait flash busy done (wip=0)
         if(flashtype == FLASH_MICRON){
-            SpicWaitOperationDoneRtl8195A(flashobj.SpicInitPara);
+            SpicWaitOperationDoneRtl8195A(obj->SpicInitPara);
         }
         else
-            SpicWaitWipDoneRefinedRtl8195A(flashobj.SpicInitPara);
+            SpicWaitWipDoneRefinedRtl8195A(obj->SpicInitPara);
 
     }
 
@@ -465,12 +364,9 @@ int flash_burst_write(flash_t *obj, uint32_t address ,uint32_t Length, uint8_t *
 
     PageSize = 256;
 
-    flash_turnon();
+    flash_init(obj);
 
-    if(isinit == 0)
-        flash_init(&flashobj);
-
-    flashtype = flashobj.SpicInitPara.flashtype;
+    flashtype = obj->SpicInitPara.flashtype;
     
     OccuSize = address & 0xFF;
     if((Length >= PageSize) ||((Length + OccuSize) >= PageSize))
@@ -478,18 +374,18 @@ int flash_burst_write(flash_t *obj, uint32_t address ,uint32_t Length, uint8_t *
     else
         ProgramSize = Length;
 
-    flashobj.Length = Length;
+    obj->Length = Length;
     while(Length > 0){
         if(OccuSize){
-            SpicUserProgramRtl8195A(data, flashobj.SpicInitPara, address, &(flashobj.Length));
+            SpicUserProgramRtl8195A(data, obj->SpicInitPara, address, &(obj->Length));
                 // Wait spic busy done
             SpicWaitBusyDoneRtl8195A();
             // Wait flash busy done (wip=0)
             if(flashtype == FLASH_MICRON){
-                SpicWaitOperationDoneRtl8195A(flashobj.SpicInitPara);
+                SpicWaitOperationDoneRtl8195A(obj->SpicInitPara);
             }
             else
-                SpicWaitWipDoneRefinedRtl8195A(flashobj.SpicInitPara);
+                SpicWaitWipDoneRefinedRtl8195A(obj->SpicInitPara);
 
             address += ProgramSize;
             data+= ProgramSize;   
@@ -497,79 +393,49 @@ int flash_burst_write(flash_t *obj, uint32_t address ,uint32_t Length, uint8_t *
             OccuSize = 0;
         }
         else{
-            while((flashobj.Length) >= PageSize){
-                SpicUserProgramRtl8195A(data, flashobj.SpicInitPara, address, &(flashobj.Length));
+            while((obj->Length) >= PageSize){
+                SpicUserProgramRtl8195A(data, obj->SpicInitPara, address, &(obj->Length));
                     // Wait spic busy done
                 SpicWaitBusyDoneRtl8195A();
                 // Wait flash busy done (wip=0)
                 if(flashtype == FLASH_MICRON){
-                    SpicWaitOperationDoneRtl8195A(flashobj.SpicInitPara);
+                    SpicWaitOperationDoneRtl8195A(obj->SpicInitPara);
                 }
                 else
-                    SpicWaitWipDoneRefinedRtl8195A(flashobj.SpicInitPara);
+                    SpicWaitWipDoneRefinedRtl8195A(obj->SpicInitPara);
 
                 address += PageSize;
                 data+=PageSize;
                 Length -= PageSize;
             }
-            flashobj.Length = Length;
-            if((flashobj.Length)  > 0){
-                SpicUserProgramRtl8195A(data, flashobj.SpicInitPara, address, &(flashobj.Length));
+            obj->Length = Length;
+            if((obj->Length)  > 0){
+                SpicUserProgramRtl8195A(data, obj->SpicInitPara, address, &(obj->Length));
                     // Wait spic busy done
                 SpicWaitBusyDoneRtl8195A();
                 // Wait flash busy done (wip=0)
                 if(flashtype == FLASH_MICRON){
-                    SpicWaitOperationDoneRtl8195A(flashobj.SpicInitPara);
+                    SpicWaitOperationDoneRtl8195A(obj->SpicInitPara);
                 }
                 else
-                    SpicWaitWipDoneRefinedRtl8195A(flashobj.SpicInitPara);
+                    SpicWaitWipDoneRefinedRtl8195A(obj->SpicInitPara);
 
                 break;
             }
         }
-        flashobj.Length = Length;
+        obj->Length = Length;
     }
     
     SpicDisableRtl8195A();
     return 1;
 
 }
-/**
-  * @brief  Read a stream of data from specified address
-  * @param  obj: Specifies the parameter of flash object.
-  * @param  address: Specifies the address to be read.
-  * @param  len: Specifies the length of the data to read.
-  * @param  data: Specified the address to save the readback data.
-  * @retval   status: Success:1 or Failure: Others.
-  */
 
-int  flash_burst_read(flash_t *obj, uint32_t address, uint32_t Length, uint8_t * data)
-{
-    flash_turnon();
-
-    if(isinit == 0)
-        flash_init(&flashobj);
-
-    // Wait flash busy done (wip=0)
-    SpicWaitWipDoneRefinedRtl8195A(flashobj.SpicInitPara);
-    SpicUserReadRtl8195A(Length, address, data,SpicOneBitMode);
-    SpicDisableRtl8195A();
-    return 1;
-}
 
 int flash_get_status(flash_t *obj)
 {
-    u8 Status = 0;
-
-    flash_turnon();
-
-    if(isinit == 0)
-        flash_init(&flashobj);
-
-    Status = SpicGetFlashStatusRefinedRtl8195A(flashobj.SpicInitPara);
-
-    SpicDisableRtl8195A();
-    return Status;
+    flash_init(obj);
+    return SpicGetFlashStatusRefinedRtl8195A(obj->SpicInitPara);
 }
 
 /*
@@ -585,14 +451,11 @@ The block protected area and the corresponding control bits are provided in the 
 */
 int flash_set_status(flash_t *obj, uint32_t data)
 {
-    flash_turnon();
 
-    if(isinit == 0)
-        flash_init(&flashobj);
+    flash_init(obj);
 
-    SpicSetFlashStatusRefinedRtl8195A(data, flashobj.SpicInitPara);
-    SpicWaitWipDoneRefinedRtl8195A(flashobj.SpicInitPara);
-    DBG_8195A("Status Register After Setting= %x\n", flash_get_status(&flashobj));
+    SpicSetFlashStatusRefinedRtl8195A(data, obj->SpicInitPara);
+    DBG_8195A("Status Register After Setting= %x\n", flash_get_status(obj));
     SpicDisableRtl8195A();
     return 1;
 }
@@ -603,47 +466,8 @@ This function aims to reset the status register, please make sure the operation 
 */
 void flash_reset_status(flash_t *obj)
 {
-    flash_turnon();
+    flash_init(obj);
 
-    if(isinit == 0)
-        flash_init(&flashobj);
-
-    SpicSetFlashStatusRefinedRtl8195A(0, flashobj.SpicInitPara);    
-    SpicWaitWipDoneRefinedRtl8195A(flashobj.SpicInitPara);
+    SpicSetFlashStatusRefinedRtl8195A(0, obj->SpicInitPara);    
     SpicDisableRtl8195A();
 }
-/*
-Function Description:
-This function is only for Micron 512Mbit flash to access beyond 128Mbit by switching between four 128 Mbit area.
-Please refer to flash datasheet for more information about memory mapping.
-*/
-
-int flash_set_extend_addr(flash_t *obj, uint32_t data)
-{
-    flash_turnon();
-
-    if(isinit == 0)
-        flash_init(&flashobj);
-
-    SpicSetExtendAddrRtl8195A(data, flashobj.SpicInitPara);
-    SpicWaitWipDoneRefinedRtl8195A(flashobj.SpicInitPara);
-    DBG_8195A("Extended Address Register After Setting= %x\n", flash_get_extend_addr(&flashobj));
-    SpicDisableRtl8195A();
-    return 1;
-}
-
-int flash_get_extend_addr(flash_t *obj)
-{
-    u8 Status = 0;
-    
-    flash_turnon();    
-    if(isinit == 0)
-        flash_init(&flashobj);
-    Status = SpicGetExtendAddrRtl8195A(flashobj.SpicInitPara);
-    
-    SpicDisableRtl8195A();
-    return Status;
-
-}
-
-

@@ -77,6 +77,6 @@ extern _LONG_CALL_ char *DWC_STRDUP_ROM(char const *str);
 extern _LONG_CALL_ int DWC_ATOI_ROM(const char *str, int32_t *value);
 extern _LONG_CALL_ int DWC_ATOUI_ROM(const char *str, uint32_t *value);
 // RAM
-extern void dwc_otg_wrapper_init(IN VOID);
+void dwc_otg_wrapper_init(IN VOID);
 
 

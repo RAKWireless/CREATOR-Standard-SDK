@@ -1589,9 +1589,7 @@
  * \def POLARSSL_MEMORY_C
  * Deprecated since 1.3.5. Please use POLARSSL_PLATFORM_MEMORY instead.
  */
- #ifndef POLARSSL_PLATFORM_MEMORY
-#define POLARSSL_MEMORY_C
-#endif
+//#define POLARSSL_MEMORY_C
 
 /**
  * \def POLARSSL_MEMORY_BUFFER_ALLOC_C
@@ -2158,6 +2156,9 @@
 //#define SSL_DEFAULT_TICKET_LIFETIME     86400 /**< Lifetime of session tickets (if enabled) */
 //#define POLARSSL_PSK_MAX_LEN               32 /**< Max size of TLS pre-shared keys, in bytes (default 256 bits) */
 
+/* Realteck Ameba HW Crypto */
+#define RTL_HW_CRYPTO
+//#define SUPPORT_HW_SW_CRYPTO
 #define RTL_CRYPTO_FRAGMENT               15360 /* 15*1024 < 16000 */
 
 /**

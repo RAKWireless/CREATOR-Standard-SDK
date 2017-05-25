@@ -42,7 +42,7 @@
 #include "lwip/pbuf.h"
 #include "lwip/api.h"
 #include "lwip/sys.h"
-#include "lwip/lwip_timers.h"
+#include "lwip/lwip_timers.h" //Evan modified timers.h to lwip_timers.h
 #include "lwip/netif.h"
 
 #ifdef __cplusplus

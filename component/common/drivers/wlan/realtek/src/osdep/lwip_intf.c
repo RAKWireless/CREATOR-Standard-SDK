@@ -62,7 +62,6 @@ void rltk_wlan_set_netif_info(int idx_wlan, void * dev, unsigned char * dev_addr
  */     
 int rltk_wlan_send(int idx, struct eth_drv_sg *sg_list, int sg_len, int total_len)
 {
-#if (CONFIG_LWIP_LAYER == 1)
 	struct eth_drv_sg *last_sg;
 	struct sk_buff *skb = NULL;
 	int ret = 0;
@@ -102,7 +101,6 @@ exit:
 	rltk_wlan_tx_dec(idx);
 	restore_flags();
 	return ret;
-#endif
 }
 
 /**
@@ -115,7 +113,6 @@ exit:
  */     
 void rltk_wlan_recv(int idx, struct eth_drv_sg *sg_list, int sg_len)
 {
-#if (CONFIG_LWIP_LAYER == 1)
 	struct eth_drv_sg *last_sg;
 	struct sk_buff *skb;
 	
@@ -133,7 +130,6 @@ void rltk_wlan_recv(int idx, struct eth_drv_sg *sg_list, int sg_len)
 			skb_pull(skb, sg_list->len);
 		}
 	}
-#endif
 }
 
 int netif_is_valid_IP(int idx, unsigned char *ip_dest)
@@ -223,14 +219,4 @@ void netif_pre_sleep_processing(void)
 	lwip_PRE_SLEEP_PROCESSING();	
 #endif
 }
-
-#ifdef CONFIG_WOWLAN
-unsigned char *rltk_wlan_get_ip(int idx){
-#if (CONFIG_LWIP_LAYER == 1)
-	return LwIP_GetIP(&xnetif[idx]);
-#else
-	return NULL;
-#endif
-}
-#endif
 

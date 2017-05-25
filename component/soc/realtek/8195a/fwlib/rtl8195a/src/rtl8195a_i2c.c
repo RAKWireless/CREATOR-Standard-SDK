@@ -87,72 +87,6 @@ HalI2CSendRtl8195a_Patch(
 //
 //---------------------------------------------------------------------------------------------------
 HAL_Status
-HalI2CMassSendRtl8195a_Patch(
-    IN  VOID    *Data
-){
-    PHAL_I2C_INIT_DAT pHalI2CInitData = (PHAL_I2C_INIT_DAT)Data;
-    
-    u8  I2CIdx      = pHalI2CInitData->I2CIdx;
-    u8  I2CCmd      = pHalI2CInitData->I2CCmd;
-    u8  I2CDatLen   = pHalI2CInitData->I2CDataLen;
-    u8  *pDat       = pHalI2CInitData->I2CRWData;
-    u8  I2CStopSet  = pHalI2CInitData->I2CStop;
-    u8  I2CSTP;
-    u8  I2CReSRT = 0;
-    u8  DatCnt = 0;
-
-    /* Send I2C data one by one. The STOP bit is only used for the last byte.*/
-    for (DatCnt = 0; DatCnt < I2CDatLen; DatCnt++)
-    {
-        I2CSTP = 0;
-        if ((DatCnt == (I2CDatLen - 1)) && (I2CStopSet != 0)) {
-            I2CSTP = 1;
-        }
-        
-        if ((DatCnt == 0) && ((pHalI2CInitData->RSVD0 & BIT0) != 0)) {
-            I2CReSRT = 1;
-        }
-        else {
-            I2CReSRT = 0;
-        }
-        
-        HAL_I2C_WRITE32(I2CIdx,REG_DW_I2C_IC_DATA_CMD, 
-                    *(pDat+DatCnt) |
-                    BIT_CTRL_IC_DATA_CMD_CMD(I2CCmd) |
-                    BIT_CTRL_IC_DATA_CMD_RESTART(I2CReSRT) |
-                    BIT_CTRL_IC_DATA_CMD_STOP(I2CSTP));    
-    }
-
-    return HAL_OK;
-}
-
-//---------------------------------------------------------------------------------------------------
-//Function Name:
-//		HalI2CInit8195a
-//
-// Description:
-//		To initialize I2C module by using the given data.
-//
-// Arguments:
-//		[in] VOID    *Data -
-//			The I2C parameter data struct.
-//
-// Return:
-//		The status of the DeInit process.
-//          _EXIT_SUCCESS if the initialization succeeded.
-//          _EXIT_FAILURE if the initialization failed.
-//
-// Note:
-//		None
-//
-// See Also:
-//		NA
-//
-// Author:
-// 		By Jason Deng, 2014-04-02.
-//
-//---------------------------------------------------------------------------------------------------
-HAL_Status
 HalI2CInit8195a_Patch(
     IN  VOID    *Data
 )
@@ -176,7 +110,6 @@ HalI2CInit8195a_Patch(
     u32 INTRMsk;
     u8  TxDMARqLv;
     u8  RxDMARqLv;
-    u32 I2CTmp;
     
     /* Get the I2C parameters*/
     I2CIdx      = pHalI2CInitData->I2CIdx;
@@ -262,45 +195,12 @@ HalI2CInit8195a_Patch(
         DBG_I2C_INFO("Init slave, I2C_IC_ACK_GC%d[%2x]: %x\n", I2CIdx, REG_DW_I2C_IC_ACK_GENERAL_CALL, HAL_I2C_READ32(I2CIdx,REG_DW_I2C_IC_ACK_GENERAL_CALL));
 
         /* to set SDA hold time */
-        //HAL_I2C_WRITE32(I2CIdx,REG_DW_I2C_IC_SDA_HOLD,BIT_CTRL_IC_SDA_HOLD(SdaHd));
+        HAL_I2C_WRITE32(I2CIdx,REG_DW_I2C_IC_SDA_HOLD,BIT_CTRL_IC_SDA_HOLD(SdaHd));
         //4 
         /* to set SDA setup time */
         HAL_I2C_WRITE32(I2CIdx,REG_DW_I2C_IC_SDA_SETUP,BIT_CTRL_IC_SDA_SETUP(SdaSetup));
     }
 
-    /* to set SDA hold time */
-    INTRMsk = HAL_I2C_READ32(I2CIdx,REG_DW_I2C_IC_CON);
-    if (BIT_GET_IC_CON_SPEED(INTRMsk) == I2C_SS_MODE) {
-        I2CTmp = HAL_I2C_READ32(I2CIdx,REG_DW_I2C_IC_SS_SCL_LCNT);
-    } else if (BIT_GET_IC_CON_SPEED(INTRMsk) == I2C_FS_MODE) {
-        I2CTmp = HAL_I2C_READ32(I2CIdx,REG_DW_I2C_IC_FS_SCL_LCNT);
-    } else {
-        I2CTmp = HAL_I2C_READ32(I2CIdx,REG_DW_I2C_IC_HS_SCL_LCNT);
-    }
-    
-    if (Master) {
-        if (SdaHd > (I2CTmp -2)) {
-            I2CTmp = I2CTmp -2;
-            if (I2CTmp < 1) {
-                I2CTmp = 1 + 1;
-            }
-            HAL_I2C_WRITE32(I2CIdx,REG_DW_I2C_IC_SDA_HOLD,BIT_CTRL_IC_SDA_HOLD(I2CTmp));
-        } else {
-            HAL_I2C_WRITE32(I2CIdx,REG_DW_I2C_IC_SDA_HOLD,BIT_CTRL_IC_SDA_HOLD(SdaHd));
-        }
-    } else {
-        if (SdaHd > (I2CTmp -2)) {
-            I2CTmp = I2CTmp -2;
-            if (I2CTmp < 7) {
-                I2CTmp = 7 + 1;
-            }
-            HAL_I2C_WRITE32(I2CIdx,REG_DW_I2C_IC_SDA_HOLD,BIT_CTRL_IC_SDA_HOLD(I2CTmp));
-        } else {
-            HAL_I2C_WRITE32(I2CIdx,REG_DW_I2C_IC_SDA_HOLD,BIT_CTRL_IC_SDA_HOLD(SdaHd));
-        }
-    }
-    //DBG_8195A("SDA:%x\n", HAL_I2C_READ32(I2CIdx,REG_DW_I2C_IC_SDA_HOLD));
-    
     /* To set TX_Empty Level */
     HAL_I2C_WRITE32(I2CIdx,REG_DW_I2C_IC_TX_TL,TXTL);
     
@@ -504,78 +404,5 @@ HalI2CSetCLKRtl8195a_Patch(
     }
 
     return HAL_OK;
-}
-
-HAL_Status
-HalI2CEnableRtl8195a_Patch(
-    IN  VOID    *Data
-){
-    PHAL_I2C_INIT_DAT pHalI2CInitData = (PHAL_I2C_INIT_DAT)Data;
-    u8  I2CIdx  = pHalI2CInitData->I2CIdx;
-    u8  I2CICEn = pHalI2CInitData->I2CEn;
-    u32 I2CTimeoutCount;
-    u32 I2CStartCount;
-    /* Enable I2C module */
-    HAL_I2C_WRITE32(I2CIdx, REG_DW_I2C_IC_ENABLE, BIT_CTRL_IC_ENABLE(I2CICEn));
-
-    I2CTimeoutCount = ((10000/pHalI2CInitData->I2CClk) /TIMER_TICK_US) +1;
-    I2CStartCount = HalTimerOp.HalTimerReadCount(1);
-    
-    if (!I2CICEn) {        
-        while (HAL_I2C_READ32(I2CIdx, REG_DW_I2C_IC_ENABLE_STATUS) & BIT_IC_ENABLE_STATUS_IC_EN) {
-            if (HAL_TIMEOUT == I2CIsTimeout(I2CStartCount, I2CTimeoutCount)) {
-                return HAL_TIMEOUT;
-            }
-        }
-    } else {
-        while (!(HAL_I2C_READ32(I2CIdx, REG_DW_I2C_IC_ENABLE_STATUS) & BIT_IC_ENABLE_STATUS_IC_EN)) {
-            if (HAL_TIMEOUT == I2CIsTimeout(I2CStartCount, I2CTimeoutCount)) {
-                return HAL_TIMEOUT;
-            }
-        }
-    }
-    return HAL_OK;
-}
-
-HAL_Status
-HalI2CSetTarRtl8195a(
-    IN  VOID    *Data
-){
-    PHAL_I2C_INIT_DAT pHalI2CInitData = (PHAL_I2C_INIT_DAT)Data;
-    u8  I2CIdx  = pHalI2CInitData->I2CIdx;
-    u8  I2CEnBak = pHalI2CInitData->I2CEn;
-    u32 I2CTarBak;
-    
-    pHalI2CInitData->I2CEn = I2C_DISABLE;
-    HalI2CEnableRtl8195a_Patch(Data);
-
-    I2CTarBak = HAL_I2C_READ32(I2CIdx, REG_DW_I2C_IC_TAR);
-    I2CTarBak &= ~BIT_MASK_IC_TAR;
-    I2CTarBak |= BIT_CTRL_IC_TAR(pHalI2CInitData->I2CAckAddr);
-    HAL_I2C_WRITE32(I2CIdx, REG_DW_I2C_IC_TAR, I2CTarBak);
-
-    pHalI2CInitData->I2CEn = I2CEnBak;
-    return HalI2CEnableRtl8195a_Patch(Data);
-}
-
-HAL_Status
-HalI2CSetSarRtl8195a(
-    IN  VOID    *Data
-){
-    PHAL_I2C_INIT_DAT pHalI2CInitData = (PHAL_I2C_INIT_DAT)Data;
-    u8  I2CIdx  = pHalI2CInitData->I2CIdx;
-    u8  I2CEnBak = pHalI2CInitData->I2CEn;
-    u32 I2CSarBak;
-    
-    pHalI2CInitData->I2CEn = I2C_DISABLE;
-    HalI2CEnableRtl8195a_Patch(Data);
-
-    I2CSarBak = HAL_I2C_READ32(I2CIdx, REG_DW_I2C_IC_SAR);
-    I2CSarBak &= ~BIT_MASK_IC_SAR;
-    I2CSarBak |= BIT_CTRL_IC_SAR(pHalI2CInitData->I2CAckAddr);
-    HAL_I2C_WRITE32(I2CIdx, REG_DW_I2C_IC_SAR, I2CSarBak);
-
-    pHalI2CInitData->I2CEn = I2CEnBak;
-    return HalI2CEnableRtl8195a_Patch(Data);
 }
 #endif

@@ -553,6 +553,13 @@ ip_input(struct pbuf *p, struct netif *inp)
   LWIP_DEBUGF(IP_DEBUG, ("ip_input: \n"));
   ip_debug_print(p);
   LWIP_DEBUGF(IP_DEBUG, ("ip_input: p->len %"U16_F" p->tot_len %"U16_F"\n", p->len, p->tot_len));
+  
+  //Evan add for debug
+  //printf("\n\r[Evan] header len = %"U16_F" , total len = %"U16_F"\n", iphdr_hlen, p->tot_len);
+  //char temp[1000] = {"\0"};
+  //memcpy(temp, p->payload, p->tot_len);
+  //printf("\n\rReceive ipv4 socket = %s\n", &temp[28]);
+  //Evan add end
 
   ip_data.current_netif = inp;
   ip_data.current_ip4_header = iphdr;

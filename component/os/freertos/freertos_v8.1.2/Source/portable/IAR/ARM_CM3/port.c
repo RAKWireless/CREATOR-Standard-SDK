@@ -516,6 +516,10 @@ void xPortSysTickHandler( void )
 			portENTER_CRITICAL();
 			{
 				portNVIC_SYSTICK_CTRL_REG |= portNVIC_SYSTICK_ENABLE_BIT;
+#ifdef CONFIG_SOC_PS_MODULE
+				// 20150716 william: temporal solution that avoid double step tick in pmu and here
+				ulCompleteTickPeriods = 0;
+#endif
 				vTaskStepTick( ulCompleteTickPeriods );
 				portNVIC_SYSTICK_LOAD_REG = ulTimerCountsForOneTick - 1UL;
 			}
@@ -619,8 +623,7 @@ void vApplicationIdleHook( void )
 	saving could be achieved by not including any demo tasks that never block. */
 }
 
-#include <platform_stdlib.h>
-
+#include "diag.h"
 void vApplicationStackOverflowHook( xTaskHandle pxTask, signed char *pcTaskName )
 {
 	/* This function will be called if a task overflows its stack, if
@@ -628,7 +631,7 @@ void vApplicationStackOverflowHook( xTaskHandle pxTask, signed char *pcTaskName 
 	parameters have been corrupted, depending on the severity of the stack
 	overflow.  When this is the case pxCurrentTCB can be inspected in the
 	debugger to find the offending task. */
-	printf("\n\r[%s] STACK OVERFLOW - TaskName(%s)\n\r", __FUNCTION__, pcTaskName);
+	DiagPrintf("\n\r[%s] STACK OVERFLOW - TaskName(%s)\n\r", __FUNCTION__, pcTaskName);
 	for( ;; );
 }
 

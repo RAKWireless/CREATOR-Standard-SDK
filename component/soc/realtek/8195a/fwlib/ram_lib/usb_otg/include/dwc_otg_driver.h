@@ -39,7 +39,7 @@
  */
 //#include "dwc_otg_os_dep.h"
 #include "dwc_otg_core_if.h"
-#include "osdep_service.h"
+
 
 /* Type declarations */
 struct dwc_otg_pcd;
@@ -91,20 +91,12 @@ typedef struct USB_OTG_DRV_ADP {
     dwc_otg_device_t    *otgdev;
     IRQ_HANDLE          *pIrqHnd;
 #if !TASK_SCHEDULER_DISABLED
-#if defined(DWC_WITH_WLAN_OSDEP)
-            _sema       Sema;
-#else
             _Sema       Sema;
-#endif
 #else
             u32         Sema;
 #endif
-#if !TASK_SCHEDULER_DISABLED
-#if defined(DWC_WITH_WLAN_OSDEP)
-            struct task_struct OTGTask;
-#else
-            xTaskHandle OTGTask;
-#endif
+#ifdef PLATFORM_FREERTOS
+        xTaskHandle OTGTask;
 #else
         u32         OTGTask;
 #endif
@@ -118,7 +110,6 @@ typedef struct _DWC_OTG_ADAPTER_ {
     dwc_otg_device_t    *otgdev;
     u8                  TestItem;
 }DWC_OTG_ADAPTER, *PDWC_OTG_ADAPTER;
-void dwc_otg_disable_irq(IN VOID);
-void dwc_otg_enable_irq(IN VOID);
+
 
 #endif

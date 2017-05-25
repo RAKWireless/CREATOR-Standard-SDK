@@ -65,31 +65,27 @@ void pwmout_init(pwmout_t* obj, PinName pin)
     obj->pin_sel = pin_sel;
     obj->period = 0;
     obj->pulse = 0;
-    _memset((void *)&obj->pwm_hal_adp, 0, sizeof(HAL_PWM_ADAPTER));
-    if (HAL_OK != HAL_Pwm_Init(&obj->pwm_hal_adp, pwm_idx, pin_sel)) {
-        DBG_PWM_ERR("pwmout_init Err!\n");
-        return;
-    }
+    HAL_Pwm_Init(pwm_idx, pin_sel);
     pwmout_period_us(obj, 20000); // 20 ms per default
-    HAL_Pwm_Enable(&obj->pwm_hal_adp);
+    HAL_Pwm_Enable(pwm_idx);
 }
 
 void pwmout_free(pwmout_t* obj) 
 {
-    HAL_Pwm_Disable(&obj->pwm_hal_adp);
+    HAL_Pwm_Disable(obj->pwm_idx);
 }
 
-void pwmout_write(pwmout_t* obj, float percent) 
+void pwmout_write(pwmout_t* obj, float value) 
 {
-    if (percent < (float)0.0) {
-        percent = 0.0;
+    if (value < (float)0.0) {
+        value = 0.0;
     } 
-    else if (percent > (float)1.0) {
-        percent = 1.0;
+    else if (value > (float)1.0) {
+        value = 1.0;
     }
 
-    obj->pulse = (uint32_t)((float)obj->period * percent);
-    HAL_Pwm_SetDuty(&obj->pwm_hal_adp, obj->period, obj->pulse);
+    obj->pulse = (uint32_t)((float)obj->period * value);
+    HAL_Pwm_SetDuty(obj->pwm_idx, obj->period, obj->pulse);
 }
 
 float pwmout_read(pwmout_t* obj) 

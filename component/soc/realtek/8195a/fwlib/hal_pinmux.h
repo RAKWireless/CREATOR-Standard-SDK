@@ -61,14 +61,4 @@ HalPinCtrlRtl8195A(
     IN u32  Function, 
     IN u32  PinLocation, 
     IN BOOL   Operation);
-
-u8 GpioFunctionChk(
-    IN u32  chip_pin,
-    IN u8   Operation);
-
-u8
-FunctionChk(
-    IN u32  Function, 
-    IN u32  PinLocation
-);
 #endif   //_HAL_PINMUX_

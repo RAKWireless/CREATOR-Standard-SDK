@@ -12,7 +12,7 @@
 #include <time.h>
 #include "timer_api.h"      // software-RTC: use a g-timer for the tick of the RTC
 
-#define SW_RTC_TIMER_ID        TIMER4
+#define SW_RTC_TIMER_ID        TIMER5
 
 static gtimer_t sw_rtc;
 static struct tm rtc_timeinfo;
@@ -97,11 +97,6 @@ void rtc_write(time_t t)
     // Convert the time in to a tm
     struct tm *timeinfo = localtime(&t);
 
-    if (timeinfo == NULL) {
-        // Error
-        return;
-    }
-    
     gtimer_stop(&sw_rtc);
 
     // Set the RTC

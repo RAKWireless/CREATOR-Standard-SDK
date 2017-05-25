@@ -5,9 +5,10 @@
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
  */
-#include "utils/os.h"
+#include <autoconf.h>
 
-//#ifdef CONFIG_WPS
+#ifdef CONFIG_WPS
+#include "utils/os.h"
 
 #if !defined(CONFIG_PLATFORM_8195A) && !defined(CONFIG_PLATFORM_8711B)
 #ifdef CONFIG_MEM_MONITOR
@@ -116,4 +117,4 @@ int os_xqueue_send(xqueue_handle_t xQueue, const void * const pvItemToQueue, uns
 	return rtw_push_to_xqueue(&xQueue, (void*)pvItemToQueue, xSecsToWait*1000);
 }
 #endif
-//#endif
+#endif

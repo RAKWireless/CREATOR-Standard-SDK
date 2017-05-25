@@ -12,10 +12,6 @@
 
 #include "rtl8195a_sdio.h"
 
-#if SDIO_API_DEFINED
-#include "spdio_api.h"
-#endif
-
 #if !SDIO_BOOT_DRIVER
 #include "mailbox.h"
 #endif
@@ -95,9 +91,7 @@ typedef struct _HAL_SDIO_ADAPTER_ {
 //	u8				*pTxBuff;			/* point to the SDIO TX Buffer */
 //	u8				*pTxBuffAligned;	/* point to the SDIO TX Buffer with 4-bytes aligned */
 //	u32				TXFifoRPtr;		    /* The SDIO TX(Host->Device) FIFO buffer read pointer */
-#if SDIO_API_DEFINED
-	VOID 			*spdio_priv;		/*Data from User*/
-#endif
+
 	u8				*pTXBDAddr;			/* The TX_BD start address */
 	PSDIO_TX_BD		pTXBDAddrAligned;	/* The TX_BD start address, it must be 4-bytes aligned */
 	PSDIO_TX_BD_HANDLE	pTXBDHdl;		/* point to the allocated memory for TX_BD Handle array */
@@ -127,17 +121,12 @@ typedef struct _HAL_SDIO_ADAPTER_ {
 #else
 	u32				EventSema;			/* Semaphore for SDIO events, use to wakeup the SDIO task */	
 #endif
-	s8              (*Tx_Callback)(VOID *pAdapter, u8 *pPkt, u16 Offset, u16 PktSize, u8 type);	/* to hook the WLan driver TX callback function to handle a Packet TX */
+	s8              (*Tx_Callback)(VOID *pAdapter, u8 *pPkt, u16 Offset, u16 PktSize);	/* to hook the WLan driver TX callback function to handle a Packet TX */
 	VOID			*pTxCb_Adapter;		/* a pointer will be used to call the TX Callback function, 
 											which is from the TX CallBack function register */
-#if SDIO_API_DEFINED
-	s8              (*Rx_Done_Callback)(VOID *pAdapter, u8 *pPkt, u16 Offset, u16 PktSize, u8 type);	/* to hook RX done callback function to release packet */
-	VOID			*pRxDoneCb_Adapter;		/* a pointer will be used to call the RX Done Callback function, 
-											which is from the TX CallBack function register */
-#endif
-	s8			(*pTxCallback_Backup)(VOID *pAdapter, u8 *pPkt, u16 Offset, u16 PktSize, u8 type);	// Use to back up the registered TX Callback function, for MP/Normal mode switch
+	s8			(*pTxCallback_Backup)(VOID *pAdapter, u8 *pPkt, u16 Offset, u16 PktSize);	// Use to back up the registered TX Callback function, for MP/Normal mode switch
 	VOID			*pTxCb_Adapter_Backup;	// Backup the pTxCb_Adapter, for MP/Normal mode switch
-#if SDIO_DEBUG
+#if (CONFIG_INIC_EN == 0)
 	_LIST			FreeTxPktList;		/* The list to queue free Tx packets handler */
 	SDIO_TX_PACKET	*pTxPktHandler;		/* to store allocated TX Packet handler memory address */
 #endif
@@ -214,11 +203,8 @@ typedef struct _HAL_SDIO_OP_ {
 	VOID (*HalSdioDevDeInit)(PHAL_SDIO_ADAPTER pSDIODev);
 	VOID (*HalSdioSendC2HIOMsg)(PHAL_SDIO_ADAPTER pSDIODev, u32 *C2HMsg);
 	u8   (*HalSdioSendC2HPktMsg)(PHAL_SDIO_ADAPTER pSDIODev, u8 *C2HMsg, u16 MsgLen);
-	VOID (*HalSdioRegTxCallback)(PHAL_SDIO_ADAPTER pSDIODev,s8 (*CallbackFun)(VOID *pAdapter, u8 *pPkt, u16 Offset, u16 PktSize, u8 Type), VOID *pAdapter);
+	VOID (*HalSdioRegTxCallback)(PHAL_SDIO_ADAPTER pSDIODev,s8 (*CallbackFun)(VOID *pAdapter, u8 *pPkt, u16 Offset, u16 PktSize), VOID *pAdapter);
 	s8   (*HalSdioRxCallback)(PHAL_SDIO_ADAPTER pSDIODev, VOID *pData, u16 Offset, u16 PktSize, u8 CmdType);
-#if SDIO_API_DEFINED
-	VOID (*HalSdioRegRxDoneCallback)(PHAL_SDIO_ADAPTER pSDIODev,s8 (*CallbackFun)(VOID *pAdapter, u8 *pPkt, u16 Offset, u16 PktSize, u8 Type), VOID *pAdapter);
-#endif
 #if SDIO_MP_MODE
 	VOID (*HalSdioDevMPApp)(PHAL_SDIO_ADAPTER pSDIODev, u16 argc, u8  *argv[]);
 #endif
@@ -242,16 +228,9 @@ extern u8 SDIO_Send_C2H_PktMsg(
 );
 extern VOID SDIO_Register_Tx_Callback(
 	IN PHAL_SDIO_ADAPTER pSDIODev,
-	IN s8 (*Tx_Callback)(VOID *pAdapter, u8 *pPkt, u16 Offset, u16 PktSize, u8 Type),
+	IN s8 (*Tx_Callback)(VOID *pAdapter, u8 *pPkt, u16 Offset, u16 PktSize),
 	IN VOID *pAdapter	
 );
-#if SDIO_API_DEFINED
-extern VOID SDIO_Register_Rx_Done_Callback(
-	IN PHAL_SDIO_ADAPTER pSDIODev,
-	IN s8 (*Rx_Done_Callback)(VOID *pAdapter, u8 *pPkt, u16 Offset, u16 PktSize, u8 Type),
-	IN VOID *pAdapter	
-);
-#endif
 extern s8 SDIO_Rx_Callback(
 	IN PHAL_SDIO_ADAPTER pSDIODev,
 	IN VOID *pData,

@@ -250,7 +250,7 @@ InitWDGIRQ(VOID)
         WDGAdapter.IrqHandle.Data = NULL;
         WDGAdapter.IrqHandle.IrqFun = (IRQ_FUN)WDGIrqHandle;
         WDGAdapter.IrqHandle.IrqNum = WDG_IRQ;
-        WDGAdapter.IrqHandle.Priority = 5;
+        WDGAdapter.IrqHandle.Priority = 0;
              
         InterruptRegister(&(WDGAdapter.IrqHandle));
         InterruptEn(&(WDGAdapter.IrqHandle));
@@ -263,7 +263,7 @@ InitWDGIRQ(VOID)
         WDGAdapter.WdgGTimer.TimerId            = 2;//
         WDGAdapter.WdgGTimer.IrqHandle.IrqFun   = (IRQ_FUN)WDGGtimerHandle;
         WDGAdapter.WdgGTimer.IrqHandle.IrqNum   = TIMER2_7_IRQ;
-        WDGAdapter.WdgGTimer.IrqHandle.Priority = 5;
+        WDGAdapter.WdgGTimer.IrqHandle.Priority = 0;
         WDGAdapter.WdgGTimer.IrqHandle.Data     = NULL;
         
         if ((WDGAdapter.Ctrl.WdgCunLimit == CNTFFFH)&&(WDGAdapter.Ctrl.WdgScalar >= 0x8429)){

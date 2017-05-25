@@ -1,4 +1,4 @@
-//#include <autoconf.h>
+#include <autoconf.h>
 #include "tcm_heap.h"
 
 #include <string.h>    // memset()

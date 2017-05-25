@@ -46,7 +46,6 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "device_lock.h"
 
 #if defined(POLARSSL_HAVE_TIME)
 #include <time.h>
@@ -227,20 +226,6 @@ static int ssl_write_ticket( ssl_context *ssl, size_t *tlen )
         state[i] = (unsigned char) pad_len;
 
     /* Encrypt */
-#ifdef RTL_HW_CRYPTO
-    if(rom_ssl_ram_map.use_hw_crypto_func)
-    {
-        device_mutex_lock(RT_DEV_LOCK_CRYPTO);
-        if( ( ret = aes_crypt_cbc( &ssl->ticket_keys->enc, AES_ENCRYPT,
-                                   enc_len, iv, state, state ) ) != 0 )
-        {
-            device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
-            return( ret );
-        }
-        device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
-    }
-    else
-#endif
     if( ( ret = aes_crypt_cbc( &ssl->ticket_keys->enc, AES_ENCRYPT,
                                enc_len, iv, state, state ) ) != 0 )
     {
@@ -311,20 +296,6 @@ static int ssl_parse_ticket( ssl_context *ssl,
         return( POLARSSL_ERR_SSL_INVALID_MAC );
 
     /* Decrypt */
-#ifdef RTL_HW_CRYPTO
-    if(rom_ssl_ram_map.use_hw_crypto_func)
-    {
-        device_mutex_lock(RT_DEV_LOCK_CRYPTO);
-        if( ( ret = aes_crypt_cbc( &ssl->ticket_keys->dec, AES_DECRYPT,
-                                   enc_len, iv, ticket, ticket ) ) != 0 )
-        {
-            device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
-            return( ret );
-        }
-        device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
-    }
-    else
-#endif
     if( ( ret = aes_crypt_cbc( &ssl->ticket_keys->dec, AES_DECRYPT,
                                enc_len, iv, ticket, ticket ) ) != 0 )
     {

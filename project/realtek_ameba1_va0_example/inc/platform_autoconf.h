@@ -7,19 +7,13 @@
  * Target Platform Selection
  */
 #define CONFIG_WITHOUT_MONITOR 1
+#define CONFIG_BOOT_TO_UPGRADE_IMG2 1
 
-#undef  CONFIG_RTL8195A 
 #define CONFIG_RTL8195A 1
 #undef  CONFIG_FPGA
 #undef  CONFIG_RTL_SIM
 #undef  CONFIG_POST_SIM
-
-/*
- * < Mass Production Option 
- */
 #undef  CONFIG_MP
-#undef  CONFIG_CP
-#undef  CONFIG_FT
 #define RTL8195A 1
 #define CONFIG_CPU_CLK 1
 #define CONFIG_CPU_166_6MHZ 1
@@ -38,12 +32,6 @@
 #undef  CONFIG_SDR_12_5MHZ
 #define SDR_CLOCK_SEL_VALUE (0)
 #define CONFIG_BOOT_PROCEDURE 1
-#define CONFIG_IMAGE_PAGE_LOAD 1
-#undef  CONFIG_IMAGE_AUTO_LOAD
-//#undef  CONFIG_IMAGE_PAGE_LOAD
-//#define CONFIG_IMAGE_AUTO_LOAD 1
-#define CONFIG_BOOT_TO_UPGRADE_IMG2 1
-#undef  CONFIG_PERI_UPDATE_IMG
 #define CONFIG_BOOT_FROM_JTAG 1
 #undef  CONFIG_ALIGNMENT_EXCEPTION_ENABLE
 #define CONFIG_KERNEL 1
@@ -73,28 +61,17 @@
 #define CONFIG_GPIO_NORMAL 1
 #undef  CONFIG_GPIO_TEST
 #define CONFIG_GPIO_MODULE 1
-#if defined(CONFIG_INIC) || (CONFIG_SDIOD)
-#define CONFIG_SDIO_DEVICE_EN 1
-#define CONFIG_SDIO_DEVICE_NORMAL 1
-#undef  CONFIG_SDIO_DEVICE_TEST
-#define CONFIG_SDIO_DEVICE_MODULE 1
-#else
 #undef  CONFIG_SDIO_DEVICE_EN
-#endif
-#define CONFIG_SDIO_HOST_EN     1
+#undef  CONFIG_SDIO_HOST_EN
 #define CONFIG_USB_EN 1
 #undef  CONFIG_USB_NORMAL
 #define CONFIG_USB_TEST 1
 #define CONFIG_USB_MODULE 1
 #define CONFIG_USB_VERIFY 1
-#undef CONFIG_USB_ROM_LIB
 //#define CONFIG_USB_DBGINFO_EN 1
-#if defined(CONFIG_INIC) || (CONFIG_USBD)
-#define DWC_DEVICE_ONLY	1
-#else
+#undef  DWC_DEVICE_ONLY
 #define  DWC_HOST_ONLY 1
 #define CONFIG_USB_HOST_ONLY 1
-#endif
 #define CONFIG_SPI_COM_EN 1
 #define CONFIG_SPI_COM_NORMAL 1
 #undef  CONFIG_SPI_COM_TEST
@@ -126,7 +103,7 @@
 #define CONFIG_CRYPTO_NORMAL 1
 #undef  CONFIG_CRYPTO_TEST
 #define CONFIG_CRYPTO_MODULE 1
-#define CONFIG_MII_EN	1
+#undef  CONFIG_MII_EN
 #define CONFIG_PWM_EN 1
 #define CONFIG_PWM_NORMAL 1
 #undef  CONFIG_PWM_TEST
@@ -149,10 +126,9 @@
 #undef  CONFIG_SPI_FLASH
 #undef  CONFIG_NAND_FLASH
 #undef  CONFIG_NONE_FLASH
-#undef  CONFIG_BTBX_EN
 
 /*
- * < Engineer Mode Config 
+ * Engineer Mode Config
  */
 #undef  CONFIG_JTAG
 #undef  CONFIG_COMPILE_FLASH_DOWNLOAD_CODE
@@ -191,13 +167,6 @@
 #undef  CONFIG_CHIP_A_CUT
 #define CONFIG_CHIP_B_CUT 1
 #undef  CONFIG_CHIP_C_CUT
-#undef  CONFIG_CHIP_E_CUT
-
-/*
- * < Select toolchain 
- */
-#undef  CONFIG_TOOLCHAIN_ASDK
-#undef  CONFIG_TOOLCHAIN_ARM_GCC
 
 /*
  * < Build Option 

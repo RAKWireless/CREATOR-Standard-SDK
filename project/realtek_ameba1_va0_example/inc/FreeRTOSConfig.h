@@ -125,12 +125,11 @@ extern uint32_t SystemCoreClock;
 
 #define configTIMER_TASK_PRIORITY       ( 1 )
 #define configTIMER_QUEUE_LENGTH        ( 10 )
-#define configTIMER_TASK_STACK_DEPTH    ( 512 )     //USE_MIN_STACK_SIZE modify from 512 to 256
+#define configTIMER_TASK_STACK_DEPTH    ( 512 )     // 512*4=2K
 
 #if (__IASMARM__ != 1)
 
 extern void freertos_pre_sleep_processing(unsigned int *expected_idle_time);
-extern void freertos_post_sleep_processing(unsigned int *expected_idle_time);
 extern int  freertos_ready_to_sleep();
 
 /* Enable tickless power saving. */
@@ -141,8 +140,6 @@ extern int  freertos_ready_to_sleep();
 
 /* It's magic trick that let us can use our own sleep function */
 #define configPRE_SLEEP_PROCESSING( x )         ( freertos_pre_sleep_processing(&x) )
-
-#define configPOST_SLEEP_PROCESSING( x )        ( freertos_post_sleep_processing(&x) )
 
 /* It's magic trick that let us can enable/disable tickless dynamically */
 #define traceLOW_POWER_IDLE_BEGIN();            do { \

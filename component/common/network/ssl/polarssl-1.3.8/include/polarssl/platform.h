@@ -38,9 +38,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#ifdef CONFIG_PLATFORM_8195A
+
 #include "rom_ssl_ram_map.h"
-#endif
+
 /**
  * \name SECTION: Module settings
  *

@@ -1249,7 +1249,7 @@ dhcp_release_unicast(struct netif *netif)
   dhcp->dns_count = 0;*/
   
   /* create and initialize the DHCP message header */
-  result = dhcp_create_msg(netif,netif->dhcp,DHCP_REQUEST);
+  result = dhcp_create_msg(netif,netif->dhcp,DHCP_REQUEST); //Evan modified
   if (result == ERR_OK) {
     dhcp_option(dhcp, DHCP_OPTION_MESSAGE_TYPE, DHCP_OPTION_MESSAGE_TYPE_LEN);
     dhcp_option_byte(dhcp, DHCP_RELEASE);
@@ -1262,7 +1262,7 @@ dhcp_release_unicast(struct netif *netif)
     pbuf_realloc(dhcp->p_out, sizeof(struct dhcp_msg) - DHCP_OPTIONS_LEN + dhcp->options_out_len);
 
     udp_sendto_if(dhcp->pcb, dhcp->p_out, &dhcp->server_ip_addr, DHCP_SERVER_PORT, netif);
-    dhcp_delete_msg(netif->dhcp);
+    dhcp_delete_msg(netif->dhcp);//Evan modified
     LWIP_DEBUGF(DHCP_DEBUG | LWIP_DBG_TRACE | LWIP_DBG_STATE, ("dhcp_release: RELEASED, DHCP_OFF\n"));
   } else {
     LWIP_DEBUGF(DHCP_DEBUG | LWIP_DBG_TRACE | LWIP_DBG_LEVEL_SERIOUS, ("dhcp_release: could not allocate DHCP request\n"));

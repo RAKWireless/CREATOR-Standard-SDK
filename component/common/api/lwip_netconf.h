@@ -31,19 +31,6 @@
 #include "tcpip.h"
 /* Includes ------------------------------------------------------------------*/
 #include <platform/platform_stdlib.h>
-#include "platform_opts.h"
-#include "autoconf.h"
-
-// macros
-/* Give default value if not defined */
-#ifndef NET_IF_NUM
-  #ifdef CONFIG_CONCURRENT_MODE
-    #define NET_IF_NUM ((CONFIG_ETHERNET) + (CONFIG_WLAN) + 1)
-  #else
-    #define NET_IF_NUM ((CONFIG_ETHERNET) + (CONFIG_WLAN))
-  #endif  // end of CONFIG_CONCURRENT_MODE
-#endif  // end of NET_IF_NUM
-
 /* Private typedef -----------------------------------------------------------*/
 typedef enum 
 { 

@@ -30,8 +30,6 @@ struct gpio_irq_s {
     PinName pin;
     uint32_t event;
     HAL_GPIO_PIN hal_pin;
-    uint8_t hal_port_num;
-    uint8_t hal_pin_num;
 };
 
 typedef struct gpio_irq_s gpio_irq_t;
@@ -41,8 +39,6 @@ struct gpio_s {
     PinMode mode;
     PinDirection direction;
     HAL_GPIO_PIN hal_pin;
-    uint8_t hal_port_num;
-    uint8_t hal_pin_num;
 };
 
 typedef struct gpio_s gpio_t;
@@ -63,17 +59,11 @@ struct serial_s {
     UART_DMA_CONFIG   uart_gdma_cfg;
     HAL_GDMA_ADAPTER uart_gdma_adp_tx;
     HAL_GDMA_ADAPTER uart_gdma_adp_rx;
-    UART_DMA_MULTIBLK gdma_multiblk_list_tx;
-    UART_DMA_MULTIBLK gdma_multiblk_list_rx;
 #endif    
     uint32_t    tx_len;
     uint32_t    rx_len;
 };
 #endif  // end of "#ifdef CONFIG_UART_EN"
-
-struct log_uart_s {
-    HAL_LOG_UART_ADAPTER log_hal_uart;
-};
 
 #ifdef CONFIG_SPI_COM_EN
 
@@ -85,7 +75,7 @@ struct pwmout_s {
     uint8_t pin_sel;
     uint32_t period;
     uint32_t pulse;
-    HAL_PWM_ADAPTER pwm_hal_adp;    
+    
 };
 #endif
 
@@ -179,29 +169,6 @@ struct i2s_s {
 };
 
 #endif
-
-#ifdef CONFIG_DAC_EN
-/** \file objects.h
-  *  \brief A Documented file.
-  *
-  *  A documented file.
-*/
-
-/** \struct dac_s objects.h "rtl8195a/objects.h"
- *   \brief This is a dac_s structure.
- *
- *  For analogout APIs, a pointer to dac_s is used as an input paras.
- *  A DAC initial data structure is the major element of dac_s.
- */
-struct dac_s {
-   HAL_DAC_INIT_DAT DACpara;
-};
-#endif
-
-struct gdma_s {
-    HAL_GDMA_OBJ gdma_obj;
-    uint8_t gdma_allocated;
-};
 
 #ifdef __cplusplus
 }

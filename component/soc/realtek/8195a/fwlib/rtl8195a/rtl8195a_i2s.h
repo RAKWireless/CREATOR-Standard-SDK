@@ -484,84 +484,24 @@ HalI2SPageSendRtl8195a(
 	IN  u8      PageIdx
 );
 
+#if 0
+RTK_STATUS
+HalI2SPageRecvRtl8195a(
+    IN  VOID    *Data,
+	IN u8      PageIdx
+);
+#else
 RTK_STATUS
 HalI2SPageRecvRtl8195a(
     IN  VOID    *Data
 );
+#endif
 
 RTK_STATUS
 HalI2SClearAllOwnBitRtl8195a(
     IN  VOID    *Data
 );
 
-#ifdef CONFIG_CHIP_E_CUT
-_LONG_CALL_ RTK_STATUS
-HalI2SInitRtl8195a_V04(
-    IN  VOID    *Data
-);
-
-_LONG_CALL_ RTK_STATUS
-HalI2SSetRateRtl8195a_V04(
-    IN  VOID    *Data
-);
-
-_LONG_CALL_ RTK_STATUS
-HalI2SSetWordLenRtl8195a_V04(
-    IN  VOID    *Data
-);
-
-_LONG_CALL_ RTK_STATUS
-HalI2SSetChNumRtl8195a_V04(
-    IN  VOID    *Data
-);
-
-_LONG_CALL_ RTK_STATUS
-HalI2SSetPageNumRtl8195a_V04(
-    IN  VOID    *Data
-);
-
-_LONG_CALL_ RTK_STATUS
-HalI2SSetPageSizeRtl8195a_V04(
-    IN  VOID    *Data
-);
-
-_LONG_CALL_ RTK_STATUS
-HalI2SSetDirectionRtl8195a_V04(
-    IN  VOID    *Data
-);
-
-_LONG_CALL_ RTK_STATUS
-HalI2SSetDMABufRtl8195a_V04(
-    IN  VOID    *Data
-);
-
-_LONG_CALL_ u8
-HalI2SGetTxPageRtl8195a_V04(
-    IN  VOID    *Data
-);
-
-_LONG_CALL_ u8
-HalI2SGetRxPageRtl8195a_V04(
-    IN  VOID    *Data
-);
-
-_LONG_CALL_ RTK_STATUS
-HalI2SPageSendRtl8195a_V04(
-    IN  VOID    *Data,
-	IN  u8      PageIdx
-);
-
-_LONG_CALL_ RTK_STATUS
-HalI2SPageRecvRtl8195a_V04(
-    IN  VOID    *Data
-);
-
-_LONG_CALL_ RTK_STATUS
-HalI2SClearAllOwnBitRtl8195a_V04(
-    IN  VOID    *Data
-);
-
-#endif  // #ifdef CONFIG_CHIP_E_CUT
 
 // HAL functions Wrapper
 static __inline VOID
@@ -569,11 +509,7 @@ HalI2SSetRate(
     IN  VOID    *Data
 )
 {
-#ifndef CONFIG_CHIP_E_CUT
     HalI2SSetRateRtl8195a(Data);
-#else
-    HalI2SSetRateRtl8195a_V04(Data);
-#endif
 }
 
 static __inline VOID
@@ -581,11 +517,7 @@ HalI2SSetWordLen(
     IN  VOID    *Data
 )
 {
-#ifndef CONFIG_CHIP_E_CUT
     HalI2SSetWordLenRtl8195a(Data);
-#else
-    HalI2SSetWordLenRtl8195a_V04(Data);
-#endif
 }
 
 static __inline VOID
@@ -593,11 +525,7 @@ HalI2SSetChNum(
     IN  VOID    *Data
 )
 {
-#ifndef CONFIG_CHIP_E_CUT
     HalI2SSetChNumRtl8195a(Data);
-#else
-    HalI2SSetChNumRtl8195a_V04(Data);
-#endif
 }
 
 static __inline VOID
@@ -605,11 +533,7 @@ HalI2SSetPageNum(
     IN  VOID    *Data
 )
 {
-#ifndef CONFIG_CHIP_E_CUT
     HalI2SSetPageNumRtl8195a(Data);
-#else
-    HalI2SSetPageNumRtl8195a_V04(Data);
-#endif
 }
 
 static __inline VOID
@@ -617,11 +541,7 @@ HalI2SSetPageSize(
     IN  VOID    *Data
 )
 {
-#ifndef CONFIG_CHIP_E_CUT
     HalI2SSetPageSizeRtl8195a(Data);
-#else
-    HalI2SSetPageSizeRtl8195a_V04(Data);
-#endif
 }
 
 static __inline VOID
@@ -629,11 +549,7 @@ HalI2SSetDirection(
     IN  VOID    *Data
 )
 {
-#ifndef CONFIG_CHIP_E_CUT
     HalI2SSetDirectionRtl8195a(Data);
-#else
-    HalI2SSetDirectionRtl8195a_V04(Data);
-#endif
 }
 
 static __inline VOID
@@ -641,11 +557,7 @@ HalI2SSetDMABuf(
     IN  VOID    *Data
 )
 {
-#ifndef CONFIG_CHIP_E_CUT
     HalI2SSetDMABufRtl8195a(Data);
-#else
-    HalI2SSetDMABufRtl8195a_V04(Data);
-#endif
 }
 
 static __inline u8
@@ -653,11 +565,7 @@ HalI2SGetTxPage(
     IN  VOID    *Data
 )
 {
-#ifndef CONFIG_CHIP_E_CUT
     return HalI2SGetTxPageRtl8195a(Data);
-#else
-    return HalI2SGetTxPageRtl8195a_V04(Data);
-#endif
 }
 
 static __inline u8
@@ -665,11 +573,7 @@ HalI2SGetRxPage(
     IN  VOID    *Data
 )
 {
-#ifndef CONFIG_CHIP_E_CUT
     return HalI2SGetRxPageRtl8195a(Data);
-#else
-    return HalI2SGetRxPageRtl8195a_V04(Data);
-#endif
 }
 
 static __inline VOID
@@ -678,35 +582,34 @@ HalI2SPageSend(
 	IN  u8      PageIdx
 )
 {
-#ifndef CONFIG_CHIP_E_CUT
     HalI2SPageSendRtl8195a(Data, PageIdx);
-#else
-    HalI2SPageSendRtl8195a_V04(Data, PageIdx);
-#endif
 }
 
+#if 0
+static __inline VOID
+HalI2SPageRecv(
+    IN  VOID    *Data,
+	IN u8      PageIdx
+)
+{
+    HalI2SPageRecvRtl8195a(Data, PageIdx);
+}
+#else
 static __inline VOID
 HalI2SPageRecv(
     IN  VOID    *Data
 )
 {
-#ifndef CONFIG_CHIP_E_CUT
     HalI2SPageRecvRtl8195a(Data);
-#else
-    HalI2SPageRecvRtl8195a_V04(Data);
-#endif
 }
+#endif
 
 static __inline VOID
 HalI2SClearAllOwnBit(
     IN  VOID    *Data
 )
 {
-#ifndef CONFIG_CHIP_E_CUT
     HalI2SClearAllOwnBitRtl8195a(Data);
-#else
-    HalI2SClearAllOwnBitRtl8195a_V04(Data);
-#endif
 }
 
 #endif /* _RTL8195A_I2S_H_ */

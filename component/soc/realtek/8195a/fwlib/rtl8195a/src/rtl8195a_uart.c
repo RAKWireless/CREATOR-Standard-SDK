@@ -32,14 +32,13 @@ HalRuartGetChipVerRtl8195a(VOID)
  */
 HAL_Status
 HalRuartResetTxFifoRtl8195a(
-    IN VOID *Data  ///< RUART Adapter
-)
+        IN VOID *Data  ///< RUART Adapter
+        )
 {
     PHAL_RUART_ADAPTER pHalRuartAdapter = (PHAL_RUART_ADAPTER) Data;
     u8 UartIndex = pHalRuartAdapter->UartIndex;
     u32 rx_trigger_lv;
-    volatile u32 RegValue;
-    u32 timeout;
+    u32 RegValue;
 
     // Backup the RX FIFO trigger Level setting
     rx_trigger_lv = HAL_RUART_READ32(UartIndex, RUART_FIFO_CTL_REG_OFF);
@@ -50,95 +49,10 @@ HalRuartResetTxFifoRtl8195a(
     RegValue |= rx_trigger_lv;
     HAL_RUART_WRITE32(UartIndex, RUART_FIFO_CTL_REG_OFF, RegValue);
 
-    // Wait TSR empty
-    RegValue = HAL_RUART_READ32(UartIndex, RUART_LINE_STATUS_REG_OFF);
-    timeout = 100;  // wait 10 ms
-    while (((RegValue & RUART_LINE_STATUS_REG_TEMT)==0) && (timeout > 0)) {
-        HalDelayUs(100);
-        RegValue = HAL_RUART_READ32(UartIndex, RUART_LINE_STATUS_REG_OFF);
-        timeout--;
-    }
-
-    return HAL_OK;
-}
-
-// Reset RX FIFO
-HAL_Status
-HalRuartResetRxFifoRtl8195a_Patch(
-    IN VOID *Data  ///< RUART Adapter
-)
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter = (PHAL_RUART_ADAPTER) Data;
-    u8 UartIndex;
-    volatile u32 RegValue;
-    u32 rx_trigger_lv;
-
-    UartIndex = pHalRuartAdapter->UartIndex;
-
-    /* Step 1: Enable Reset_rcv */
-    RegValue = HAL_RUART_READ32(UartIndex, RUART_STS_REG_OFF);
-    RegValue |= RUART_STS_REG_RESET_RCV;
-    HAL_RUART_WRITE32(UartIndex, RUART_STS_REG_OFF, RegValue);
-
-    // Backup the RX FIFO trigger Level setting
-    rx_trigger_lv = HAL_RUART_READ32(UartIndex, RUART_FIFO_CTL_REG_OFF);
-    rx_trigger_lv &= 0xC0;   // only keep the bit[7:6]
-
-    /* Step 2: Enable clear_rxfifo */
-    RegValue = (FIFO_CTL_DEFAULT_WITH_FIFO_DMA | RUART_FIFO_CTL_REG_CLEAR_RXFIFO) & (~0xC0);
-    RegValue |= rx_trigger_lv;
+    //TODO: Check Defautl Value
+    RegValue = (FIFO_CTL_DEFAULT_WITH_FIFO_DMA & (~0xC0)) | rx_trigger_lv;
     HAL_RUART_WRITE32(UartIndex, RUART_FIFO_CTL_REG_OFF, RegValue);
 
-    /* Step 3: Disable Reset_rcv */
-    RegValue = HAL_RUART_READ32(UartIndex, RUART_STS_REG_OFF);
-    RegValue &= ~(RUART_STS_REG_RESET_RCV);
-    HAL_RUART_WRITE32(UartIndex, RUART_STS_REG_OFF, RegValue);
-    
-    return HAL_OK;
-}
-
-// Reset both TX and RX FIFO
-HAL_Status
-HalRuartResetTRxFifoRtl8195a(
-    IN VOID *Data  ///< RUART Adapter
-)
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter = (PHAL_RUART_ADAPTER) Data;
-    u8 UartIndex;
-    volatile u32 RegValue;
-    u32 timeout;
-    u32 rx_trigger_lv;
-
-    UartIndex = pHalRuartAdapter->UartIndex;
-
-    /* Step 1: Enable Reset_rcv */
-    RegValue = HAL_RUART_READ32(UartIndex, RUART_STS_REG_OFF);
-    RegValue |= RUART_STS_REG_RESET_RCV;
-    HAL_RUART_WRITE32(UartIndex, RUART_STS_REG_OFF, RegValue);
-
-    // Backup the RX FIFO trigger Level setting
-    rx_trigger_lv = HAL_RUART_READ32(UartIndex, RUART_FIFO_CTL_REG_OFF);
-    rx_trigger_lv &= 0xC0;   // only keep the bit[7:6]
-
-    /* Step 2: Enable clear_txfifo & clear_rxfifo */
-    RegValue = (FIFO_CTL_DEFAULT_WITH_FIFO_DMA | RUART_FIFO_CTL_REG_CLEAR_TXFIFO | RUART_FIFO_CTL_REG_CLEAR_RXFIFO) & (~0xC0);
-    RegValue |= rx_trigger_lv;
-    HAL_RUART_WRITE32(UartIndex, RUART_FIFO_CTL_REG_OFF, RegValue);
-
-    // Wait THR & TSR empty
-    RegValue = HAL_RUART_READ32(UartIndex, RUART_LINE_STATUS_REG_OFF);
-    timeout = 100;  // wait 10 ms
-    while (((RegValue & RUART_LINE_STATUS_REG_TEMT)==0) && (timeout > 0)) {
-        HalDelayUs(100);
-        RegValue = HAL_RUART_READ32(UartIndex, RUART_LINE_STATUS_REG_OFF);
-        timeout--;
-    }
-
-    /* Step 3: Disable Reset_rcv */
-    RegValue = HAL_RUART_READ32(UartIndex, RUART_STS_REG_OFF);
-    RegValue &= ~(RUART_STS_REG_RESET_RCV);
-    HAL_RUART_WRITE32(UartIndex, RUART_STS_REG_OFF, RegValue);
-    
     return HAL_OK;
 }
 
@@ -213,10 +127,7 @@ HalRuartGenBaudRateRtl8195a(
         }
         div_res = div_res >> 1;
     }
-
-    if (min_divisor == 0) {    
-        min_divisor = 1;
-    }
+    
     uart_ovsr_target = (uart_clock/baud_rate)/min_divisor;
 
     ovsr_adj = 0;
@@ -338,7 +249,8 @@ HalRuartDumpBaudRateTableRtl8195a(
             i++;
         }
     }
-	return HAL_OK;
+
+    return HAL_OK;
 }
 
 HAL_Status 
@@ -516,8 +428,6 @@ HalRuartSetBaudRateRtl8195a(
     RegValue &= ~(RUART_LINE_CTL_REG_DLAB_ENABLE);
     HAL_RUART_WRITE32(UartIndex, RUART_LINE_CTL_REG_OFF, RegValue);
     pHalRuartAdapter->BaudRateUsing = pHalRuartAdapter->BaudRate;
-    pHalRuartAdapter->WordLenUsing = pHalRuartAdapter->WordLen;
-    pHalRuartAdapter->ParityUsing = pHalRuartAdapter->Parity;
 
     return HAL_OK;
 }
@@ -598,9 +508,7 @@ HalRuartInitRtl8195a_Patch(
     HAL_RUART_WRITE32(UartIndex, RUART_INTERRUPT_EN_REG_OFF, 0x00);
 
     /* Set Baudrate Division */
-    if ((pHalRuartAdapter->BaudRateUsing != pHalRuartAdapter->BaudRate) ||
-        (pHalRuartAdapter->WordLenUsing != pHalRuartAdapter->WordLen) ||
-        (pHalRuartAdapter->ParityUsing != pHalRuartAdapter->Parity)) {
+    if (pHalRuartAdapter->BaudRateUsing != pHalRuartAdapter->BaudRate) {
         HalRuartSetBaudRateRtl8195a(pHalRuartAdapter);
     }
 
@@ -757,104 +665,6 @@ HalRuartFlowCtrlRtl8195a(
     return HAL_OK;
 }
 
-u32
-_UartTxDmaIrqHandle_Patch(
-        IN VOID *Data
-)
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter = (PHAL_RUART_ADAPTER) Data;
-    PUART_DMA_CONFIG pUartGdmaConfig;
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-    PHAL_GDMA_OP pHalGdmaOp;
-    u8  IsrTypeMap;
-
-    pUartGdmaConfig = pHalRuartAdapter->DmaConfig;
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pUartGdmaConfig->pTxHalGdmaAdapter;
-    pHalGdmaOp = (PHAL_GDMA_OP)pUartGdmaConfig->pHalGdmaOp;
-
-    HalRuartTxGdmaDisable8195a(pHalRuartAdapter);
-
-    // Clear Pending ISR
-    IsrTypeMap = pHalGdmaOp->HalGdmaChIsrClean((VOID*)pHalGdmaAdapter);
-    if (IsrTypeMap & BlockType) {   
-        pHalGdmaAdapter->MuliBlockCunt++;       
-    }
-
-    if (pHalGdmaAdapter->MuliBlockCunt == pHalGdmaAdapter->MaxMuliBlock) {   
-        // Clean Auto Reload Bit
-        pHalGdmaOp->HalGdmaChCleanAutoDst((VOID*)pHalGdmaAdapter);
-        pHalGdmaOp->HalGdmaChDis((VOID*)(pHalGdmaAdapter));
-
-        if ((HAL_UART_STATE_BUSY_TX == pHalRuartAdapter->State) ||
-            (HAL_UART_STATE_BUSY_TX_RX == pHalRuartAdapter->State)) {
-            if (pHalRuartAdapter->State == HAL_UART_STATE_BUSY_TX) {
-                pHalRuartAdapter->State = HAL_UART_STATE_READY;
-            }
-            else {
-                pHalRuartAdapter->State = HAL_UART_STATE_BUSY_RX;
-            }
-
-            // Call user TX complete callback
-            if (NULL != pHalRuartAdapter->TxCompCallback) {
-                pHalRuartAdapter->TxCompCallback(pHalRuartAdapter->TxCompCbPara);
-            }
-        }
-    }
-    return 0;
-}
-
-u32
-_UartRxDmaIrqHandle_Patch(
-        IN VOID *Data
-)
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter = (PHAL_RUART_ADAPTER) Data;
-    PUART_DMA_CONFIG pUartGdmaConfig;
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-    PHAL_GDMA_OP pHalGdmaOp;
-    u8  IsrTypeMap;
-    u8 LineStatus;
-    u8 UartIndex;
-
-    pUartGdmaConfig = pHalRuartAdapter->DmaConfig;
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pUartGdmaConfig->pRxHalGdmaAdapter;
-    pHalGdmaOp = (PHAL_GDMA_OP)pUartGdmaConfig->pHalGdmaOp;
-
-    HalRuartRxGdmaDisable8195a (pHalRuartAdapter);
-
-    // Clear Pending ISR
-    IsrTypeMap = pHalGdmaOp->HalGdmaChIsrClean((VOID*)pHalGdmaAdapter);
-
-    if (IsrTypeMap & BlockType) {   
-        pHalGdmaAdapter->MuliBlockCunt++;
-    }
-
-    if ((pHalGdmaAdapter->MuliBlockCunt == pHalGdmaAdapter->MaxMuliBlock)) {   
-        // Clean Auto Reload Bit
-        pHalGdmaOp->HalGdmaChCleanAutoSrc((VOID*)pHalGdmaAdapter);        
-        pHalGdmaOp->HalGdmaChDis((VOID*)(pHalGdmaAdapter));
-
-        // Check the Line Status
-        UartIndex = pHalRuartAdapter->UartIndex;
-        LineStatus = (u8)HAL_RUART_READ32(UartIndex, RUART_LINE_STATUS_REG_OFF);
-        pHalRuartAdapter->Status |= LineStatus & RUART_LINE_STATUS_ERR;
-
-        if (pHalRuartAdapter->State == HAL_UART_STATE_BUSY_RX) {
-            pHalRuartAdapter->State = HAL_UART_STATE_READY;
-        }
-        else {
-            pHalRuartAdapter->State = HAL_UART_STATE_BUSY_TX;
-        }
-
-        // Call User Rx complete callback
-        if (pHalRuartAdapter->RxCompCallback != NULL) {
-            pHalRuartAdapter->RxCompCallback (pHalRuartAdapter->RxCompCbPara);
-        }
-    }
-    return 0;
-}
-
-
 /**
  * RUART send a data buffer by DMA(non-block) mode.
  *
@@ -864,10 +674,10 @@ _UartRxDmaIrqHandle_Patch(
  */
 HAL_Status
 HalRuartDmaSendRtl8195a_Patch(
-    IN VOID *Data,      // PHAL_RUART_ADAPTER
-    IN u8 *pTxData,     // the Buffer to be send
-    IN u32 Length      // the length of data to be send
-)
+        IN VOID *Data,      // PHAL_RUART_ADAPTER
+        IN u8 *pTxData,     // the Buffer to be send
+        IN u32 Length      // the length of data to be send
+        )
 {
     PHAL_RUART_ADAPTER pHalRuartAdapter=(PHAL_RUART_ADAPTER)Data;
 //    u8 UartIndex = pHalRuartAdapter->UartIndex;
@@ -888,175 +698,9 @@ HalRuartDmaSendRtl8195a_Patch(
         return HAL_ERR_PARA;
     }
 
-    if (State == HAL_UART_STATE_READY) {
-        pHalRuartAdapter->State = HAL_UART_STATE_BUSY_TX;
-    }
-    else {
-        pHalRuartAdapter->State = HAL_UART_STATE_BUSY_TX_RX;
-    }
-
-    pHalRuartAdapter->Status = HAL_UART_STATUS_OK;
-    pHalRuartAdapter->pTxBuf = pTxData;
-    pHalRuartAdapter->TxCount = Length;
-
-    // Enable GDMA for TX
-    pUartGdmaConfig = pHalRuartAdapter->DmaConfig;
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pUartGdmaConfig->pTxHalGdmaAdapter;
-    pHalGdmaOp = (PHAL_GDMA_OP)pUartGdmaConfig->pHalGdmaOp;
-
-    if (((pHalRuartAdapter->TxCount & 0x03)==0) &&
-        (((u32)(pHalRuartAdapter->pTxBuf) & 0x03)==0)) {
-        // 4-bytes aligned, move 4 bytes each transfer
-        pHalGdmaAdapter->GdmaCtl.SrcMsize   = MsizeOne;
-        pHalGdmaAdapter->GdmaCtl.SrcTrWidth = TrWidthFourBytes;
-        pHalGdmaAdapter->GdmaCtl.BlockSize = pHalRuartAdapter->TxCount >> 2;
-    }
-    else{
-        // move 1 byte each transfer
-        pHalGdmaAdapter->GdmaCtl.SrcMsize   = MsizeFour;
-        pHalGdmaAdapter->GdmaCtl.SrcTrWidth = TrWidthOneByte;
-        pHalGdmaAdapter->GdmaCtl.BlockSize = pHalRuartAdapter->TxCount;
-    }
-
-    if (pHalGdmaAdapter->GdmaCtl.BlockSize > 4095) {
-        // over Maximum block size 4096
-        return HAL_ERR_PARA;
-    }
-
-    pHalGdmaAdapter->MuliBlockCunt = 0;
-    pHalGdmaAdapter->MaxMuliBlock = 1;
-    pHalGdmaAdapter->ChSar = (u32)(pHalRuartAdapter->pTxBuf);
-
-    pHalGdmaAdapter->Rsvd4to7 = 0;
-    pHalGdmaAdapter->Llpctrl = 0;
-    pHalGdmaAdapter->GdmaCtl.LlpSrcEn = 0;
-
-    pHalGdmaOp->HalGdmaOnOff((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChIsrEnAndDis((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChSeting((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChEn((VOID*)(pHalGdmaAdapter));
-
-    return HAL_OK;
-}
-
-/**
- * RUART Receive data by Interrupt (non-block) mode.
- *
- * RUART Receive data.
- * Receive one byte each time.
- *
- * @return u8
- */
-HAL_Status
-HalRuartDmaRecvRtl8195a_Patch(
-    IN VOID *Data,  ///< RUART Adapter
-    IN u8  *pRxData,  ///< Rx buffer
-    IN u32 Length      // buffer length
-)
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter = (PHAL_RUART_ADAPTER) Data;
-    HAL_UART_State State;
-    PUART_DMA_CONFIG pUartGdmaConfig;
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-    PHAL_GDMA_OP pHalGdmaOp;
-
-    State = pHalRuartAdapter->State;
-    if ((State != HAL_UART_STATE_READY) && (State != HAL_UART_STATE_BUSY_TX)) {
-        DBG_UART_WARN("%s: on Busy, State=%d\n",  State);
+    if (HAL_OK != RuartLock(pHalRuartAdapter)) {
+        DBG_UART_WARN("HalRuartDmaSendRtl8195a:Unable to Lock, Statu=%d\n", State);
         return HAL_BUSY;
-    }
-
-    if ((pRxData == NULL) || (Length == 0)) {
-        pHalRuartAdapter->Status = HAL_UART_STATUS_ERR_PARA;
-        DBG_UART_ERR("HalRuartDmaRecvRtl8195a: Err: pTxData=0x%x,  Length=%d\n",  pRxData, Length);
-        return HAL_ERR_PARA;
-    }
-
-    if (State == HAL_UART_STATE_READY) {
-        pHalRuartAdapter->State = HAL_UART_STATE_BUSY_RX;
-    }
-    else {
-        pHalRuartAdapter->State = HAL_UART_STATE_BUSY_TX_RX;
-    }
-
-    pHalRuartAdapter->Status = HAL_UART_STATUS_OK;
-    pHalRuartAdapter->pRxBuf = pRxData;
-    pHalRuartAdapter->RxCount = Length;
-
-    // Enable GDMA for RX
-    pUartGdmaConfig = pHalRuartAdapter->DmaConfig;
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pUartGdmaConfig->pRxHalGdmaAdapter;
-    pHalGdmaOp = (PHAL_GDMA_OP)pUartGdmaConfig->pHalGdmaOp;
-
-    if (((u32)(pHalRuartAdapter->pRxBuf) & 0x03)==0) {
-        // 4-bytes aligned, move 4 bytes each DMA transaction
-        pHalGdmaAdapter->GdmaCtl.DestMsize   = MsizeOne;
-        pHalGdmaAdapter->GdmaCtl.DstTrWidth = TrWidthFourBytes;
-    }
-    else{
-        // move 1 byte each DMA transaction
-        pHalGdmaAdapter->GdmaCtl.DestMsize   = MsizeFour;
-        pHalGdmaAdapter->GdmaCtl.DstTrWidth = TrWidthOneByte;
-    }
-    pHalGdmaAdapter->GdmaCtl.BlockSize = pHalRuartAdapter->RxCount;
-    if (pHalGdmaAdapter->GdmaCtl.BlockSize > 4095) {
-        // over Maximum block size 4096
-        DBG_UART_ERR("HalRuartDmaRecvRtl8195a: BlockSize too big(%d)\n", pHalGdmaAdapter->GdmaCtl.BlockSize);
-        return HAL_ERR_PARA;
-    }
-
-    pHalGdmaAdapter->MuliBlockCunt = 0;
-    pHalGdmaAdapter->MaxMuliBlock = 1;
-    pHalGdmaAdapter->ChDar = (u32)(pHalRuartAdapter->pRxBuf);
-
-    pHalGdmaAdapter->Rsvd4to7 = 0;
-    pHalGdmaAdapter->Llpctrl = 0;
-    pHalGdmaAdapter->GdmaCtl.LlpSrcEn = 0;
-
-    pHalGdmaOp->HalGdmaOnOff((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChIsrEnAndDis((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChSeting((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChEn((VOID*)(pHalGdmaAdapter));
-
-    return HAL_OK;
-}
-
-/**
- * RUART send a data buffer by Multi-Block DMA(non-block) mode.
- *
- * RUART send data.
- *
- * @return VOID
- */
-HAL_Status
-HalRuartMultiBlkDmaSendRtl8195a(
-    IN VOID *Data,      // PHAL_RUART_ADAPTER
-    IN u8 *pTxData,     // the Buffer to be send
-    IN u32 Length      // the length of data to be send
-)
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter=(PHAL_RUART_ADAPTER)Data;
-    PUART_DMA_CONFIG pUartGdmaConfig;
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-    PHAL_GDMA_OP pHalGdmaOp;
-    HAL_UART_State State;
-    UART_DMA_MULTIBLK *pDmaBlkList;
-    u32 BlockBytes;
-    u32 TotalTr;
-    u32 SrcAddr;
-    u8 i;
-    u8 BlkNum;
-
-    State = pHalRuartAdapter->State;
-    if ((State != HAL_UART_STATE_READY) && (State != HAL_UART_STATE_BUSY_RX)) {
-        DBG_UART_WARN("HalRuartDmaSendRtl8195a: on Busy, State=%d\n", State);
-        return HAL_BUSY;
-    }
-
-    if ((pTxData == NULL) || (Length == 0)) {
-        pHalRuartAdapter->Status = HAL_UART_STATUS_ERR_PARA;
-        DBG_UART_ERR("HalRuartMultiBlkDmaSendRtl8195a: Err: pTxData=0x%x,  Length=%d\n", pTxData, Length);
-        return HAL_ERR_PARA;
     }
 
     if (State == HAL_UART_STATE_READY) {
@@ -1069,176 +713,69 @@ HalRuartMultiBlkDmaSendRtl8195a(
     pHalRuartAdapter->Status = HAL_UART_STATUS_OK;
     pHalRuartAdapter->pTxBuf = pTxData;
     pHalRuartAdapter->TxCount = Length;
-
-    pUartGdmaConfig = pHalRuartAdapter->DmaConfig;
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pUartGdmaConfig->pTxHalGdmaAdapter;
-    pDmaBlkList = pUartGdmaConfig->pTxDmaBlkList;
-    pHalGdmaOp = (PHAL_GDMA_OP)pUartGdmaConfig->pHalGdmaOp;
-
-    if (((pHalRuartAdapter->TxCount & 0x03)==0) &&
-        (((u32)(pHalRuartAdapter->pTxBuf) & 0x03)==0)) {
-        // 4-bytes aligned, move 4 bytes each transfer
-        pHalGdmaAdapter->GdmaCtl.SrcMsize   = MsizeOne;
-        pHalGdmaAdapter->GdmaCtl.SrcTrWidth = TrWidthFourBytes;
-        TotalTr = Length >> 2;     // 4-bytes each write
-        BlockBytes = UART_DMA_BLOCK_SIZE << 2; // a block can transfer BlockSize*4 bytes
-    }
-    else{
-        // move 1 byte each transfer
-        pHalGdmaAdapter->GdmaCtl.SrcMsize   = MsizeFour;
-        pHalGdmaAdapter->GdmaCtl.SrcTrWidth = TrWidthOneByte;
-        TotalTr = Length;     // 1-byte each write
-        BlockBytes = UART_DMA_BLOCK_SIZE;
-    }
-
-    BlkNum = 0;
-    SrcAddr = (u32)pTxData;
-    for (i=0; i<UART_DMA_MBLK_NUM; i++) {
-        pDmaBlkList->GdmaChLli[i].Sarx = SrcAddr;
-        pDmaBlkList->GdmaChLli[i].Darx = (u32) (pHalGdmaAdapter->ChDar);
-        pDmaBlkList->Lli[i].pLliEle = (GDMA_CH_LLI_ELE*) &(pDmaBlkList->GdmaChLli[i]);
-        SrcAddr += BlockBytes;
-        BlkNum++;
-        if (TotalTr >= UART_DMA_BLOCK_SIZE) {
-            pDmaBlkList->Lli[i].pNextLli = &(pDmaBlkList->Lli[i+1]); 
-            pDmaBlkList->BlockSizeList[i].pNextBlockSiz = &(pDmaBlkList->BlockSizeList[i+1]);
-            pDmaBlkList->BlockSizeList[i].BlockSize = UART_DMA_BLOCK_SIZE;
-            TotalTr -= UART_DMA_BLOCK_SIZE;
-        } else {
-            pDmaBlkList->Lli[i].pNextLli = (struct GDMA_CH_LLI*)NULL; 
-            pDmaBlkList->BlockSizeList[i].pNextBlockSiz = (struct BLOCK_SIZE_LIST*)NULL;
-            pDmaBlkList->BlockSizeList[i].BlockSize = TotalTr;
-            TotalTr = 0;
+#if 0
+    while (pHalRuartAdapter->TxCount > 0) {
+        if (HAL_RUART_READ32(UartIndex, RUART_LINE_STATUS_REG_OFF) &
+                            (RUART_LINE_STATUS_REG_THRE)) {
+            HAL_RUART_WRITE32(UartIndex, RUART_TRAN_HOLD_REG_OFF, (*(pHalRuartAdapter->pTxBuf)));
+            pHalRuartAdapter->TxCount--;
+            pHalRuartAdapter->pTxBuf++;
+        }
+        else {
             break;
         }
     }
 
-    if (TotalTr > 0) {
-        // Cannot transfer all data in multiple-block DMA
-        // Try to increase block number, but maximum block number is 16
-        pDmaBlkList->Lli[UART_DMA_MBLK_NUM-1].pNextLli = (struct GDMA_CH_LLI*)NULL; 
-        pDmaBlkList->BlockSizeList[UART_DMA_MBLK_NUM-1].pNextBlockSiz = (struct BLOCK_SIZE_LIST*)NULL;
-        DBG_UART_ERR("HalRuartMultiBlkDmaSendRtl8195a: Cannot Transfer all data\n");
-    }
+    if (0 == pHalRuartAdapter->TxCount) {
+        if (State == HAL_UART_STATE_READY) {
+            pHalRuartAdapter->State = HAL_UART_STATE_READY;
+        }
+        else {
+            pHalRuartAdapter->State = HAL_UART_STATE_BUSY_RX;
+        }
 
-    pHalGdmaAdapter->MuliBlockCunt = 0;
-    pHalGdmaAdapter->MaxMuliBlock = BlkNum;
-    pHalGdmaAdapter->Rsvd4to7 = 1;
-    pHalGdmaAdapter->Llpctrl = 1;
-    pHalGdmaAdapter->GdmaCtl.LlpSrcEn = 1;
-
-    pHalGdmaOp->HalGdmaOnOff((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChIsrEnAndDis((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChBlockSeting((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChEn((VOID*)(pHalGdmaAdapter));
-
-    return HAL_OK;
-
-}
-
-/**
- * RUART Receive data by Multi-Block DMA (non-block) mode.
- *
- * RUART Receive data.
- *
- * @return u8
- */
-HAL_Status
-HalRuartMultiBlkDmaRecvRtl8195a(
-    IN VOID *Data,  ///< RUART Adapter
-    IN u8  *pRxData,  ///< Rx buffer
-    IN u32 Length      // buffer length
-)
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter = (PHAL_RUART_ADAPTER) Data;
-    HAL_UART_State State;
-    PUART_DMA_CONFIG pUartGdmaConfig;
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-    PHAL_GDMA_OP pHalGdmaOp;
-    UART_DMA_MULTIBLK *pDmaBlkList;
-    u32 TotalTr;
-    u32 DstAddr;
-    u8 i;
-    u8 BlkNum;
-
-    State = pHalRuartAdapter->State;
-    if ((State != HAL_UART_STATE_READY) && (State != HAL_UART_STATE_BUSY_TX)) {
-        DBG_UART_WARN("HalRuartMultiBlkDmaRecvRtl8195a: on Busy, State=%d\n",  State);
-        return HAL_BUSY;
-    }
-
-    if ((pRxData == NULL) || (Length == 0)) {
-        pHalRuartAdapter->Status = HAL_UART_STATUS_ERR_PARA;
-        DBG_UART_ERR("HalRuartDmaRecvRtl8195a: Err: pTxData=0x%x,  Length=%d\n",  pRxData, Length);
-        return HAL_ERR_PARA;
-    }
-
-    if (State == HAL_UART_STATE_READY) {
-        pHalRuartAdapter->State = HAL_UART_STATE_BUSY_RX;
-    } else {
-        pHalRuartAdapter->State = HAL_UART_STATE_BUSY_TX_RX;
-    }
-
-    pHalRuartAdapter->Status = HAL_UART_STATUS_OK;
-    pHalRuartAdapter->pRxBuf = pRxData;
-    pHalRuartAdapter->RxCount = Length;
-
-    pUartGdmaConfig = pHalRuartAdapter->DmaConfig;
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pUartGdmaConfig->pRxHalGdmaAdapter;
-    pDmaBlkList = pUartGdmaConfig->pRxDmaBlkList;
-    pHalGdmaOp = (PHAL_GDMA_OP)pUartGdmaConfig->pHalGdmaOp;
-
-    if (((u32)(pHalRuartAdapter->pRxBuf) & 0x03)==0) {
-        // 4-bytes aligned, move 4 bytes each DMA transaction
-        pHalGdmaAdapter->GdmaCtl.DestMsize   = MsizeOne;
-        pHalGdmaAdapter->GdmaCtl.DstTrWidth = TrWidthFourBytes;
-    } else{
-        // move 1 byte each DMA transaction
-        pHalGdmaAdapter->GdmaCtl.DestMsize   = MsizeFour;
-        pHalGdmaAdapter->GdmaCtl.DstTrWidth = TrWidthOneByte;
-    }
-
-    TotalTr = Length;     // 1-byte each write, total transaction = data lenth
-    BlkNum = 0;
-    DstAddr = (u32)pRxData;
-    for (i=0; i<UART_DMA_MBLK_NUM; i++) {
-        pDmaBlkList->GdmaChLli[i].Sarx = (u32) (pHalGdmaAdapter->ChSar);
-        pDmaBlkList->GdmaChLli[i].Darx = DstAddr;
-        pDmaBlkList->Lli[i].pLliEle = (GDMA_CH_LLI_ELE*) &(pDmaBlkList->GdmaChLli[i]);
-        DstAddr += UART_DMA_BLOCK_SIZE;
-        BlkNum++;
-        if (TotalTr >= UART_DMA_BLOCK_SIZE) {
-            pDmaBlkList->Lli[i].pNextLli = &(pDmaBlkList->Lli[i+1]); 
-            pDmaBlkList->BlockSizeList[i].pNextBlockSiz = &(pDmaBlkList->BlockSizeList[i+1]);
-            pDmaBlkList->BlockSizeList[i].BlockSize = UART_DMA_BLOCK_SIZE;
-            TotalTr -= UART_DMA_BLOCK_SIZE;
-        } else {
-            pDmaBlkList->Lli[i].pNextLli = (struct GDMA_CH_LLI*)NULL; 
-            pDmaBlkList->BlockSizeList[i].pNextBlockSiz = (struct BLOCK_SIZE_LIST*)NULL;
-            pDmaBlkList->BlockSizeList[i].BlockSize = TotalTr;
-            TotalTr = 0;
-            break;
+        // Call user TX complete callback
+        if (NULL != pHalRuartAdapter->TxCompCallback) {
+            pHalRuartAdapter->TxCompCallback(pHalRuartAdapter->TxCompCbPara);
         }
     }
+    else
+#endif
+    {
+        // Enable GDMA for TX
+        pUartGdmaConfig = pHalRuartAdapter->DmaConfig;
+        pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pUartGdmaConfig->pTxHalGdmaAdapter;
+        pHalGdmaOp = (PHAL_GDMA_OP)pUartGdmaConfig->pHalGdmaOp;
 
-    if (TotalTr > 0) {
-        // Cannot transfer all data in multiple-block DMA
-        // Try to increase block number, but maximum block number is 16
-        pDmaBlkList->Lli[UART_DMA_MBLK_NUM-1].pNextLli = (struct GDMA_CH_LLI*)NULL; 
-        pDmaBlkList->BlockSizeList[UART_DMA_MBLK_NUM-1].pNextBlockSiz = (struct BLOCK_SIZE_LIST*)NULL;
-        DBG_UART_ERR("HalRuartMultiBlkDmaRecvRtl8195a: Cannot Transfer all data\n");
+        if (((pHalRuartAdapter->TxCount & 0x03)==0) &&
+            (((u32)(pHalRuartAdapter->pTxBuf) & 0x03)==0)) {
+            // 4-bytes aligned, move 4 bytes each transfer
+            pHalGdmaAdapter->GdmaCtl.SrcMsize   = MsizeOne;
+            pHalGdmaAdapter->GdmaCtl.SrcTrWidth = TrWidthFourBytes;
+            pHalGdmaAdapter->GdmaCtl.BlockSize = pHalRuartAdapter->TxCount >> 2;
+        }
+        else{
+            // move 1 byte each transfer
+            pHalGdmaAdapter->GdmaCtl.SrcMsize   = MsizeFour;
+            pHalGdmaAdapter->GdmaCtl.SrcTrWidth = TrWidthOneByte;
+            pHalGdmaAdapter->GdmaCtl.BlockSize = pHalRuartAdapter->TxCount;
+        }
+
+        if (pHalGdmaAdapter->GdmaCtl.BlockSize > 4096) {
+            // over Maximum block size 4096
+            RuartUnLock(pHalRuartAdapter);
+            return HAL_ERR_PARA;
+        }
+
+        pHalGdmaAdapter->ChSar = (u32)(pHalRuartAdapter->pTxBuf);
+
+        pHalGdmaOp->HalGdmaOnOff((VOID*)(pHalGdmaAdapter));
+        pHalGdmaOp->HalGdmaChIsrEnAndDis((VOID*)(pHalGdmaAdapter));
+        pHalGdmaOp->HalGdmaChSeting((VOID*)(pHalGdmaAdapter));
+        pHalGdmaOp->HalGdmaChEn((VOID*)(pHalGdmaAdapter));
     }
 
-    pHalGdmaAdapter->MuliBlockCunt = 0;
-    pHalGdmaAdapter->MaxMuliBlock = BlkNum;
-    pHalGdmaAdapter->Rsvd4to7 = 1;
-    pHalGdmaAdapter->Llpctrl = 1;
-    pHalGdmaAdapter->GdmaCtl.LlpDstEn = 1;
-
-    pHalGdmaOp->HalGdmaOnOff((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChIsrEnAndDis((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChBlockSeting((VOID*)(pHalGdmaAdapter));
-    pHalGdmaOp->HalGdmaChEn((VOID*)(pHalGdmaAdapter));
+    RuartUnLock(pHalRuartAdapter);
 
     return HAL_OK;
 }
@@ -1286,7 +823,6 @@ HalRuartStopRecvRtl8195a_Patch(
 
         if ((NULL != pHalGdmaAdapter) && (NULL != pHalGdmaOp) && 
             (HalGdmaQueryChEnRtl8195a((VOID*)pHalGdmaAdapter))) {
-            HalRuartRxGdmaDisable8195a (pHalRuartAdapter);
             // Clean Auto Reload Bit
             pHalGdmaOp->HalGdmaChCleanAutoDst((VOID*)pHalGdmaAdapter);
             // Clear Pending ISR
@@ -1362,7 +898,6 @@ HalRuartStopSendRtl8195a_Patch(
 
         if ((NULL != pHalGdmaAdapter) && (NULL != pHalGdmaOp) && 
             (HalGdmaQueryChEnRtl8195a((VOID*)pHalGdmaAdapter))) {
-            HalRuartTxGdmaDisable8195a(pHalRuartAdapter);
             // Clean Auto Reload Bit
             pHalGdmaOp->HalGdmaChCleanAutoDst((VOID*)pHalGdmaAdapter);
             // Clear Pending ISR
@@ -1476,76 +1011,3 @@ HalRuartDumpRegRtl8195a(
     RegValue &= ~(RUART_LINE_CTL_REG_DLAB_ENABLE);
     HAL_RUART_WRITE32(UartIndex, RUART_LINE_CTL_REG_OFF, RegValue);
 }
-
-/**
- *
- * To Enable the UART TX GDMA
- *
- */
-VOID
-HalRuartTxGdmaEnable8195a(
-    IN VOID *Data
-)
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter = (PHAL_RUART_ADAPTER) Data;
-    u32 RegValue;
-    
-    RegValue = HAL_RUART_READ32(pHalRuartAdapter->UartIndex, RUART_MISC_CTL_REG_OFF);
-    RegValue |= (RUART_TXDMA_EN_MASK);
-    HAL_RUART_WRITE32(pHalRuartAdapter->UartIndex, RUART_MISC_CTL_REG_OFF, RegValue);
-}
-
-/**
- *
- * To Disable the UART TX GDMA
- *
- */
-VOID
-HalRuartTxGdmaDisable8195a(
-    IN VOID *Data
-)
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter = (PHAL_RUART_ADAPTER) Data;
-    u32 RegValue;
-    
-    RegValue = HAL_RUART_READ32(pHalRuartAdapter->UartIndex, RUART_MISC_CTL_REG_OFF);
-    RegValue &= ~(RUART_TXDMA_EN_MASK);
-    HAL_RUART_WRITE32(pHalRuartAdapter->UartIndex, RUART_MISC_CTL_REG_OFF, RegValue);
-}
-
-/**
- *
- * To Enable the UART RX GDMA
- *
- */
-VOID
-HalRuartRxGdmaEnable8195a(
-    IN VOID *Data
-)
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter = (PHAL_RUART_ADAPTER) Data;
-    u32 RegValue;
-    
-    RegValue = HAL_RUART_READ32(pHalRuartAdapter->UartIndex, RUART_MISC_CTL_REG_OFF);
-    RegValue |= (RUART_RXDMA_EN_MASK);
-    HAL_RUART_WRITE32(pHalRuartAdapter->UartIndex, RUART_MISC_CTL_REG_OFF, RegValue);
-}
-
-/**
- *
- * To Disable the UART TX GDMA
- *
- */
-VOID
-HalRuartRxGdmaDisable8195a(
-    IN VOID *Data
-)
-{
-    PHAL_RUART_ADAPTER pHalRuartAdapter = (PHAL_RUART_ADAPTER) Data;
-    u32 RegValue;
-    
-    RegValue = HAL_RUART_READ32(pHalRuartAdapter->UartIndex, RUART_MISC_CTL_REG_OFF);
-    RegValue &= ~(RUART_RXDMA_EN_MASK);
-    HAL_RUART_WRITE32(pHalRuartAdapter->UartIndex, RUART_MISC_CTL_REG_OFF, RegValue);
-}
-

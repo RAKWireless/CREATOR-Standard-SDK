@@ -21,7 +21,6 @@ extern "C" {
 
 
 /* platform related settings */
-#if (defined(CONFIG_PLATFORM_8195A)|| defined(CONFIG_PLATFORM_8711B))
 #undef u32
 #undef s32
 #undef u8
@@ -34,15 +33,12 @@ typedef unsigned char u8;
 typedef char s8;
 typedef unsigned short int u16;
 typedef signed short int s16;
-#else
-#include "osdep_service.h"
-#endif
 
-typedef int  (*simple_config_printf_fn) (char const * fmt, ...);
+typedef s32 (*simple_config_printf_fn) (const s8 *fmt, ...);
 typedef void* (*simple_config_memset_fn) (void *dst0, s32 Val, u32 length);
 typedef void* (*simple_config_memcpy_fn) ( void *s1, const void *s2, u32 n );
 typedef u32 (*simple_config_strlen_fn) (const char *s);
-typedef char * (*simple_config_strcpy_fn) (char  *dest, const char  *src);
+typedef char * (*simple_config_strcpy_fn) (s8 *dest, const s8 *src);
 typedef void (*simple_config_free_fn) (u8 *pbuf, u32 sz);
 typedef u8*  (*simple_config_zmalloc_fn) (u32 sz);
 typedef u8* (*simple_config_malloc_fn) (u32 sz);
@@ -68,46 +64,18 @@ struct simple_config_lib_config {
 
 };
 
-#pragma pack(1)
-struct rtk_test_sc {
-	/* API exposed to user */
-	unsigned char		ssid[32];
-	unsigned char		password[65];	
-	unsigned int		ip_addr;
-};
-// for softAP mode
-typedef enum {
-    SOFTAP_ERROR = -1,
-    SOFTAP_INIT,
-    SOFTAP_RECV_A,
-    SOFTAP_HANDSHAKE_DONE,
-    SOFTAP_DECODE_SUCCESS,
-} SC_softAP_status;
-
-#pragma pack(1)
-typedef struct _SC_softAP_decode_ctx {
-    u8      nonceA[16];
-    u8      nonceB[32];
-    u8      mac[6];
-    SC_softAP_status    softAP_decode_status;
-} SC_softAP_decode_ctx;
 
 /* expose data */
 extern s32 is_promisc_callback_unlock;
 extern u8 g_bssid[6];
-extern u8 get_channel_flag;
 extern u8 g_security_mode;
 
 /* expose API */
 extern s32 rtk_sc_init(char *custom_pin_code, struct simple_config_lib_config* config);
-extern int rtl_pre_parse(u8 *mac_addr, u8 *buf, void *userdata, u8 **da, u8 **sa, unsigned int *len);
 extern s32 rtk_start_parse_packet(u8 *da, u8 *sa, s32 len,  void * user_data, void *backup_sc);
-extern SC_softAP_status softAP_simpleConfig_parse(unsigned char *buf, int len, void *backup_sc_ctx, void *psoftAP_ctx);
 extern void rtk_restart_simple_config(void);
 extern void rtk_sc_deinit();
 extern void wifi_enter_promisc_mode();
-extern void whc_fix_channel();
-extern void whc_unfix_channel();
 
 
 #ifdef __cplusplus

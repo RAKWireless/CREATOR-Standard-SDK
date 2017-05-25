@@ -73,28 +73,34 @@ static const HAL_I2S_DEF_SETTING I2SDefaultSetting = {
 void i2s_init(i2s_t *obj, PinName sck, PinName ws, PinName sd)
 {
     uint32_t i2s_sck, i2s_ws, i2s_tx, i2s_rx;
-    uint32_t i2s_sel;;
+    uint32_t i2s_sck_ws, i2s_sel;;
     uint8_t i2s_idx;
     PHAL_I2S_ADAPTER pI2SAdapter = (PHAL_I2S_ADAPTER) &obj->I2SAdapter;
-    HAL_Status ret;
+    u8 trx_act;
 
     // Determine the UART to use (UART0, UART1, or UART3)
     i2s_sck = pinmap_peripheral(sck, PinMap_I2S_CLK);
     i2s_ws = pinmap_peripheral(ws, PinMap_I2S_WS);
-    i2s_tx = pinmap_find_peripheral(sd, PinMap_I2S_TX);
-    i2s_rx = pinmap_find_peripheral(sd, PinMap_I2S_RX);
+    i2s_tx = pinmap_peripheral(sd, PinMap_I2S_TX);
+    i2s_rx = pinmap_peripheral(sd, PinMap_I2S_RX);
 
-    i2s_sel = pinmap_merge(i2s_sck, i2s_ws);
-    if (unlikely(i2s_sel == NC)) {
+    i2s_sck_ws = pinmap_merge(i2s_sck, i2s_ws);
+    if (unlikely(i2s_sck_ws == NC)) {
         DBG_I2S_ERR("%s: Cannot find matched I2S for given pin\n", __FUNCTION__);
         return;
     }
 
-    if( (i2s_sel != i2s_tx) && (i2s_sel != i2s_rx)){
-        DBG_I2S_ERR("%s: Cannot find matched I2S for given pin\n", __FUNCTION__);
-        return;
-    }    
-   
+    trx_act = I2S_TXRX;
+    i2s_sel = pinmap_merge(i2s_sck_ws, i2s_tx);
+    if (i2s_sel == NC) {
+        i2s_sel = pinmap_merge(i2s_sck_ws, i2s_rx);
+        trx_act = I2S_ONLY_RX;
+        if (unlikely(i2s_sel == NC)) {
+            DBG_I2S_ERR("%s: Cannot find matched I2S for given pin\n", __FUNCTION__);
+            return;            
+        }
+    }
+    
     i2s_idx = RTL_GET_PERI_IDX(i2s_sel);
 	
 	pI2SAdapter->DevNum =  i2s_idx;
@@ -103,6 +109,7 @@ void i2s_init(i2s_t *obj, PinName sck, PinName ws, PinName sd)
 
 	pI2SAdapter->pInitDat = &obj->InitDat;
 	RtkI2SLoadDefault(pI2SAdapter, (VOID*)&I2SDefaultSetting);
+    pI2SAdapter->pInitDat->I2STRxAct = trx_act;
 
     // Load user defined parameters
 	pI2SAdapter->pInitDat->I2SChNum = obj->channel_num;
@@ -111,12 +118,7 @@ void i2s_init(i2s_t *obj, PinName sck, PinName ws, PinName sd)
 	pI2SAdapter->pInitDat->I2STRxAct = obj->direction;	
 
     //RtkI2SInit(pI2SAdapter);
-    ret = HalI2SInit(pI2SAdapter);
-
-    if(ret != HAL_OK){
-        DBG_I2S_ERR("%s: HalI2SInit is failure\n", __FUNCTION__);
-    }  
-
+    HalI2SInit(pI2SAdapter);
 }
 
 void i2s_set_dma_buffer(i2s_t *obj, char *tx_buf, char *rx_buf, 

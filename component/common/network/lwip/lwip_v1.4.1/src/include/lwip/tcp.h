@@ -48,7 +48,9 @@ extern "C" {
 
 struct tcp_pcb;
 
+//Evan add
 extern struct tcp_pcb *tcp_tw_pcbs;      /* List of all TCP PCBs in TIME-WAIT. */
+//Evan add end
 
 /** Function prototype for tcp accept callback functions. Called when a new
  * connection can be accepted on a listening pcb.

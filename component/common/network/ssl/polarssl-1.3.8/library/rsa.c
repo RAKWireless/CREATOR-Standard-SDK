@@ -594,10 +594,8 @@ int rsa_rsaes_pkcs1_v15_encrypt( rsa_context *ctx,
     {
         *p++ = RSA_CRYPT;
 
-        //while( nb_pad-- > 0 )
-        while( nb_pad > 0 )
+        while( nb_pad-- > 0 )
         {
-            nb_pad --;
             int rng_dl = 100;
 
             do {
@@ -616,12 +614,8 @@ int rsa_rsaes_pkcs1_v15_encrypt( rsa_context *ctx,
     {
         *p++ = RSA_SIGN;
 
-        //while( nb_pad-- > 0 )
-        while( nb_pad > 0 )
-        {
-            nb_pad --;
+        while( nb_pad-- > 0 )
             *p++ = 0xFF;
-        }
     }
 
     *p++ = 0;

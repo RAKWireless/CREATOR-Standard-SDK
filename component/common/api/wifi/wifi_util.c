@@ -79,23 +79,6 @@ int wext_set_bssid(const char *ifname, const __u8 *bssid)
 	return ret;
 }
 
-int wext_get_bssid(const char*ifname, __u8 *bssid)
-{
-	struct iwreq iwr;
-	int ret = 0;
-
-	memset(&iwr, 0, sizeof(iwr));
-
-	if (iw_ioctl(ifname, SIOCGIWAP, &iwr) < 0) {
-		printf("\n\rioctl[SIOCSIWAP] error");
-		ret = -1;
-	} else {
-	    memcpy(bssid, iwr.u.ap_addr.sa_data, ETH_ALEN);
-    }
-
-	return ret;
-}
-
 int is_broadcast_ether_addr(const unsigned char *addr)
 {
 	return (addr[0] & addr[1] & addr[2] & addr[3] & addr[4] & addr[5]) == 0xff;
@@ -168,7 +151,8 @@ int wext_set_key_ext(const char *ifname, __u16 alg, const __u8 *addr, int key_id
 		printf("\n\rioctl[SIOCSIWENCODEEXT] set key fail");
 	}
 
-	free(ext);
+	if(ext != NULL)
+		free(ext);
 
 	return ret;
 }
@@ -279,7 +263,6 @@ int wext_enable_powersave(const char *ifname, __u8 ips_mode, __u8 lps_mode)
 
 	// Encode parameters as TLV (type, length, value) format
 	para = pvPortMalloc( 7 + (1+1+1) + (1+1+1) );
-	if(para == NULL) return -1;
 
 	snprintf((char*)para, cmd_len, "pm_set");
 	pindex = 7;
@@ -317,8 +300,7 @@ int wext_disable_powersave(const char *ifname)
 
 	// Encode parameters as TLV (type, length, value) format
 	para = pvPortMalloc( 7 + (1+1+1) + (1+1+1) );
-	if(para == NULL) return -1;
-
+	
 	snprintf((char*)para, cmd_len, "pm_set");
 	pindex = 7;
 
@@ -360,7 +342,7 @@ int wext_set_tdma_param(const char *ifname, __u8 slot_period, __u8 rfon_period_l
 	snprintf((char*)para, cmd_len, "pm_set");
 	pindex = 7;
 
-	para[pindex++] = 2; // type 2 tdma param
+	para[pindex++] = 2; // type 2 for tdma param
 	para[pindex++] = 4;
 	para[pindex++] = slot_period;
 	para[pindex++] = rfon_period_len_1;
@@ -396,7 +378,7 @@ int wext_set_lps_dtim(const char *ifname, __u8 lps_dtim)
 	snprintf((char*)para, cmd_len, "pm_set");
 	pindex = 7;
 
-	para[pindex++] = 3; // type 3 lps dtim
+	para[pindex++] = 3; // type 3 for lps dtim
 	para[pindex++] = 1;
 	para[pindex++] = lps_dtim;
 
@@ -405,98 +387,6 @@ int wext_set_lps_dtim(const char *ifname, __u8 lps_dtim)
 
 	if (iw_ioctl(ifname, SIOCDEVPRIVATE, &iwr) < 0) {
 		printf("\n\rioctl[SIOCSIWPRIVAPESSID] error");
-		ret = -1;
-	}
-
-	vPortFree(para);
-	return ret;
-}
-
-int wext_get_lps_dtim(const char *ifname, __u8 *lps_dtim)
-{
-
-	struct iwreq iwr;
-	int ret = 0;
-	__u16 pindex = 0;
-	__u8 *para = NULL;
-	int cmd_len = 0;
-	
-	memset(&iwr, 0, sizeof(iwr));
-	cmd_len = sizeof("pm_get");
-
-	// Encode parameters as TLV (type, length, value) format
-	para = pvPortMalloc( 7 + (1+1+1) );
-	
-	snprintf((char*)para, cmd_len, "pm_get");
-	pindex = 7;
-
-	para[pindex++] = 3; // type 3 for lps dtim
-	para[pindex++] = 1;
-	para[pindex++] = 0;
-
-	iwr.u.data.pointer = para;
-	iwr.u.data.length = pindex;
-
-	if (iw_ioctl(ifname, SIOCDEVPRIVATE, &iwr) < 0) {
-		printf("\n\rioctl[SIOCSIWPRIVAPESSID] error");
-		ret = -1;
-		goto exit;
-	}
-
-	//get result at the beginning of iwr.u.data.pointer
-	if((para[0]==3)&&(para[1]==1))
-		*lps_dtim = para[2];
-	else
-		printf("\n\r%s error", __func__);
-
-exit:
-	vPortFree(para);
-
-	return ret;
-}
-
-int wext_set_tos_value(const char *ifname, __u8 *tos_value)
-{
-	struct iwreq iwr;
-	int ret = 0;
-	__u8 *para = NULL;
-	int cmd_len = sizeof("set_tos_value");
-
-	memset(&iwr, 0, sizeof(iwr));
-
-	para = pvPortMalloc(cmd_len + 4);
-	snprintf((char*)para, cmd_len, "set_tos_value");
-
-	if(*tos_value >= 0 && *tos_value <=32){
-		*(para + cmd_len)   = 0x4f;
-		*(para + cmd_len+1) = 0xa4;
-		*(para + cmd_len+2) = 0;
-		*(para + cmd_len+3) = 0;
-	}
-	else if(*tos_value > 32 && *tos_value <=96){
-		*(para + cmd_len)   = 0x2b;
-		*(para + cmd_len+1) = 0xa4;
-		*(para + cmd_len+2) = 0;
-		*(para + cmd_len+3) = 0;
-	}
-	else if(*tos_value > 96 && *tos_value <= 160){
-		*(para + cmd_len)   = 0x22;
-		*(para + cmd_len+1) = 0x43;
-		*(para + cmd_len+2) = 0x5e;
-		*(para + cmd_len+3) = 0;
-	}
-	else if(*tos_value > 160){
-		*(para + cmd_len)   = 0x22;
-		*(para + cmd_len+1) = 0x32;
-		*(para + cmd_len+2) = 0x2f;
-		*(para + cmd_len+3) = 0;
-	}
-
-	iwr.u.data.pointer = para;
-	iwr.u.data.length = cmd_len + 4;
-
-	if (iw_ioctl(ifname, SIOCDEVPRIVATE, &iwr) < 0) {
-		printf("\n\rwext_set_tos_value():ioctl[SIOCDEVPRIVATE] error");
 		ret = -1;
 	}
 
@@ -665,8 +555,6 @@ int wext_set_pscan_channel(const char *ifname, __u8 *ch, __u8 *pscan_config, __u
 	memset(&iwr, 0, sizeof(iwr));
 	//Format of para:function_name num_channel chan1... pscan_config1 ...
 	para = pvPortMalloc((length + length + 1) + 12);//size:num_chan + num_time + length + function_name
-	if(para == NULL) return -1;
-
 	//Cmd
 	snprintf((char*)para, 12, "PartialScan");
 	//length
@@ -817,20 +705,16 @@ int wext_private_command(const char *ifname, char *cmd, int show_msg)
 	struct iwreq iwr;
 	int ret = 0, buf_size;
 	char *buf;
-
+	
 	u8 cmdname[17] = {0}; // IFNAMSIZ+1
 
 	sscanf(cmd, "%16s", cmdname);
 	if((strcmp((const char *)cmdname, "config_get") == 0)
 		|| (strcmp((const char *)cmdname, "config_set") == 0)
-		|| (strcmp((const char *)cmdname, "efuse_get") == 0)
-		|| (strcmp((const char *)cmdname, "efuse_set") == 0)
 		|| (strcmp((const char *)cmdname, "mp_psd") == 0))
 		buf_size = 2600;//2600 for config_get rmap,0,512 (or realmap)
 	else
-		buf_size = 512;
-    
-
+		buf_size = 1024;
 
 	if(strlen(cmd) >= buf_size)
 		buf_size = strlen(cmd) + 1;	// 1 : '\0'
@@ -883,7 +767,7 @@ void wext_wlan_indicate(unsigned int cmd, union iwreq_data *wrqu, char *extra)
 					wifi_indication(WIFI_EVENT_RECONNECTION_FAIL, extra, strlen(IW_EXT_STR_RECONNECTION_FAIL), 0);
 				else if(!memcmp(IW_EVT_STR_NO_NETWORK, extra, strlen(IW_EVT_STR_NO_NETWORK)))
 					wifi_indication(WIFI_EVENT_NO_NETWORK, extra, strlen(IW_EVT_STR_NO_NETWORK), 0);
-#if CONFIG_ENABLE_P2P || defined(CONFIG_AP_MODE)
+#if defined(CONFIG_P2P_NEW) || defined(CONFIG_AP_MODE)
 				else if(!memcmp(IW_EVT_STR_STA_ASSOC, extra, strlen(IW_EVT_STR_STA_ASSOC)))
 					wifi_indication(WIFI_EVENT_STA_ASSOC, wrqu->data.pointer, wrqu->data.length, 0);
 				else if(!memcmp(IW_EVT_STR_STA_DISASSOC, extra, strlen(IW_EVT_STR_STA_DISASSOC)))
@@ -895,13 +779,15 @@ void wext_wlan_indicate(unsigned int cmd, union iwreq_data *wrqu, char *extra)
 			break;
 		case SIOCGIWSCAN:
 			if(wrqu->data.pointer == NULL)
-				wifi_indication(WIFI_EVENT_SCAN_DONE, NULL, 0, 0);
+				wifi_indication(WIFI_EVENT_SCAN_DONE, wrqu->data.pointer, 0, 0);
 			else
-				wifi_indication(WIFI_EVENT_SCAN_RESULT_REPORT, wrqu->data.pointer, wrqu->data.length, 0);
+				wifi_indication(WIFI_EVENT_SCAN_RESULT_REPORT, wrqu->data.pointer, 0, 0);
 			break;
+#ifdef CONFIG_P2P_NEW
 		case IWEVMGNTRECV:
 			wifi_indication(WIFI_EVENT_RX_MGNT, wrqu->data.pointer, wrqu->data.length, wrqu->data.flags);
 			break;
+#endif
 #ifdef REPORT_STA_EVENT
 		case IWEVREGISTERED:
 			if(wrqu->addr.sa_family == ARPHRD_ETHER)
@@ -919,23 +805,7 @@ void wext_wlan_indicate(unsigned int cmd, union iwreq_data *wrqu, char *extra)
 	
 }
 
-
-int wext_send_eapol(const char *ifname, char *buf, __u16 buf_len, __u16 flags)
-{
-	struct iwreq iwr;
-	int ret = 0;
-
-	memset(&iwr, 0, sizeof(iwr));
-	iwr.u.data.pointer = buf;
-	iwr.u.data.length = buf_len;
-	iwr.u.data.flags = flags;	
-	if (iw_ioctl(ifname, SIOCSIWEAPOLSEND, &iwr) < 0) {
-		printf("\n\rioctl[SIOCSIWEAPOLSEND] error");
-		ret = -1;
-	}
-	return ret;
-}
-
+#ifdef CONFIG_P2P_NEW
 int wext_send_mgnt(const char *ifname, char *buf, __u16 buf_len, __u16 flags)
 {
 	struct iwreq iwr;
@@ -951,6 +821,7 @@ int wext_send_mgnt(const char *ifname, char *buf, __u16 buf_len, __u16 flags)
 	}
 	return ret;
 }
+#endif
 
 int wext_set_gen_ie(const char *ifname, char *buf, __u16 buf_len, __u16 flags)
 {
@@ -968,7 +839,7 @@ int wext_set_gen_ie(const char *ifname, char *buf, __u16 buf_len, __u16 flags)
 	return ret;
 }
 
-int wext_set_autoreconnect(const char *ifname, __u8 mode, __u8 retry_times, __u16 timeout)
+int wext_set_autoreconnect(const char *ifname, __u8 mode, __u8 retyr_times, __u16 timeout)
 {
 	struct iwreq iwr;
 	int ret = 0;
@@ -978,13 +849,11 @@ int wext_set_autoreconnect(const char *ifname, __u8 mode, __u8 retry_times, __u1
 	memset(&iwr, 0, sizeof(iwr));
 	cmd_len = sizeof("SetAutoRecnt");
 	para = pvPortMalloc((4) + cmd_len);//size:para_len+cmd_len
-	if(para == NULL) return -1;
-
 	//Cmd
 	snprintf((char*)para, cmd_len, "SetAutoRecnt");
 	//length
 	*(para+cmd_len) = mode;	//para1
-	*(para+cmd_len+1) = retry_times; //para2
+	*(para+cmd_len+1) = retyr_times; //para2
 	*(para+cmd_len+2) = timeout; //para3
 	
 	iwr.u.data.pointer = para;
@@ -1050,8 +919,6 @@ int wext_add_custom_ie(const char *ifname, void *cus_ie, int ie_num)
 	memset(&iwr, 0, sizeof(iwr));
 	cmd_len = sizeof("SetCusIE");
 	para = pvPortMalloc((4)* 2 + cmd_len);//size:addr len+cmd_len
-	if(para == NULL) return -1;
-
 	//Cmd
 	snprintf(para, cmd_len, "SetCusIE");
 	//addr length
@@ -1084,8 +951,6 @@ int wext_update_custom_ie(const char *ifname, void * cus_ie, int ie_index)
 	memset(&iwr, 0, sizeof(iwr));
 	cmd_len = sizeof("UpdateIE");
 	para = pvPortMalloc((4)* 2 + cmd_len);//size:addr len+cmd_len
-	if(para == NULL) return -1;
-
 	//Cmd
 	snprintf(para, cmd_len, "UpdateIE");
 	//addr length
@@ -1144,7 +1009,6 @@ int wext_enable_forwarding(const char *ifname)
 	memset(&iwr, 0, sizeof(iwr));
 	cmd_len = sizeof("forwarding_set");
 	para = pvPortMalloc(cmd_len + 1);
-	if(para == NULL) return -1;
 
 	// forwarding_set 1
 	snprintf((char *) para, cmd_len, "forwarding_set");
@@ -1172,7 +1036,6 @@ int wext_disable_forwarding(const char *ifname)
 	memset(&iwr, 0, sizeof(iwr));
 	cmd_len = sizeof("forwarding_set");
 	para = pvPortMalloc(cmd_len + 1);
-	if(para == NULL) return -1;
 
 	// forwarding_set 0
 	snprintf((char *) para, cmd_len, "forwarding_set");
@@ -1189,21 +1052,6 @@ int wext_disable_forwarding(const char *ifname)
 	vPortFree(para);
 	return ret;
 
-}
-#endif
-
-#ifdef CONFIG_CONCURRENT_MODE
-int wext_set_ch_deauth(const char *ifname, __u8 enable)
-{
-	int ret = 0;
-	char * buf = (char *)rtw_zmalloc(16);
-	if(buf == NULL) return -1;
-
-	snprintf(buf, 16, "SetChDeauth %d", enable);
-	ret = wext_private_command(ifname, buf, 0);
-
-	rtw_free(buf);
-	return ret;
 }
 #endif
 
@@ -1236,106 +1084,3 @@ int wext_set_adaptivity_th_l2h_ini(__u8 l2h_threshold)
 	return 0;
 }
 
-int wext_get_auto_chl(const char *ifname, unsigned char *channel_set, unsigned char channel_num)
-{
-	int ret = -1;
-	int channel = 0;
-	wext_disable_powersave(ifname);
-	if((channel = rltk_get_auto_chl(ifname,channel_set,channel_num)) != 0 )
-		ret = channel ;
-	wext_enable_powersave(ifname, 1, 1);
-	return ret;
-}
-
-int wext_set_sta_num(unsigned char ap_sta_num)
-{
-	return rltk_set_sta_num(ap_sta_num);
-}
-
-int wext_del_station(const char *ifname, unsigned char* hwaddr)
-{
-	return rltk_del_station(ifname, hwaddr);
-}
-
-extern struct list_head *mf_list_head;
-int wext_init_mac_filter(void)
-{
-	if(mf_list_head != NULL){
-		return -1;
-	}
-
-	mf_list_head = malloc(sizeof(struct list_head));
-	if(mf_list_head == NULL){
-		printf("\n\r[ERROR] %s : can't allocate mf_list_head",__func__);
-		return -1;
-	}
-
-	INIT_LIST_HEAD(mf_list_head);
-
-	return 0;
-}
-
-int wext_deinit_mac_filter(void)
-{
-	if(mf_list_head == NULL){
-		return -1;
-	}
-	struct list_head *iterator;
-	rtw_mac_filter_list_t *item;
-	list_for_each(iterator, mf_list_head) {
-		item = list_entry(iterator, rtw_mac_filter_list_t, node);
-		list_del(iterator);
-		free(item);
-		item = NULL;
-		iterator = mf_list_head;
-	}
-
-	free(mf_list_head);
-	mf_list_head = NULL;
-	return 0;
-}
-
-int wext_add_mac_filter(unsigned char* hwaddr)
-{
-	if(mf_list_head == NULL){
-		return -1;
-	}
-
-	rtw_mac_filter_list_t *mf_list_new;
-	mf_list_new = malloc(sizeof(rtw_mac_filter_list_t));
-	if(mf_list_new == NULL){
-		printf("\n\r[ERROR] %s : can't allocate mf_list_new",__func__);
-		return -1;
-	}
-	memcpy(mf_list_new->mac_addr,hwaddr,6);
-	list_add(&(mf_list_new->node), mf_list_head);
-
-	return 0;
-}
-
-int wext_del_mac_filter(unsigned char* hwaddr)
-{
-	if(mf_list_head == NULL){
-		return -1;
-	}
-
-	struct list_head *iterator;
-	rtw_mac_filter_list_t *item;
-	list_for_each(iterator, mf_list_head) {
-		item = list_entry(iterator, rtw_mac_filter_list_t, node);
-		if(memcmp(item->mac_addr,hwaddr,6) == 0){
-			list_del(iterator);
-			free(item);
-			item = NULL;
-			return 0;
-		}
-	}
-	return -1;
-}
-
-extern void rtw_set_indicate_mgnt(int enable);
-void wext_set_indicate_mgnt(int enable)
-{
-	rtw_set_indicate_mgnt(enable);
-	return;
-}

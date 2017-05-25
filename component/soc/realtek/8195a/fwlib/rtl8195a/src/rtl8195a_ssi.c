@@ -8,6 +8,8 @@
  */
 
 #include "rtl8195a.h"
+#include "rtl8195a_ssi.h"
+#include "hal_ssi.h"
 
 extern _LONG_CALL_
 HAL_Status HalSsiInitRtl8195a(VOID *Adaptor);
@@ -24,8 +26,7 @@ VOID _SsiReadInterruptRtl8195a(VOID *Adapter)
     volatile u32 Readable = HalSsiReadableRtl8195a(Adapter);
     u8  Index = pHalSsiAdapter->Index;
 
-//    while (Readable) {
-    if (Readable) {
+    while (Readable) {
         ReceiveLevel = HalSsiGetRxFifoLevelRtl8195a(Adapter);
 
         while (ReceiveLevel--) {
@@ -64,15 +65,11 @@ VOID _SsiReadInterruptRtl8195a(VOID *Adapter)
             }
         }
 
-//        if (pHalSsiAdapter->RxLength == 0) {
-//            break;
-//        }
-        
-        if (((pHalSsiAdapter->InterruptMask & BIT_IMR_TXEIM)!=0) && (pHalSsiAdapter->TxLength > 0)) {
-            _SsiWriteInterruptRtl8195a(pHalSsiAdapter);
+        if (pHalSsiAdapter->RxLength == 0) {
+            break;
         }
 
-//        Readable = HalSsiReadableRtl8195a(Adapter);
+        Readable = HalSsiReadableRtl8195a(Adapter);
     }
 
     if ((pHalSsiAdapter->RxLength > 0) && 
@@ -101,41 +98,13 @@ VOID _SsiWriteInterruptRtl8195a(VOID *Adapter)
     SSI_DBG_ENTRANCE("_SsiWriteInterrupt()\n");
     PHAL_SSI_ADAPTOR pHalSsiAdapter = (PHAL_SSI_ADAPTOR) Adapter;
     u32 Writeable     = HalSsiWriteableRtl8195a(Adapter);
-//    u32 TxWriteMax    = SSI_TX_FIFO_DEPTH - pHalSsiAdapter->TxThresholdLevel;
-    u32 TxWriteMax;
+    u32 TxWriteMax    = SSI_TX_FIFO_DEPTH - pHalSsiAdapter->TxThresholdLevel;
     u8  Index         = pHalSsiAdapter->Index;
-    u32 i;
-    volatile u32 bus_busy;
-
-    if (pHalSsiAdapter->TxLength == 0) {
-        pHalSsiAdapter->InterruptMask &= ~(BIT_IMR_TXEIM);
-        HalSsiSetInterruptMaskRtl8195a((VOID*)pHalSsiAdapter);
-        for (i=0;i<1000000;i++) {            
-            bus_busy = HAL_SSI_READ32(Index, REG_DW_SSI_SR) & BIT_SR_BUSY;
-            if (!bus_busy) {
-                break;  // break the for loop
-            }
-        }
-
-        // If it's not a dummy TX for master read SPI, then call the TX_done callback
-        if (pHalSsiAdapter->TxData != NULL) {
-            if (pHalSsiAdapter->TxIdleCallback != NULL) {
-                pHalSsiAdapter->TxIdleCallback(pHalSsiAdapter->TxIdleCbPara);
-            }
-        }
-        
-        return;
-    }
 
     if (Writeable) {
-        TxWriteMax = SSI_TX_FIFO_DEPTH - HalSsiGetTxFifoLevelRtl8195a(Adapter);
         /* Disable Tx FIFO Empty IRQ */
         pHalSsiAdapter->InterruptMask &= ~ BIT_IMR_TXEIM;
         HalSsiSetInterruptMaskRtl8195a((VOID*)pHalSsiAdapter);
-        //Clear RX FIFO first, to prevent RX Overflow
-        if ((pHalSsiAdapter->RxLength > 0) && (pHalSsiAdapter->TxData != NULL)) {
-            _SsiReadInterruptRtl8195a(pHalSsiAdapter);
-        }
 
         while (TxWriteMax--) {
             if ((pHalSsiAdapter->DataFrameSize+1) > 8) {
@@ -178,9 +147,7 @@ VOID _SsiWriteInterruptRtl8195a(VOID *Adapter)
 
     if (pHalSsiAdapter->TxLength == 0) {
         DBG_SSI_INFO("_SsiWriteInterruptRtl8195a: TX_Done\r\n");
-        HalSsiTxFIFOThresholdRtl8195a((VOID*)pHalSsiAdapter, 0);    // trigger TX interrupt when TX FIFO is totally empty
-//        pHalSsiAdapter->InterruptMask &= ~(BIT_IMR_TXOIM | BIT_IMR_TXEIM);
-        pHalSsiAdapter->InterruptMask &= ~(BIT_IMR_TXOIM);
+        pHalSsiAdapter->InterruptMask &= ~(BIT_IMR_TXOIM | BIT_IMR_TXEIM);
         HalSsiSetInterruptMaskRtl8195a((VOID*)pHalSsiAdapter);
         // If it's not a dummy TX for master read SPI, then call the TX_done callback
         if (pHalSsiAdapter->TxData != NULL) {
@@ -200,7 +167,7 @@ u32 _SsiIrqHandleRtl8195a(VOID *Adaptor)
     u8  Index = pHalSsiAdaptor->Index;
 
     if (InterruptStatus & BIT_ISR_TXOIS) {
-        DBG_SSI_ERR("[INT][SSI%d] Transmit FIFO Overflow Interrupt\n", Index);
+        SSI_DBG_INT_HNDLR("[INT][SSI%d] Transmit FIFO Overflow Interrupt\n", Index);
         HAL_SSI_READ32(Index, REG_DW_SSI_TXOICR);
     }
 
@@ -210,7 +177,7 @@ u32 _SsiIrqHandleRtl8195a(VOID *Adaptor)
     }
 
     if (InterruptStatus & BIT_ISR_RXOIS) {
-        DBG_SSI_ERR("[INT][SSI%d] Receive FIFO Overflow Interrupt\n", Index);
+        SSI_DBG_INT_HNDLR("[INT][SSI%d] Receive FIFO Overflow Interrupt\n", Index);
         HAL_SSI_READ32(Index, REG_DW_SSI_RXOICR);
     }
 
@@ -226,8 +193,7 @@ u32 _SsiIrqHandleRtl8195a(VOID *Adaptor)
         _SsiReadInterruptRtl8195a(Adaptor);
     }
 
-    if ((InterruptStatus & BIT_ISR_TXEIS) ||
-        (((pHalSsiAdaptor->InterruptMask & BIT_IMR_TXEIM)!=0) && (pHalSsiAdaptor->TxLength > 0))) {
+    if (InterruptStatus & BIT_ISR_TXEIS) {
         /* Tx FIFO is empty, need to transfer data */
         SSI_DBG_INT_HNDLR("[INT][SSI%d] Transmit FIFO Empty Interrupt\n", Index);
         _SsiWriteInterruptRtl8195a(Adaptor);
@@ -241,7 +207,7 @@ HAL_Status HalSsiInitRtl8195a_Patch(VOID *Adaptor)
     SSI_DBG_ENTRANCE("HalSsiInitRtl8195a()\n");
     PHAL_SSI_ADAPTOR pHalSsiAdaptor = (PHAL_SSI_ADAPTOR) Adaptor;
     volatile IRQn_Type IrqNum;
-    u32  IRQ_UNKNOWN  = 999;
+    u32  IRQ_UNKNOWN  = -999;
     u32  Ctrlr0Value  = 0;
     u32  Ctrlr1Value  = 0;
     u32  SerValue     = 0;
@@ -607,67 +573,6 @@ HAL_Status HalSsiClockOffRtl8195a(VOID *Adapter)
 
 }
 
-HAL_Status HalSsiSetFormatRtl8195a(VOID *Adaptor)
-{
-    SSI_DBG_ENTRANCE("HalSsiSetFormatRtl8195a()\n");
-    PHAL_SSI_ADAPTOR pHalSsiAdaptor = (PHAL_SSI_ADAPTOR) Adaptor;
-    u32  Ctrlr0Value  = 0;
-    u32 TxftlrValue = 0;
-    u32 RxftlrValue = 0;
-    u8   Index = pHalSsiAdaptor->Index;
-    u8   Role  = pHalSsiAdaptor->Role;
-	u32 Spi_mode = 0;
-
-    if (Index > 2) {
-        DBG_SSI_ERR("HalSsiSetFormatRtl8195a: Invalid SSI Idx %d\r\n", Index);
-        return HAL_ERR_PARA;
-    }
-    HalSsiDisableRtl8195a(Adaptor);
-
-    Ctrlr0Value &= ~(BIT_CTRLR0_SCPH(1) | BIT_CTRLR0_SCPOL(1) | BIT_CTRLR0_DFS(0xF));
-
-    /* REG_DW_SSI_CTRLR0 */
-    Ctrlr0Value |= BIT_CTRLR0_DFS(pHalSsiAdaptor->DataFrameSize);
-    Ctrlr0Value |= BIT_CTRLR0_SCPH(pHalSsiAdaptor->SclkPhase);
-    Ctrlr0Value |= BIT_CTRLR0_SCPOL(pHalSsiAdaptor->SclkPolarity);
-
-    if (Role == SSI_SLAVE)
-        Ctrlr0Value |= BIT_CTRLR0_SLV_OE(pHalSsiAdaptor->SlaveOutputEnable);
-
-    SSI_DBG_INIT("[1] Set SSI%d REG_DW_SSI_CTRLR0 Value: %X\n", Index, Ctrlr0Value);
-
-    HAL_SSI_WRITE32(Index, REG_DW_SSI_CTRLR0, Ctrlr0Value);
-
-    Spi_mode = (HAL_SSI_READ32(Index, REG_DW_SSI_CTRLR0) >>6) & 0x3;
-    SSI_DBG_INIT("[2] SSI%d REG_DW_SSI_CTRLR0(%X) = %X, SPI Mode = %X\n", Index,
-            SSI0_REG_BASE + (SSI_REG_OFF * Index) + REG_DW_SSI_CTRLR0,
-            HAL_SSI_READ32(Index, REG_DW_SSI_CTRLR0), Spi_mode);
-    //The tx threshold and rx threshold value will be reset after the spi changes its role
-    /* REG_DW_SSI_TXFTLR */
-    TxftlrValue = BIT_TXFTLR_TFT(pHalSsiAdaptor->TxThresholdLevel);
-    SSI_DBG_INIT("[1] Set SSI%d REG_DW_SSI_TXFTLR Value: %X\n", Index, TxftlrValue);
-
-    HAL_SSI_WRITE32(Index, REG_DW_SSI_TXFTLR, TxftlrValue);
-
-    SSI_DBG_INIT("[2] SSI%d REG_DW_SSI_TXFTLR(%X) = %X\n", Index,
-            SSI0_REG_BASE + (SSI_REG_OFF * Index) + REG_DW_SSI_TXFTLR,
-            HAL_SSI_READ32(Index, REG_DW_SSI_TXFTLR));
-
-    /* REG_DW_SSI_RXFTLR */
-    RxftlrValue = BIT_RXFTLR_RFT(pHalSsiAdaptor->RxThresholdLevel);
-    SSI_DBG_INIT("[1] Set SSI%d REG_DW_SSI_RXFTLR Value: %X\n", Index, RxftlrValue);
-
-    HAL_SSI_WRITE32(Index, REG_DW_SSI_RXFTLR, RxftlrValue);
-
-    SSI_DBG_INIT("[2] SSI%d REG_DW_SSI_RXFTLR(%X) = %X\n", Index,
-            SSI0_REG_BASE + (SSI_REG_OFF * Index) + REG_DW_SSI_RXFTLR,
-            HAL_SSI_READ32(Index, REG_DW_SSI_RXFTLR));
-
-    HalSsiEnableRtl8195a(Adaptor);
-
-    return HAL_OK;
-}
-
 VOID HalSsiSetSclkRtl8195a(VOID *Adapter, u32 ClkRate)
 {
     PHAL_SSI_ADAPTOR pHalSsiAdapter = (PHAL_SSI_ADAPTOR) Adapter;
@@ -743,11 +648,11 @@ HAL_Status HalSsiIntReadRtl8195a(VOID *Adapter, VOID *RxData, u32 Length)
     u8  Index = pHalSsiAdapter->Index;
 
     DBG_SSI_INFO("HalSsiIntReadRtl8195a: Idx=%d, RxData=0x%x, Len=0x%x\r\n", Index, RxData, Length);
-//    if (HalSsiBusyRtl8195a(Adapter)) {
+    if (HalSsiBusyRtl8195a(Adapter)) {
         // As a Slave mode, if the peer(Master) side is power off, the BUSY flag is always on
-//        DBG_SSI_WARN("HalSsiIntReadRtl8195a: SSI%d is busy\n", Index);
-//        return HAL_BUSY;
-//    }
+        DBG_SSI_WARN("HalSsiIntReadRtl8195a: SSI%d is busy\n", Index);
+        return HAL_BUSY;
+    }
 
     if (Length == 0) {
         SSI_DBG_INT_READ("SSI%d RxData addr: 0x%X, Length: %d\n", Index, RxData, Length);
@@ -786,18 +691,6 @@ HAL_Status HalSsiIntReadRtl8195a(VOID *Adapter, VOID *RxData, u32 Length)
     return HAL_OK;
 }
 
-// Configure Transmit FIFO Threshold Level
-VOID HalSsiTxFIFOThresholdRtl8195a(VOID *Adaptor, u32 txftl)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdaptor = (PHAL_SSI_ADAPTOR) Adaptor;
-    u8   Index = pHalSsiAdaptor->Index;
-    u32  TxftlrValue;
-
-    TxftlrValue = BIT_TXFTLR_TFT(txftl);
-
-    HAL_SSI_WRITE32(Index, REG_DW_SSI_TXFTLR, TxftlrValue);
-}
-
 
 HAL_Status
 HalSsiIntWriteRtl8195a(
@@ -823,143 +716,11 @@ HalSsiIntWriteRtl8195a(
         pHalSsiAdapter->TxLength = Length; // 1 byte(8 bit) every transfer
     }
 
-    HalSsiTxFIFOThresholdRtl8195a(Adapter, pHalSsiAdapter->TxThresholdLevel);
     pHalSsiAdapter->TxData = (void*)pTxData;
     pHalSsiAdapter->InterruptMask |= BIT_IMR_TXOIM | BIT_IMR_TXEIM;
     HalSsiSetInterruptMaskRtl8195a((VOID*)pHalSsiAdapter);
 
     return HAL_OK;
-}
-
-HAL_Status HalSsiEnterCriticalRtl8195a(VOID *Data)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdaptor = (PHAL_SSI_ADAPTOR) Data;
-
-    InterruptDis(&pHalSsiAdaptor->IrqHandle);
-#ifdef CONFIG_GDMA_EN
-    PSSI_DMA_CONFIG pDmaConfig = &pHalSsiAdaptor->DmaConfig;
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-
-    if(NULL != pDmaConfig){
-        pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pTxHalGdmaAdapter;
-        if(pHalGdmaAdapter->ChEn != 0){
-            InterruptDis(&pDmaConfig->TxGdmaIrqHandle);
-        }
-        
-        pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pRxHalGdmaAdapter;
-        if(pHalGdmaAdapter->ChEn != 0){
-            InterruptDis(&pDmaConfig->RxGdmaIrqHandle);
-        }
-    }
-#endif
-    return HAL_OK;
-}
-
-HAL_Status HalSsiExitCriticalRtl8195a(VOID *Data)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdaptor = (PHAL_SSI_ADAPTOR) Data;
-
-    InterruptEn(&pHalSsiAdaptor->IrqHandle);
-#ifdef CONFIG_GDMA_EN
-    PSSI_DMA_CONFIG pDmaConfig = &pHalSsiAdaptor->DmaConfig;
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-
-    if(NULL != pDmaConfig){
-        pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pTxHalGdmaAdapter;
-        if(pHalGdmaAdapter->ChEn != 0){
-            InterruptEn(&pDmaConfig->TxGdmaIrqHandle);
-        }
-        
-        pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pRxHalGdmaAdapter;
-        if(pHalGdmaAdapter->ChEn != 0){
-            InterruptEn(&pDmaConfig->RxGdmaIrqHandle);
-        }
-    }
-#endif
-    return HAL_OK;
-}
-
-HAL_Status
-HalSsiIsTimeoutRtl8195a(
-    u32 StartCount,
-    u32 TimeoutCnt
-)
-{
-    HAL_Status Status;
-    u32 CurrentCount, ExpireCount;
-
-    CurrentCount = HalTimerOp.HalTimerReadCount(1);
-
-    if (StartCount < CurrentCount) {
-        ExpireCount =  (0xFFFFFFFF - CurrentCount) + StartCount;
-    }
-    else {
-        ExpireCount = StartCount - CurrentCount;
-    }
-
-    if (TimeoutCnt < ExpireCount) {
-        Status = HAL_TIMEOUT;
-    }
-    else {
-        Status = HAL_OK;
-    }
-
-    return Status;
-}
-
-HAL_Status HalSsiStopRecvRtl8195a(VOID *Data)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdapter = (PHAL_SSI_ADAPTOR) Data;
-    PSSI_DMA_CONFIG pDmaConfig = &pHalSsiAdapter->DmaConfig;
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-    PHAL_GDMA_OP pHalGdmaOp;
-    u32 DMAStopAddr = 0;
-    u32 ReceivedCnt;
-    u8 Index;
-    u8 DmaMode = 0;
-    
-    Index = pHalSsiAdapter->Index;
-    pHalSsiAdapter->InterruptMask &= ~(BIT_IMR_RXFIM | BIT_IMR_RXOIM | BIT_IMR_RXUIM);
-    HalSsiSetInterruptMaskRtl8195a(pHalSsiAdapter);
-
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pRxHalGdmaAdapter;
-
-    if(NULL != pHalGdmaAdapter){
-        pHalGdmaOp = (PHAL_GDMA_OP)pDmaConfig->pHalGdmaOp;
-        if ((NULL != pHalGdmaOp) && (HalGdmaQueryChEnRtl8195a((VOID*)pHalGdmaAdapter))){
-            DmaMode = 1;
-            pHalGdmaOp->HalGdmaChIsrClean((VOID*)pHalGdmaAdapter);
-            pHalGdmaOp->HalGdmaChCleanAutoSrc((VOID*)pHalGdmaAdapter);
-            pHalGdmaOp->HalGdmaChDis((VOID*)(pHalGdmaAdapter));
-            while((HAL_GDMAX_READ32(pHalGdmaAdapter->GdmaIndex, REG_GDMA_CH_EN) & (pHalGdmaAdapter->ChEn)) != 0 ){
-
-            }
-            DMAStopAddr = HalGdmaQueryDArRtl8195a((VOID*)pHalGdmaAdapter);      
-            ReceivedCnt = DMAStopAddr - (u32)(pHalSsiAdapter->RxData);
-            pHalSsiAdapter->RxLength-= ReceivedCnt;
-            pHalSsiAdapter->RxData = (u8 *)(pHalSsiAdapter->RxData) + ReceivedCnt;
-        }
-    }
-
-    while(HalSsiGetRxFifoLevelRtl8195a(pHalSsiAdapter) != 0){
-        if ((pHalSsiAdapter->DataFrameSize+1) > 8) {
-            // 16~9 bits mode
-            *((u16*)(pHalSsiAdapter->RxData)) = (u16)(HAL_SSI_READ32(Index, REG_DW_SSI_DR));
-            pHalSsiAdapter->RxData = (VOID*)(((u16*)pHalSsiAdapter->RxData) + 1);
-            if(DmaMode){     
-                pHalSsiAdapter->RxLength--;
-            }
-        }        
-        else {
-            // 8~4 bits mode
-            *((u8*)(pHalSsiAdapter->RxData)) = (u8)(HAL_SSI_READ32(Index, REG_DW_SSI_DR));
-            pHalSsiAdapter->RxData = (VOID*)(((u8*)pHalSsiAdapter->RxData) + 1);
-        }
-        pHalSsiAdapter->RxLength--;
-    }
-
-    return HAL_OK;
-       
 }
 
 #ifdef CONFIG_GDMA_EN
@@ -969,55 +730,72 @@ HAL_Status HalSsiStopRecvRtl8195a(VOID *Data)
 VOID SsiTxGdmaIrqHandle (VOID *Data)
 {
     PHAL_SSI_ADAPTOR pHalSsiAdapter = (PHAL_SSI_ADAPTOR) Data;
-    PSSI_DMA_CONFIG pDmaConfig = &pHalSsiAdapter->DmaConfig;
+    PSSI_DMA_CONFIG pDmaConfig = &pHalSsiAdapter->DmaConfig;;
     PHAL_GDMA_ADAPTER pHalGdmaAdapter;
     PHAL_GDMA_OP pHalGdmaOp;
 
     pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pTxHalGdmaAdapter;
     pHalGdmaOp = (PHAL_GDMA_OP)pDmaConfig->pHalGdmaOp;
+
+    /* Maintain Block Count */
+#if 0
+    u8  IsrTypeMap = 0;
+    /* Clear Pending ISR */
+    IsrTypeMap = pHalGdmaOp->HalGdmaChIsrClean((VOID*)pHalGdmaAdapter);
+
+    if (IsrTypeMap & BlockType) {
+        DBG_SSI_WARN("DMA Block %d\n",pHalGdmaAdapter->MuliBlockCunt);
+        pHalGdmaAdapter->MuliBlockCunt++;
+    }
+#else
     /* Clear Pending ISR */
     pHalGdmaOp->HalGdmaChIsrClean((VOID*)pHalGdmaAdapter);
-
-    pHalGdmaOp->HalGdmaChCleanAutoDst((VOID*)pHalGdmaAdapter);
-
-    pHalGdmaOp->HalGdmaChDis((VOID*)(pHalGdmaAdapter));
-    // Call user TX complete callback
-    pHalSsiAdapter->TxLength = 0;
-    HalSsiTxFIFOThresholdRtl8195a((VOID*)pHalSsiAdapter, 0);    // trigger TX interrupt when TX FIFO is totally empty
-    pHalSsiAdapter->InterruptMask |= (BIT_IMR_TXEIM);
-    HalSsiSetInterruptMaskRtl8195a((VOID*)pHalSsiAdapter);
-
-    if (NULL != pHalSsiAdapter->TxCompCallback) {
-        pHalSsiAdapter->TxCompCallback(pHalSsiAdapter->TxCompCbPara);
-    }
+#endif
 
 #if 0
     /* Set SSI DMA Disable */
     HAL_SSI_WRITE32(pHalSsiAdapter->Index, REG_DW_SSI_DMACR, \
         (HAL_SSI_READ32(pHalSsiAdapter->Index, REG_DW_SSI_DMACR) & ~SSI_TXDMA_ENABLE));
 #endif
-
+    pHalGdmaOp->HalGdmaChDis((VOID*)(pHalGdmaAdapter));
+    // Call user TX complete callback
+    if (NULL != pHalSsiAdapter->TxCompCallback) {
+        pHalSsiAdapter->TxCompCallback(pHalSsiAdapter->TxCompCbPara);
+    }
 }
 
 VOID SsiRxGdmaIrqHandle (VOID *Data)
 {
     PHAL_SSI_ADAPTOR pHalSsiAdapter = (PHAL_SSI_ADAPTOR) Data;
-    PSSI_DMA_CONFIG pDmaConfig = &pHalSsiAdapter->DmaConfig;
+    PSSI_DMA_CONFIG pDmaConfig = &pHalSsiAdapter->DmaConfig;;
     PHAL_GDMA_ADAPTER pHalGdmaAdapter;
     PHAL_GDMA_OP pHalGdmaOp;
 
 
     pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pRxHalGdmaAdapter;
     pHalGdmaOp = (PHAL_GDMA_OP)pDmaConfig->pHalGdmaOp;
-    
+
+    /* Maintain Block Count */
+#if 0
+    u8  IsrTypeMap = 0;
+    /* Clear Pending ISR */
+    IsrTypeMap = pHalGdmaOp->HalGdmaChIsrClean((VOID*)pHalGdmaAdapter);
+
+    if (IsrTypeMap & BlockType) {
+        DBG_SSI_WARN("DMA Block %d\n",pHalGdmaAdapter->MuliBlockCunt);
+        pHalGdmaAdapter->MuliBlockCunt++;
+    }
+#else
+    /* Clear Pending ISR */
     pHalGdmaOp->HalGdmaChIsrClean((VOID*)pHalGdmaAdapter);
 
-    pHalGdmaOp->HalGdmaChCleanAutoSrc((VOID*)pHalGdmaAdapter);
+#endif
 
+    /* Set SSI DMA Disable */
     HAL_SSI_WRITE32(pHalSsiAdapter->Index, REG_DW_SSI_DMACR, \
         (HAL_SSI_READ32(pHalSsiAdapter->Index, REG_DW_SSI_DMACR) & ~SSI_RXDMA_ENABLE));
     pHalGdmaOp->HalGdmaChDis((VOID*)(pHalGdmaAdapter));
-
+    // Call user RX complete callback
     if (NULL != pHalSsiAdapter->RxCompCallback) {
         pHalSsiAdapter->RxCompCallback(pHalSsiAdapter->RxCompCbPara);
     }
@@ -1097,7 +875,6 @@ HalSsiTxGdmaLoadDefRtl8195a(
 
     pHalGdmaAdapter->GdmaCtl.TtFc      = TTFCMemToPeri;
     pHalGdmaAdapter->GdmaCtl.Done      = 1;
-    pHalGdmaAdapter->GdmaCfg.ReloadDst = 1;
     pHalGdmaAdapter->MuliBlockCunt     = 0;
     pHalGdmaAdapter->MaxMuliBlock      = 1;
     pHalGdmaAdapter->GdmaCfg.DestPer   = DstPer;
@@ -1105,7 +882,7 @@ HalSsiTxGdmaLoadDefRtl8195a(
     pHalGdmaAdapter->GdmaIndex   = DmaIdx;
     pHalGdmaAdapter->ChNum       = DmaCh;
     pHalGdmaAdapter->ChEn        = DmaChEn;
-    pHalGdmaAdapter->GdmaIsrType = (TransferType|ErrType);
+    pHalGdmaAdapter->GdmaIsrType = (BlockType|TransferType|ErrType);
     pHalGdmaAdapter->IsrCtrl     = ENABLE;
     pHalGdmaAdapter->GdmaOnOff   = ON;
 
@@ -1120,7 +897,7 @@ HalSsiTxGdmaLoadDefRtl8195a(
     pDmaConfig->TxGdmaIrqHandle.Data = (u32)pHalSsiAdapter;
     pDmaConfig->TxGdmaIrqHandle.IrqNum = IrqNum;
     pDmaConfig->TxGdmaIrqHandle.IrqFun = (IRQ_FUN)SsiTxGdmaIrqHandle;
-    pDmaConfig->TxGdmaIrqHandle.Priority = 10;
+    pDmaConfig->TxGdmaIrqHandle.Priority = 0x10;
 }
 
 
@@ -1206,7 +983,7 @@ HalSsiRxGdmaLoadDefRtl8195a(
     pHalGdmaAdapter->GdmaIndex   = DmaIdx;
     pHalGdmaAdapter->ChNum       = DmaCh;
     pHalGdmaAdapter->ChEn        = DmaChEn;
-    pHalGdmaAdapter->GdmaIsrType = (TransferType|ErrType);
+    pHalGdmaAdapter->GdmaIsrType = (BlockType|TransferType|ErrType);
     pHalGdmaAdapter->IsrCtrl     = ENABLE;
     pHalGdmaAdapter->GdmaOnOff   = ON;
 
@@ -1221,7 +998,7 @@ HalSsiRxGdmaLoadDefRtl8195a(
     pDmaConfig->RxGdmaIrqHandle.Data = (u32)pHalSsiAdapter;
     pDmaConfig->RxGdmaIrqHandle.IrqNum = IrqNum;
     pDmaConfig->RxGdmaIrqHandle.IrqFun = (IRQ_FUN)SsiRxGdmaIrqHandle;
-    pDmaConfig->RxGdmaIrqHandle.Priority = 11;
+    pDmaConfig->RxGdmaIrqHandle.Priority = 0x10;
 }
 
 VOID
@@ -1321,6 +1098,7 @@ HalSsiDmaSendRtl8195a(
     PHAL_SSI_ADAPTOR pHalSsiAdapter = (PHAL_SSI_ADAPTOR) Adapter;
     PSSI_DMA_CONFIG pDmaConfig;
     PHAL_GDMA_ADAPTER pHalGdmaAdapter;
+    PHAL_GDMA_OP pHalGdmaOp;
 
 
     if ((pTxData == NULL) || (Length == 0)) {
@@ -1340,22 +1118,17 @@ HalSsiDmaSendRtl8195a(
             (((u32)(pTxData) & 0x03)==0)) {
             // 4-bytes aligned, move 4 bytes each transfer
             pHalGdmaAdapter->GdmaCtl.SrcMsize   = MsizeFour;
-            //pHalGdmaAdapter->GdmaCtl.SrcTrWidth = TrWidthFourBytes;
-            pHalGdmaAdapter->GdmaCtl.SrcTrWidth = TrWidthTwoBytes;
-            //pHalGdmaAdapter->GdmaCtl.DestMsize  = MsizeEight;
-            pHalGdmaAdapter->GdmaCtl.DestMsize   = MsizeFour;
+            pHalGdmaAdapter->GdmaCtl.SrcTrWidth = TrWidthFourBytes;
+            pHalGdmaAdapter->GdmaCtl.DestMsize  = MsizeEight;
             pHalGdmaAdapter->GdmaCtl.DstTrWidth = TrWidthTwoBytes;
-            //pHalGdmaAdapter->GdmaCtl.BlockSize = Length >> 2;
-            pHalGdmaAdapter->GdmaCtl.BlockSize = Length >> 1;
+            pHalGdmaAdapter->GdmaCtl.BlockSize = Length >> 2;
         }
         else if (((Length & 0x01)==0) &&
             (((u32)(pTxData) & 0x01)==0)) {
             // 2-bytes aligned, move 2 bytes each transfer
-            //pHalGdmaAdapter->GdmaCtl.SrcMsize   = MsizeEight;
-            pHalGdmaAdapter->GdmaCtl.SrcMsize   = MsizeFour;
+            pHalGdmaAdapter->GdmaCtl.SrcMsize   = MsizeEight;
             pHalGdmaAdapter->GdmaCtl.SrcTrWidth = TrWidthTwoBytes;
-            //pHalGdmaAdapter->GdmaCtl.DestMsize  = MsizeEight;
-            pHalGdmaAdapter->GdmaCtl.DestMsize  = MsizeFour;
+            pHalGdmaAdapter->GdmaCtl.DestMsize  = MsizeEight;
             pHalGdmaAdapter->GdmaCtl.DstTrWidth = TrWidthTwoBytes;
             pHalGdmaAdapter->GdmaCtl.BlockSize = Length >> 1;
         }
@@ -1382,10 +1155,23 @@ HalSsiDmaSendRtl8195a(
         pHalGdmaAdapter->GdmaCtl.DstTrWidth = TrWidthOneByte;
     }
 
-    DBG_SSI_INFO("TX SrcMsize=%d SrcTrWidth=%d DestMsize=%d DstTrWidth=%d BlockSize=%d\n", \
+    DBG_SSI_INFO("SrcMsize=%d SrcTrWidth=%d DestMsize=%d DstTrWidth=%d BlockSize=%d\n", \
         pHalGdmaAdapter->GdmaCtl.SrcMsize, pHalGdmaAdapter->GdmaCtl.SrcTrWidth, \
         pHalGdmaAdapter->GdmaCtl.DestMsize, pHalGdmaAdapter->GdmaCtl.DstTrWidth, \
         pHalGdmaAdapter->GdmaCtl.BlockSize);
+
+    if (pHalGdmaAdapter->GdmaCtl.BlockSize > 4096) {
+        // over Maximum block size 4096
+        DBG_SSI_ERR("HalSsiDmaSendRtl8195a: GDMA Block Size(%d) too big\n", pHalGdmaAdapter->GdmaCtl.BlockSize);
+        return HAL_ERR_PARA;
+    }
+
+    pHalGdmaAdapter->ChSar = (u32)pTxData;
+
+    // Enable GDMA for TX
+    pHalGdmaOp = (PHAL_GDMA_OP)pDmaConfig->pHalGdmaOp;
+    pHalGdmaOp->HalGdmaChSeting((VOID*)(pHalGdmaAdapter));
+    pHalGdmaOp->HalGdmaChEn((VOID*)(pHalGdmaAdapter));
 
 #if 0
     /* Set SSI DMA Enable */
@@ -1393,69 +1179,6 @@ HalSsiDmaSendRtl8195a(
     HAL_SSI_WRITE32(pHalSsiAdapter->Index, REG_DW_SSI_DMACR, \
         (HAL_SSI_READ32(pHalSsiAdapter->Index, REG_DW_SSI_DMACR) | SSI_TXDMA_ENABLE));
 #endif
-
-    return HAL_OK;
-}
-
-
-HAL_Status
-HalSsiDmaSendMultiBlockRtl8195a(VOID *Adapter, u8 *pTxData, u32 Length)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdapter = (PHAL_SSI_ADAPTOR) Adapter;
-    PSSI_DMA_CONFIG pDmaConfig;
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;  
-    PSSI_DMA_MULTIBLK pSsiDmaMultiBlk;  
-    
-    u32 BlockNumber = 1;
-    u32 SingleBlockBytes;
-    u32 BlockIndex = 0;
-
-
-    pDmaConfig = &pHalSsiAdapter->DmaConfig;
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pTxHalGdmaAdapter;
-    pSsiDmaMultiBlk = (PSSI_DMA_MULTIBLK) &pHalSsiAdapter->DmaTxMultiBlk;
-    SingleBlockBytes = MAX_DMA_BLOCK_SIZE * (1 << (pHalGdmaAdapter->GdmaCtl.SrcTrWidth)) ;
-    
-    BlockNumber = Length / MAX_DMA_BLOCK_SIZE;
-    if(Length % MAX_DMA_BLOCK_SIZE)
-        BlockNumber++;
-    
-    if(BlockNumber > 16){
-        DBG_SSI_ERR("HalSsiDmaSendMultiBlockRtl8195a: Data length is too long\n");
-        return HAL_ERR_PARA;
-    }
-    DBG_SSI_INFO("TX BlockNumber = %x, Length = %x\n", BlockNumber, Length);
-
-    
-    pHalGdmaAdapter->MaxMuliBlock = BlockNumber;
-    pHalGdmaAdapter->Rsvd4to7 = 1;
-    pHalGdmaAdapter->Llpctrl = 1;
-    pHalGdmaAdapter->GdmaCtl.LlpSrcEn = 1;
-
-    for(BlockIndex = 0; BlockIndex < BlockNumber; BlockIndex++){
-        pSsiDmaMultiBlk->GdmaChLli[BlockIndex].Sarx = (u32) (pTxData + SingleBlockBytes * BlockIndex);
-        pSsiDmaMultiBlk->GdmaChLli[BlockIndex].Darx = (u32) (pHalGdmaAdapter->ChDar);
-        
-        //DBG_SSI_INFO("GdmaChLli[%x].Sarx = %x\n", BlockIndex, pSsiDmaMultiBlk->GdmaChLli[BlockIndex].Sarx);        
-        //DBG_SSI_INFO("GdmaChLli[%x] = %x\n", BlockIndex, &(pSsiDmaMultiBlk->GdmaChLli[BlockIndex]));        
-        pSsiDmaMultiBlk->Lli[BlockIndex].pLliEle = (GDMA_CH_LLI_ELE*) &(pSsiDmaMultiBlk->GdmaChLli[BlockIndex]);
-        if(BlockIndex == BlockNumber - 1){
-            pSsiDmaMultiBlk->Lli[BlockIndex].pNextLli = NULL;
-            pSsiDmaMultiBlk->BlockSizeList[BlockIndex].pNextBlockSiz = NULL;
-            pSsiDmaMultiBlk->BlockSizeList[BlockIndex].BlockSize = Length - BlockIndex*MAX_DMA_BLOCK_SIZE;
-        }
-        else{
-            pSsiDmaMultiBlk->Lli[BlockIndex].pNextLli = &(pSsiDmaMultiBlk->Lli[BlockIndex + 1]); 
-            pSsiDmaMultiBlk->BlockSizeList[BlockIndex].BlockSize = MAX_DMA_BLOCK_SIZE;
-            pSsiDmaMultiBlk->BlockSizeList[BlockIndex].pNextBlockSiz = &(pSsiDmaMultiBlk->BlockSizeList[BlockIndex + 1]);
-
-        }
-        //DBG_SSI_INFO("Lli[%x] = %x\n", BlockIndex, &(pSsiDmaMultiBlk->Lli[BlockIndex]));   
-        //DBG_SSI_INFO("pSsiDmaMultiBlk->BlockSizeList[%x]= %x\n", BlockIndex, pSsiDmaMultiBlk->BlockSizeList[BlockIndex].BlockSize);        
-    }
-
-    pHalGdmaAdapter->pBlockSizeList = (struct BLOCK_SIZE_LIST*) &(pSsiDmaMultiBlk->BlockSizeList);
-    pHalGdmaAdapter->pLlix = (struct GDMA_CH_LLI*) &(pSsiDmaMultiBlk->Lli);
 
     return HAL_OK;
 }
@@ -1470,9 +1193,10 @@ HalSsiDmaRecvRtl8195a(
     PHAL_SSI_ADAPTOR pHalSsiAdapter = (PHAL_SSI_ADAPTOR) Adapter;
     PSSI_DMA_CONFIG pDmaConfig;
     PHAL_GDMA_ADAPTER pHalGdmaAdapter;
+    PHAL_GDMA_OP pHalGdmaOp;
 
     if ((pRxData == NULL) || (Length == 0)) {
-        DBG_SSI_ERR("HalSsiDmaRecvRtl8195a: Null Err: pRxData=0x%x, Length=%d\n",  pRxData, Length);
+        DBG_SSI_ERR("HalRuartDmaRecvRtl8195a: Null Err: pRxData=0x%x, Length=%d\n",  pRxData, Length);
         return HAL_ERR_PARA;
     }
     
@@ -1502,7 +1226,7 @@ HalSsiDmaRecvRtl8195a(
             pHalGdmaAdapter->GdmaCtl.DstTrWidth = TrWidthTwoBytes;
         }
         else {
-            DBG_SSI_ERR("HalSsiDmaRecvRtl8195a: Aligment Err: pTxData=0x%x,  Length=%d\n", pRxData, Length);
+            DBG_SSI_ERR("HalSsiDmaSendRtl8195a: Aligment Err: pTxData=0x%x,  Length=%d\n", pRxData, Length);
             return HAL_ERR_PARA;
         }
     }
@@ -1522,79 +1246,24 @@ HalSsiDmaRecvRtl8195a(
             pHalGdmaAdapter->GdmaCtl.DstTrWidth = TrWidthOneByte;
         }
     }
-    
-    DBG_SSI_INFO("RX SrcMsize=%d SrcTrWidth=%d DestMsize=%d DstTrWidth=%d BlockSize=%d\n", \
-        pHalGdmaAdapter->GdmaCtl.SrcMsize, pHalGdmaAdapter->GdmaCtl.SrcTrWidth, \
-        pHalGdmaAdapter->GdmaCtl.DestMsize, pHalGdmaAdapter->GdmaCtl.DstTrWidth, \
-        pHalGdmaAdapter->GdmaCtl.BlockSize);
+
+    if (pHalGdmaAdapter->GdmaCtl.BlockSize > 4096) {
+        // over Maximum block size 4096
+        DBG_SSI_ERR("HalRuartDmaRecvRtl8195a: GDMA Block Size(%d) too big\n", pHalGdmaAdapter->GdmaCtl.BlockSize);
+        return HAL_ERR_PARA;
+    }
+
+    pHalGdmaAdapter->ChDar = (u32)pRxData;
+
+    // Enable GDMA for RX
+    pHalGdmaOp = (PHAL_GDMA_OP)pDmaConfig->pHalGdmaOp;
+    pHalGdmaOp->HalGdmaChSeting((VOID*)(pHalGdmaAdapter));
+    pHalGdmaOp->HalGdmaChEn((VOID*)(pHalGdmaAdapter));
 
     /* Set SSI DMA Enable */
     // TODO: protect the enable DMA register, it may collision with the DMA disable in the GDMA TX done ISR
     HAL_SSI_WRITE32(pHalSsiAdapter->Index, REG_DW_SSI_DMACR, \
         (HAL_SSI_READ32(pHalSsiAdapter->Index, REG_DW_SSI_DMACR) | SSI_RXDMA_ENABLE));
-
-    return HAL_OK;
-}
-
-HAL_Status
-HalSsiDmaRecvMultiBlockRtl8195a(VOID *Adapter, u8 *pRxData, u32 Length)
-{
-    PHAL_SSI_ADAPTOR pHalSsiAdapter = (PHAL_SSI_ADAPTOR) Adapter;
-    PSSI_DMA_CONFIG pDmaConfig;
-    PHAL_GDMA_ADAPTER pHalGdmaAdapter;
-    PSSI_DMA_MULTIBLK pSsiDmaMultiBlk;
-    
-    
-    u32 BlockNumber = 1;
-    u32 SingleBlockBytes;
-    u32 BlockIndex = 0;
-
-
-    pDmaConfig = &pHalSsiAdapter->DmaConfig;
-    pHalGdmaAdapter = (PHAL_GDMA_ADAPTER)pDmaConfig->pRxHalGdmaAdapter;
-    pSsiDmaMultiBlk = (PSSI_DMA_MULTIBLK) &pHalSsiAdapter->DmaRxMultiBlk;
-    SingleBlockBytes = MAX_DMA_BLOCK_SIZE * (1 << (pHalGdmaAdapter->GdmaCtl.SrcTrWidth)) ;
-    
-    BlockNumber = Length / MAX_DMA_BLOCK_SIZE;
-    if(Length % MAX_DMA_BLOCK_SIZE)
-        BlockNumber++;
-    
-    if(BlockNumber > 16){
-        DBG_SSI_ERR("HalSsiDmaRecvMultiBlockRtl8195a: Data length is too long\n");
-        return HAL_ERR_PARA;
-    }
-    DBG_SSI_INFO("RX BlockNumber = %x, Length = %x\n", BlockNumber, Length);
-
-    
-    pHalGdmaAdapter->MaxMuliBlock = BlockNumber;
-    pHalGdmaAdapter->Rsvd4to7 = 1;
-    pHalGdmaAdapter->Llpctrl = 1;
-    pHalGdmaAdapter->GdmaCtl.LlpDstEn = 1;
-
-    for(BlockIndex = 0; BlockIndex < BlockNumber; BlockIndex++){
-        pSsiDmaMultiBlk->GdmaChLli[BlockIndex].Sarx = (u32) (pHalGdmaAdapter->ChSar);
-        pSsiDmaMultiBlk->GdmaChLli[BlockIndex].Darx = (u32) (pRxData + SingleBlockBytes * BlockIndex);
-        
-        //DBG_SSI_INFO("GdmaChLli[%x].Darx = %x\n", BlockIndex, pSsiDmaMultiBlk->GdmaChLli[BlockIndex].Darx);        
-        //DBG_SSI_INFO("GdmaChLli[%x] = %x\n", BlockIndex, &(pSsiDmaMultiBlk->GdmaChLli[BlockIndex]));        
-        pSsiDmaMultiBlk->Lli[BlockIndex].pLliEle = (GDMA_CH_LLI_ELE*) &(pSsiDmaMultiBlk->GdmaChLli[BlockIndex]);
-        if(BlockIndex == BlockNumber - 1){
-            pSsiDmaMultiBlk->Lli[BlockIndex].pNextLli = NULL;
-            pSsiDmaMultiBlk->BlockSizeList[BlockIndex].pNextBlockSiz = NULL;
-            pSsiDmaMultiBlk->BlockSizeList[BlockIndex].BlockSize = Length - BlockIndex*MAX_DMA_BLOCK_SIZE;
-        }
-        else{
-            pSsiDmaMultiBlk->Lli[BlockIndex].pNextLli = &(pSsiDmaMultiBlk->Lli[BlockIndex + 1]); 
-            pSsiDmaMultiBlk->BlockSizeList[BlockIndex].BlockSize = MAX_DMA_BLOCK_SIZE;
-            pSsiDmaMultiBlk->BlockSizeList[BlockIndex].pNextBlockSiz = &(pSsiDmaMultiBlk->BlockSizeList[BlockIndex + 1]);
-
-        }
-        //DBG_SSI_INFO("Lli[%x] = %x\n", BlockIndex, &(pSsiDmaMultiBlk->Lli[BlockIndex]));           
-        //DBG_SSI_INFO("pSsiDmaMultiBlk->BlockSizeList[%x]= %x\n", BlockIndex, pSsiDmaMultiBlk->BlockSizeList[BlockIndex].BlockSize);        
-    }
-
-    pHalGdmaAdapter->pBlockSizeList = (struct BLOCK_SIZE_LIST*) &(pSsiDmaMultiBlk->BlockSizeList);
-    pHalGdmaAdapter->pLlix = (struct GDMA_CH_LLI*) &(pSsiDmaMultiBlk->Lli);
 
     return HAL_OK;
 }

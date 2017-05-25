@@ -364,8 +364,6 @@ typedef	long long __i64;
 /* Send Mgnt Frame or Action Frame */
 #define SIOCSIWMGNTSEND	0x8B37		/* Send Mgnt Frame or Action Frame */
 
-/* Send WPS EAPOL Frame */
-#define SIOCSIWEAPOLSEND	0x8B38		/* Send WPS EAPOL Frame */
 /* -------------------- DEV PRIVATE IOCTL LIST -------------------- */
 
 /* These 32 ioctl are wireless device private, for 16 commands.

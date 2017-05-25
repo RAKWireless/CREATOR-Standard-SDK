@@ -1036,82 +1036,82 @@ struct dwc_otg_core_if {
 /*
  * This function is called when transfer is timed out.
  */
-extern _LONG_CALL_ void hc_xfer_timeout(void *ptr);
+extern void hc_xfer_timeout(void *ptr);
 #endif
 
 /*
  * This function is called when transfer is timed out on endpoint.
  */
-extern _LONG_CALL_ void ep_xfer_timeout(void *ptr);
+extern void ep_xfer_timeout(void *ptr);
 
 /*
  * The following functions are functions for works
  * using during handling some interrupts
  */
-extern _LONG_CALL_ void w_conn_id_status_change(void *p);
+extern void w_conn_id_status_change(void *p);
 
-extern _LONG_CALL_ void w_wakeup_detected(void *p);
+extern void w_wakeup_detected(void *p);
 
 /** Saves global register values into system memory. */
-extern _LONG_CALL_ int dwc_otg_save_global_regs(dwc_otg_core_if_t * core_if);
+extern int dwc_otg_save_global_regs(dwc_otg_core_if_t * core_if);
 /** Saves device register values into system memory. */
-extern _LONG_CALL_ int dwc_otg_save_dev_regs(dwc_otg_core_if_t * core_if);
+extern int dwc_otg_save_dev_regs(dwc_otg_core_if_t * core_if);
 /** Saves host register values into system memory. */
-extern _LONG_CALL_ int dwc_otg_save_host_regs(dwc_otg_core_if_t * core_if);
+extern int dwc_otg_save_host_regs(dwc_otg_core_if_t * core_if);
 /** Restore global register values. */
-extern _LONG_CALL_ int dwc_otg_restore_global_regs(dwc_otg_core_if_t * core_if);
+extern int dwc_otg_restore_global_regs(dwc_otg_core_if_t * core_if);
 /** Restore host register values. */
-extern _LONG_CALL_ int dwc_otg_restore_host_regs(dwc_otg_core_if_t * core_if, int reset);
+extern int dwc_otg_restore_host_regs(dwc_otg_core_if_t * core_if, int reset);
 /** Restore device register values. */
-extern _LONG_CALL_ int dwc_otg_restore_dev_regs(dwc_otg_core_if_t * core_if,
+extern int dwc_otg_restore_dev_regs(dwc_otg_core_if_t * core_if,
 				    int rem_wakeup);
-extern _LONG_CALL_ int restore_lpm_i2c_regs(dwc_otg_core_if_t * core_if);
-extern _LONG_CALL_ int restore_essential_regs(dwc_otg_core_if_t * core_if, int rmode,
+extern int restore_lpm_i2c_regs(dwc_otg_core_if_t * core_if);
+extern int restore_essential_regs(dwc_otg_core_if_t * core_if, int rmode,
 				  int is_host);
 
-extern _LONG_CALL_ int dwc_otg_host_hibernation_restore(dwc_otg_core_if_t * core_if,
+extern int dwc_otg_host_hibernation_restore(dwc_otg_core_if_t * core_if,
 					    int restore_mode, int reset);
-extern _LONG_CALL_ int dwc_otg_device_hibernation_restore(dwc_otg_core_if_t * core_if,
+extern int dwc_otg_device_hibernation_restore(dwc_otg_core_if_t * core_if,
 					      int rem_wakeup, int reset);
 
 /*
  * The following functions support initialization of the CIL driver component
  * and the DWC_otg controller.
  */
-extern _LONG_CALL_ void dwc_otg_core_host_init(dwc_otg_core_if_t * _core_if);
-extern _LONG_CALL_ void dwc_otg_core_dev_init(dwc_otg_core_if_t * _core_if);
+extern void dwc_otg_core_host_init(dwc_otg_core_if_t * _core_if);
+extern void dwc_otg_core_dev_init(dwc_otg_core_if_t * _core_if);
 
 /** @name Device CIL Functions
  * The following functions support managing the DWC_otg controller in device
  * mode.
  */
 /**@{*/
-extern _LONG_CALL_ void dwc_otg_wakeup(dwc_otg_core_if_t * _core_if);
-extern _LONG_CALL_ void dwc_otg_read_setup_packet(dwc_otg_core_if_t * _core_if,
+extern void dwc_otg_wakeup(dwc_otg_core_if_t * _core_if);
+extern void dwc_otg_read_setup_packet(dwc_otg_core_if_t * _core_if,
 				      uint32_t * _dest);
-extern _LONG_CALL_ uint32_t dwc_otg_get_frame_number(dwc_otg_core_if_t * _core_if);
-extern _LONG_CALL_ void dwc_otg_ep0_activate(dwc_otg_core_if_t * _core_if, dwc_ep_t * _ep);
-extern _LONG_CALL_ void dwc_otg_ep_activate(dwc_otg_core_if_t * _core_if, dwc_ep_t * _ep);
-extern _LONG_CALL_ void dwc_otg_ep_deactivate(dwc_otg_core_if_t * _core_if, dwc_ep_t * _ep);
-extern _LONG_CALL_ void dwc_otg_ep_start_transfer(dwc_otg_core_if_t * _core_if,
+extern uint32_t dwc_otg_get_frame_number(dwc_otg_core_if_t * _core_if);
+extern void dwc_otg_ep0_activate(dwc_otg_core_if_t * _core_if, dwc_ep_t * _ep);
+extern void dwc_otg_ep_activate(dwc_otg_core_if_t * _core_if, dwc_ep_t * _ep);
+extern void dwc_otg_ep_deactivate(dwc_otg_core_if_t * _core_if, dwc_ep_t * _ep);
+extern void dwc_otg_ep_start_transfer(dwc_otg_core_if_t * _core_if,
 				      dwc_ep_t * _ep);
-extern _LONG_CALL_ void dwc_otg_ep_start_zl_transfer(dwc_otg_core_if_t * _core_if,
+extern void dwc_otg_ep_start_zl_transfer(dwc_otg_core_if_t * _core_if,
 					 dwc_ep_t * _ep);
-extern _LONG_CALL_ void dwc_otg_ep0_start_transfer(dwc_otg_core_if_t * _core_if,
+extern void dwc_otg_ep0_start_transfer(dwc_otg_core_if_t * _core_if,
 				       dwc_ep_t * _ep);
-extern _LONG_CALL_ void dwc_otg_ep0_continue_transfer(dwc_otg_core_if_t * _core_if,
+extern void dwc_otg_ep0_continue_transfer(dwc_otg_core_if_t * _core_if,
 					  dwc_ep_t * _ep);
-extern _LONG_CALL_ void dwc_otg_ep_write_packet(dwc_otg_core_if_t * _core_if,
+extern void dwc_otg_ep_write_packet(dwc_otg_core_if_t * _core_if,
 				    dwc_ep_t * _ep, int _dma);
-extern _LONG_CALL_ void dwc_otg_ep_set_stall(dwc_otg_core_if_t * _core_if, dwc_ep_t * _ep);
-extern _LONG_CALL_ void dwc_otg_ep_clear_stall(dwc_otg_core_if_t * _core_if,
+extern void dwc_otg_ep_set_stall(dwc_otg_core_if_t * _core_if, dwc_ep_t * _ep);
+extern void dwc_otg_ep_clear_stall(dwc_otg_core_if_t * _core_if,
 				   dwc_ep_t * _ep);
-extern _LONG_CALL_ void dwc_otg_enable_device_interrupts(dwc_otg_core_if_t * _core_if);
+extern void dwc_otg_enable_device_interrupts(dwc_otg_core_if_t * _core_if);
 
 #ifdef DWC_EN_ISOC
-extern _LONG_CALL_ void dwc_otg_iso_ep_start_frm_transfer(dwc_otg_core_if_t * core_if,
+extern void dwc_otg_iso_ep_start_frm_transfer(dwc_otg_core_if_t * core_if,
 					      dwc_ep_t * ep);
-extern _LONG_CALL_ void dwc_otg_iso_ep_start_buf_transfer(dwc_otg_core_if_t * core_if,
+extern void dwc_otg_iso_ep_start_buf_transfer(dwc_otg_core_if_t * core_if,
 					      dwc_ep_t * ep);
 #endif /* DWC_EN_ISOC */
 /**@}*/
@@ -1121,25 +1121,25 @@ extern _LONG_CALL_ void dwc_otg_iso_ep_start_buf_transfer(dwc_otg_core_if_t * co
  * mode.
  */
 /**@{*/
-extern _LONG_CALL_ void dwc_otg_hc_init(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc);
-extern _LONG_CALL_ void dwc_otg_hc_halt(dwc_otg_core_if_t * _core_if,
+extern void dwc_otg_hc_init(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc);
+extern void dwc_otg_hc_halt(dwc_otg_core_if_t * _core_if,
 			    dwc_hc_t * _hc, dwc_otg_halt_status_e _halt_status);
-extern _LONG_CALL_ void dwc_otg_hc_cleanup(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc);
-extern _LONG_CALL_ void dwc_otg_hc_start_transfer(dwc_otg_core_if_t * _core_if,
+extern void dwc_otg_hc_cleanup(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc);
+extern void dwc_otg_hc_start_transfer(dwc_otg_core_if_t * _core_if,
 				      dwc_hc_t * _hc);
-extern _LONG_CALL_ int dwc_otg_hc_continue_transfer(dwc_otg_core_if_t * _core_if,
+extern int dwc_otg_hc_continue_transfer(dwc_otg_core_if_t * _core_if,
 					dwc_hc_t * _hc);
-extern _LONG_CALL_ void dwc_otg_hc_do_ping(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc);
-extern _LONG_CALL_ void dwc_otg_hc_write_packet(dwc_otg_core_if_t * _core_if,
+extern void dwc_otg_hc_do_ping(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc);
+extern void dwc_otg_hc_write_packet(dwc_otg_core_if_t * _core_if,
 				    dwc_hc_t * _hc);
-extern _LONG_CALL_ void dwc_otg_enable_host_interrupts(dwc_otg_core_if_t * _core_if);
-extern _LONG_CALL_ void dwc_otg_disable_host_interrupts(dwc_otg_core_if_t * _core_if);
+extern void dwc_otg_enable_host_interrupts(dwc_otg_core_if_t * _core_if);
+extern void dwc_otg_disable_host_interrupts(dwc_otg_core_if_t * _core_if);
 
-extern _LONG_CALL_ void dwc_otg_hc_start_transfer_ddma(dwc_otg_core_if_t * core_if,
+extern void dwc_otg_hc_start_transfer_ddma(dwc_otg_core_if_t * core_if,
 					   dwc_hc_t * hc);
 
-extern _LONG_CALL_ uint32_t calc_frame_interval(dwc_otg_core_if_t * core_if);
-extern _LONG_CALL_ int dwc_otg_check_haps_status(dwc_otg_core_if_t * core_if);
+extern uint32_t calc_frame_interval(dwc_otg_core_if_t * core_if);
+extern int dwc_otg_check_haps_status(dwc_otg_core_if_t * core_if);
 
 /* Macro used to clear one channel interrupt */
 #define clear_hc_int(_hc_regs_, _intr_) \
@@ -1167,9 +1167,17 @@ do { \
  * This function Reads HPRT0 in preparation to modify. It keeps the
  * WC bits 0 so that if they are read as 1, they won't clear when you
  * write it back
-*/
-
-extern _LONG_CALL_ uint32_t dwc_otg_read_hprt0(dwc_otg_core_if_t * _core_if);
+ */
+static inline uint32_t dwc_otg_read_hprt0(dwc_otg_core_if_t * _core_if)
+{
+	hprt0_data_t hprt0;
+	hprt0.d32 = DWC_READ_REG32(_core_if->host_if->hprt0);
+	hprt0.b.prtena = 0;
+	hprt0.b.prtconndet = 0;
+	hprt0.b.prtenchng = 0;
+	hprt0.b.prtovrcurrchng = 0;
+	return hprt0.d32;
+}
 
 /**@}*/
 
@@ -1179,61 +1187,159 @@ extern _LONG_CALL_ uint32_t dwc_otg_read_hprt0(dwc_otg_core_if_t * _core_if);
  */
 /**@{*/
 
-extern _LONG_CALL_ void dwc_otg_read_packet(dwc_otg_core_if_t * core_if,
+extern void dwc_otg_read_packet(dwc_otg_core_if_t * core_if,
 				uint8_t * dest, uint16_t bytes);
 
-extern _LONG_CALL_ void dwc_otg_flush_tx_fifo(dwc_otg_core_if_t * _core_if, const int _num);
-extern _LONG_CALL_ void dwc_otg_flush_rx_fifo(dwc_otg_core_if_t * _core_if);
-extern _LONG_CALL_ void dwc_otg_core_reset(dwc_otg_core_if_t * _core_if);
+extern void dwc_otg_flush_tx_fifo(dwc_otg_core_if_t * _core_if, const int _num);
+extern void dwc_otg_flush_rx_fifo(dwc_otg_core_if_t * _core_if);
+extern void dwc_otg_core_reset(dwc_otg_core_if_t * _core_if);
 
 /**
  * This function returns the Core Interrupt register.
  */
-extern _LONG_CALL_ uint32_t dwc_otg_read_core_intr(dwc_otg_core_if_t * core_if);
+static inline uint32_t dwc_otg_read_core_intr(dwc_otg_core_if_t * core_if)
+{
+	return (DWC_READ_REG32(&core_if->core_global_regs->gintsts) &
+		DWC_READ_REG32(&core_if->core_global_regs->gintmsk));
+}
 
 /**
  * This function returns the OTG Interrupt register.
  */
-extern _LONG_CALL_ uint32_t dwc_otg_read_otg_intr(dwc_otg_core_if_t * core_if);
+static inline uint32_t dwc_otg_read_otg_intr(dwc_otg_core_if_t * core_if)
+{
+	return (DWC_READ_REG32(&core_if->core_global_regs->gotgint));
+}
 
 /**
  * This function reads the Device All Endpoints Interrupt register and
  * returns the IN endpoint interrupt bits.
  */
-extern _LONG_CALL_ uint32_t dwc_otg_read_dev_all_in_ep_intr(dwc_otg_core_if_t *
-						       core_if);
+static inline uint32_t dwc_otg_read_dev_all_in_ep_intr(dwc_otg_core_if_t *
+						       core_if)
+{
+
+	uint32_t v;
+
+	if (core_if->multiproc_int_enable) {
+		v = DWC_READ_REG32(&core_if->dev_if->
+				   dev_global_regs->deachint) &
+		    DWC_READ_REG32(&core_if->
+				   dev_if->dev_global_regs->deachintmsk);
+	} else {
+		v = DWC_READ_REG32(&core_if->dev_if->dev_global_regs->daint) &
+		    DWC_READ_REG32(&core_if->dev_if->dev_global_regs->daintmsk);
+	}
+	return (v & 0xffff);
+}
+
 /**
  * This function reads the Device All Endpoints Interrupt register and
  * returns the OUT endpoint interrupt bits.
  */
-extern _LONG_CALL_ uint32_t dwc_otg_read_dev_all_out_ep_intr(dwc_otg_core_if_t *
-							core_if);
+static inline uint32_t dwc_otg_read_dev_all_out_ep_intr(dwc_otg_core_if_t *
+							core_if)
+{
+	uint32_t v;
+
+	if (core_if->multiproc_int_enable) {
+		v = DWC_READ_REG32(&core_if->dev_if->
+				   dev_global_regs->deachint) &
+		    DWC_READ_REG32(&core_if->
+				   dev_if->dev_global_regs->deachintmsk);
+	} else {
+		v = DWC_READ_REG32(&core_if->dev_if->dev_global_regs->daint) &
+		    DWC_READ_REG32(&core_if->dev_if->dev_global_regs->daintmsk);
+	}
+
+	return ((v & 0xffff0000) >> 16);
+}
 
 /**
  * This function returns the Device IN EP Interrupt register
  */
-extern _LONG_CALL_ uint32_t dwc_otg_read_dev_in_ep_intr(dwc_otg_core_if_t * core_if,
-						   dwc_ep_t * ep);
+static inline uint32_t dwc_otg_read_dev_in_ep_intr(dwc_otg_core_if_t * core_if,
+						   dwc_ep_t * ep)
+{
+	dwc_otg_dev_if_t *dev_if = core_if->dev_if;
+	uint32_t v, msk, emp;
+
+	if (core_if->multiproc_int_enable) {
+		msk =
+		    DWC_READ_REG32(&dev_if->
+				   dev_global_regs->diepeachintmsk[ep->num]);
+		emp =
+		    DWC_READ_REG32(&dev_if->
+				   dev_global_regs->dtknqr4_fifoemptymsk);
+		msk |= ((emp >> ep->num) & 0x1) << 7;
+		v = DWC_READ_REG32(&dev_if->in_ep_regs[ep->num]->diepint) & msk;
+	} else {
+		msk = DWC_READ_REG32(&dev_if->dev_global_regs->diepmsk);
+		emp =
+		    DWC_READ_REG32(&dev_if->
+				   dev_global_regs->dtknqr4_fifoemptymsk);
+		msk |= ((emp >> ep->num) & 0x1) << 7;
+		v = DWC_READ_REG32(&dev_if->in_ep_regs[ep->num]->diepint) & msk;
+	}
+
+	return v;
+}
+
 /**
  * This function returns the Device OUT EP Interrupt register
  */
-extern _LONG_CALL_ uint32_t dwc_otg_read_dev_out_ep_intr(dwc_otg_core_if_t *
-						    _core_if, dwc_ep_t * _ep);
+static inline uint32_t dwc_otg_read_dev_out_ep_intr(dwc_otg_core_if_t *
+						    _core_if, dwc_ep_t * _ep)
+{
+	dwc_otg_dev_if_t *dev_if = _core_if->dev_if;
+	uint32_t v;
+	doepmsk_data_t msk = {.d32 = 0 };
+
+	if (_core_if->multiproc_int_enable) {
+		msk.d32 =
+		    DWC_READ_REG32(&dev_if->
+				   dev_global_regs->doepeachintmsk[_ep->num]);
+		if (_core_if->pti_enh_enable) {
+			msk.b.pktdrpsts = 1;
+		}
+		v = DWC_READ_REG32(&dev_if->
+				   out_ep_regs[_ep->num]->doepint) & msk.d32;
+	} else {
+		msk.d32 = DWC_READ_REG32(&dev_if->dev_global_regs->doepmsk);
+		if (_core_if->pti_enh_enable) {
+			msk.b.pktdrpsts = 1;
+		}
+		v = DWC_READ_REG32(&dev_if->
+				   out_ep_regs[_ep->num]->doepint) & msk.d32;
+	}
+	return v;
+}
+
 /**
  * This function returns the Host All Channel Interrupt register
  */
-extern _LONG_CALL_ uint32_t dwc_otg_read_host_all_channels_intr(dwc_otg_core_if_t *
-							   _core_if);
+static inline uint32_t dwc_otg_read_host_all_channels_intr(dwc_otg_core_if_t *
+							   _core_if)
+{
+	return (DWC_READ_REG32(&_core_if->host_if->host_global_regs->haint));
+}
 
-extern _LONG_CALL_ uint32_t dwc_otg_read_host_channel_intr(dwc_otg_core_if_t *
-						      _core_if, dwc_hc_t * _hc);
+static inline uint32_t dwc_otg_read_host_channel_intr(dwc_otg_core_if_t *
+						      _core_if, dwc_hc_t * _hc)
+{
+	return (DWC_READ_REG32
+		(&_core_if->host_if->hc_regs[_hc->hc_num]->hcint));
+}
 
 /**
  * This function returns the mode of the operation, host or device.
  *
  * @return 0 - Device Mode, 1 - Host Mode
  */
-extern _LONG_CALL_ uint32_t dwc_otg_mode(dwc_otg_core_if_t * _core_if);
+static inline uint32_t dwc_otg_mode(dwc_otg_core_if_t * _core_if)
+{
+	return (DWC_READ_REG32(&_core_if->core_global_regs->gintsts) & 0x1);
+}
 
 /**@}*/
 
@@ -1263,40 +1369,60 @@ typedef struct dwc_otg_cil_callbacks {
 	void *p;
 } dwc_otg_cil_callbacks_t;
 
-extern _LONG_CALL_ void dwc_otg_cil_register_pcd_callbacks(dwc_otg_core_if_t * _core_if,
+extern void dwc_otg_cil_register_pcd_callbacks(dwc_otg_core_if_t * _core_if,
 					       dwc_otg_cil_callbacks_t * _cb,
 					       void *_p);
-extern _LONG_CALL_ void dwc_otg_cil_register_hcd_callbacks(dwc_otg_core_if_t * _core_if,
+extern void dwc_otg_cil_register_hcd_callbacks(dwc_otg_core_if_t * _core_if,
 					       dwc_otg_cil_callbacks_t * _cb,
 					       void *_p);
 
-extern _LONG_CALL_ void dwc_otg_initiate_srp(void * core_if);
+void dwc_otg_initiate_srp(void * core_if);
 
 //////////////////////////////////////////////////////////////////////
 /** Start the HCD.  Helper function for using the HCD callbacks.
  *
  * @param core_if Programming view of DWC_otg controller.
  */
-extern _LONG_CALL_ void cil_hcd_start(dwc_otg_core_if_t * core_if);
+static inline void cil_hcd_start(dwc_otg_core_if_t * core_if)
+{
+	if (core_if->hcd_cb && core_if->hcd_cb->start) {
+		core_if->hcd_cb->start(core_if->hcd_cb->p);
+	}
+}
 
 /** Stop the HCD.  Helper function for using the HCD callbacks.
  *
  * @param core_if Programming view of DWC_otg controller.
  */
-extern _LONG_CALL_ void cil_hcd_stop(dwc_otg_core_if_t * core_if);
+static inline void cil_hcd_stop(dwc_otg_core_if_t * core_if)
+{
+	if (core_if->hcd_cb && core_if->hcd_cb->stop) {
+		core_if->hcd_cb->stop(core_if->hcd_cb->p);
+	}
+}
 
 /** Disconnect the HCD.  Helper function for using the HCD callbacks.
  *
  * @param core_if Programming view of DWC_otg controller.
  */
-extern _LONG_CALL_ void cil_hcd_disconnect(dwc_otg_core_if_t * core_if);
+static inline void cil_hcd_disconnect(dwc_otg_core_if_t * core_if)
+{
+	if (core_if->hcd_cb && core_if->hcd_cb->disconnect) {
+		core_if->hcd_cb->disconnect(core_if->hcd_cb->p);
+	}
+}
 
 /** Inform the HCD the a New Session has begun.  Helper function for
  * using the HCD callbacks.
  *
  * @param core_if Programming view of DWC_otg controller.
  */
-extern _LONG_CALL_ void cil_hcd_session_start(dwc_otg_core_if_t * core_if);
+static inline void cil_hcd_session_start(dwc_otg_core_if_t * core_if)
+{
+	if (core_if->hcd_cb && core_if->hcd_cb->session_start) {
+		core_if->hcd_cb->session_start(core_if->hcd_cb->p);
+	}
+}
 
 #ifdef CONFIG_USB_DWC_OTG_LPM
 /**
@@ -1305,38 +1431,68 @@ extern _LONG_CALL_ void cil_hcd_session_start(dwc_otg_core_if_t * core_if);
  *
  * @param core_if Programming view of DWC_otg controller.
  */
-extern _LONG_CALL_ void cil_hcd_sleep(dwc_otg_core_if_t * core_if);
+static inline void cil_hcd_sleep(dwc_otg_core_if_t * core_if)
+{
+	if (core_if->hcd_cb && core_if->hcd_cb->sleep) {
+		core_if->hcd_cb->sleep(core_if->hcd_cb->p);
+	}
+}
 #endif
 
 /** Resume the HCD.  Helper function for using the HCD callbacks.
  *
  * @param core_if Programming view of DWC_otg controller.
  */
-extern _LONG_CALL_ void cil_hcd_resume(dwc_otg_core_if_t * core_if);
+static inline void cil_hcd_resume(dwc_otg_core_if_t * core_if)
+{
+	if (core_if->hcd_cb && core_if->hcd_cb->resume_wakeup) {
+		core_if->hcd_cb->resume_wakeup(core_if->hcd_cb->p);
+	}
+}
 
 /** Start the PCD.  Helper function for using the PCD callbacks.
  *
  * @param core_if Programming view of DWC_otg controller.
  */
-extern _LONG_CALL_ void cil_pcd_start(dwc_otg_core_if_t * core_if);
+static inline void cil_pcd_start(dwc_otg_core_if_t * core_if)
+{
+	if (core_if->pcd_cb && core_if->pcd_cb->start) {
+		core_if->pcd_cb->start(core_if->pcd_cb->p);
+	}
+}
 
 /** Stop the PCD.  Helper function for using the PCD callbacks.
  *
  * @param core_if Programming view of DWC_otg controller.
  */
-extern _LONG_CALL_  void cil_pcd_stop(dwc_otg_core_if_t * core_if);
+static inline void cil_pcd_stop(dwc_otg_core_if_t * core_if)
+{
+	if (core_if->pcd_cb && core_if->pcd_cb->stop) {
+		core_if->pcd_cb->stop(core_if->pcd_cb->p);
+	}
+}
 
 /** Suspend the PCD.  Helper function for using the PCD callbacks.
  *
  * @param core_if Programming view of DWC_otg controller.
  */
-extern _LONG_CALL_  void cil_pcd_suspend(dwc_otg_core_if_t * core_if);
+static inline void cil_pcd_suspend(dwc_otg_core_if_t * core_if)
+{
+	if (core_if->pcd_cb && core_if->pcd_cb->suspend) {
+		core_if->pcd_cb->suspend(core_if->pcd_cb->p);
+	}
+}
 
 /** Resume the PCD.  Helper function for using the PCD callbacks.
  *
  * @param core_if Programming view of DWC_otg controller.
  */
-extern _LONG_CALL_  void cil_pcd_resume(dwc_otg_core_if_t * core_if);
+static inline void cil_pcd_resume(dwc_otg_core_if_t * core_if)
+{
+	if (core_if->pcd_cb && core_if->pcd_cb->resume_wakeup) {
+		core_if->pcd_cb->resume_wakeup(core_if->pcd_cb->p);
+	}
+}
 
 //////////////////////////////////////////////////////////////////////
 

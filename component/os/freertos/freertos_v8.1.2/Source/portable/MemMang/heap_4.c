@@ -81,6 +81,8 @@ task.h is included from an application file. */
 #include "FreeRTOS.h"
 #include "task.h"
 
+//TODO: remove section when combine BD and BF
+#include "section_config.h"
 
 #undef MPU_WRAPPERS_INCLUDED_FROM_API_FILE
 
@@ -91,12 +93,7 @@ task.h is included from an application file. */
 #define heapBITS_PER_BYTE		( ( size_t ) 8 )
 
 /* Allocate the memory for the heap. */
-//TODO: remove section when combine BD and BF
-#if ((defined CONFIG_PLATFORM_8195A) || (defined CONFIG_PLATFORM_8711B))
-#include "section_config.h"
 SRAM_BF_DATA_SECTION
-#endif
-
 static uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
 
 /* Define the linked list structure.  This is used to link free blocks in order
